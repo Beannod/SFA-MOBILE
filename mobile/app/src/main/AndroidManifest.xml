@@ -1,0 +1,46 @@
+<manifest package="com.example.sfa" xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<!-- Network -->
+	<uses-permission android:name="android.permission.INTERNET" />
+
+	<!-- Location tracking -->
+	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+	<!-- Auto-update: allow installing downloaded APK -->
+	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+	<application
+		android:label="SFA Mobile"
+		android:icon="@mipmap/ic_launcher"
+		android:roundIcon="@mipmap/ic_launcher_round"
+		android:usesCleartextTraffic="true">
+		<activity android:name=".MainActivity" android:exported="true">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</activity>
+
+		<service
+			android:name=".LocationTrackingService"
+			android:exported="false"
+			android:foregroundServiceType="location" />
+
+		<!-- FileProvider for sharing downloaded APK with the package installer -->
+		<provider
+			android:name="androidx.core.content.FileProvider"
+			android:authorities="com.example.sfa.update_provider"
+			android:exported="false"
+			android:grantUriPermissions="true">
+			<meta-data
+				android:name="android.support.FILE_PROVIDER_PATHS"
+				android:resource="@xml/update_file_paths" />
+		</provider>
+	</application>
+
+</manifest>

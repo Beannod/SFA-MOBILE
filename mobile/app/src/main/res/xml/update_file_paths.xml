@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Internal cache directory — where the downloaded APK is saved -->
+    <cache-path
+        name="apk_cache"
+        path="/" />
+</paths>

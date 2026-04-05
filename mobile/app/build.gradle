@@ -1,0 +1,67 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// Allow overriding the API base URL via project property `SFA_API_BASE_URL`.
+// Usage: add `SFA_API_BASE_URL=https://dev.example` to `mobile/gradle.properties` or `~/.gradle/gradle.properties`.
+def SFA_API_BASE_URL = project.hasProperty('SFA_API_BASE_URL') ? project.SFA_API_BASE_URL : 'http://10.0.2.2:5000'
+
+android {
+    namespace "com.example.sfa"
+    buildFeatures {
+        buildConfig true
+        // Enable Compose
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.8' // Compatible with Kotlin 1.9.22
+    }
+    compileSdk 34
+    defaultConfig {
+        applicationId "com.example.sfa"
+        minSdk 24
+        targetSdk 34
+        versionCode 24
+        versionName "1.23"
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField "String", "SFA_API_BASE_URL", "\"${SFA_API_BASE_URL}\""
+        }
+        release {
+            // For release builds you may want a production URL; currently falls back to the same value.
+            buildConfigField "String", "SFA_API_BASE_URL", "\"${SFA_API_BASE_URL}\""
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
+    
+    // Compose
+    implementation platform('androidx.compose:compose-bom:2024.01.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material:material'  // Material 2 (used by code)
+    implementation 'androidx.compose.material:material-icons-extended'  // extended icon set
+    implementation 'androidx.activity:activity-compose:1.7.2'
+    
+    // Coroutines for background work
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
+    
+    // Debugging tools
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+}
