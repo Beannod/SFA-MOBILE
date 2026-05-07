@@ -184,6 +184,67 @@
         .totals .tot-row strong { min-width: 110px; text-align: right; }
         .totals .grand { font-size: 1.15em; color: var(--primary); border-top: 2px solid var(--primary-light); padding-top: 8px; }
 
+        /* ══ Orders: Create Modal UX ══ */
+        #ord-createModal, #cust-createModal, #prod-createModal { padding: 2px; }
+        .ord-modal-box, .cust-modal-box, .prod-modal-box { width: min(99vw, 1550px); max-width: none !important; max-height: 98vh; border: 1px solid var(--gray-200); display: flex; flex-direction: column; }
+        .ord-modal-box .modal-header, .cust-modal-box .modal-header, .prod-modal-box .modal-header { padding: 10px 12px; }
+        .ord-modal-body, .cust-modal-body, .prod-modal-body { background: linear-gradient(180deg, #f8fbff 0%, #ffffff 35%); padding: 6px 8px !important; overflow-y: auto; }
+        .ord-form-block { border: 1px solid var(--gray-200); background: #fff; border-radius: 10px; padding: 7px 7px 6px; margin-bottom: 8px; }
+        .ord-form-block .section-title { margin-top: 0; margin-bottom: 8px; }
+        .ord-order-info .section-title { margin-bottom: 4px; }
+        .ord-order-info .form-row { align-items: end; }
+        .ord-order-info .form-group { margin-bottom: 2px; }
+        .ord-order-info .form-group label { font-size: 0.62em; }
+        .ord-order-info .form-group input,
+        .ord-order-info .form-group select { height: 30px; padding-top: 4px; padding-bottom: 4px; }
+        .ord-order-info .form-group.remarks-sm { min-width: 190px; flex: 1.1 1 190px; }
+        .ord-items-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 10px; }
+        .ord-items-count { font-size: 0.78em; color: var(--gray-500); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .ord-modal-box .form-row { gap: 6px; }
+        .ord-modal-box .form-group { margin-bottom: 4px; }
+        .ord-modal-box .form-row .form-group { min-width: 120px; flex: 1 1 120px; }
+        .ord-modal-box .form-group label, .cust-modal-box .form-group label, .prod-modal-box .form-group label { margin-bottom: 2px; font-size: 0.66em; }
+        .ord-modal-box .form-group input,
+        .ord-modal-box .form-group select,
+        .ord-modal-box .form-group textarea,
+        .cust-modal-box .form-group input,
+        .cust-modal-box .form-group select,
+        .cust-modal-box .form-group textarea,
+        .prod-modal-box .form-group input,
+        .prod-modal-box .form-group select,
+        .prod-modal-box .form-group textarea { padding: 5px 7px; font-size: 0.8em; border-radius: 7px; }
+        .ord-modal-box .form-group textarea, .cust-modal-box .form-group textarea, .prod-modal-box .form-group textarea { min-height: 36px; }
+        .ord-modal-box .form-group input[readonly], .cust-modal-box .form-group input[readonly], .prod-modal-box .form-group input[readonly] { background: #f8fafc; color: #475569; }
+        .ord-modal-box .line-items-wrap { background: #f8fafc; padding: 7px; }
+        .ord-modal-box .line-item { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 6px 28px 6px 6px; margin-bottom: 6px; border-bottom: 1px solid var(--gray-200); }
+        .ord-modal-box .line-item:last-child { margin-bottom: 0; }
+        .ord-modal-box .line-item .form-group { min-width: 102px; flex: 1 1 102px; }
+        .ord-modal-box .line-item .form-group.sm { min-width: 78px; flex: 1 1 78px; }
+        .ord-modal-box .line-item .form-group.xs { min-width: 72px; flex: 1 1 72px; }
+        .ord-modal-box .line-item .form-group label { margin-bottom: 2px; font-size: 0.64em; }
+        .ord-modal-box .line-item .form-group input,
+        .ord-modal-box .line-item .form-group select,
+        .ord-modal-box .line-item .form-group textarea { padding: 5px 7px; font-size: 0.79em; }
+        .ord-modal-box .line-item .remove-btn { position: absolute; top: 5px; right: 4px; margin: 0; width: 22px; height: 22px; line-height: 22px; }
+        .ord-modal-box .line-item { position: relative; }
+        .ord-modal-footer, .cust-modal-footer, .prod-modal-footer { position: sticky; bottom: 0; z-index: 2; border-top: 1px solid var(--gray-200); padding: 6px 8px 6px !important; }
+        .cust-modal-box .form-row { gap: 6px; }
+        .cust-modal-box .form-group { margin-bottom: 4px; min-width: 120px; flex: 1 1 120px; }
+        .cust-modal-box .section-title { margin: 8px 0 5px; font-size: 0.78em; }
+        .cust-modal-box .section-title:first-of-type { margin-top: 0; }
+        .prod-modal-box .form-row { gap: 6px; }
+        .prod-modal-box .form-group { margin-bottom: 4px; min-width: 120px; flex: 1 1 120px; }
+        .prod-modal-box .section-title { margin: 8px 0 5px; font-size: 0.78em; }
+        .prod-modal-box .section-title:first-of-type { margin-top: 0; }
+        @media (max-width: 900px) {
+            .ord-modal-box, .cust-modal-box, .prod-modal-box { max-width: 100% !important; }
+            .ord-modal-box .line-item .form-group,
+            .ord-modal-box .line-item .form-group.sm,
+            .ord-modal-box .line-item .form-group.xs { min-width: 100%; flex: 1 1 100%; }
+            .ord-modal-footer, .cust-modal-footer, .prod-modal-footer { flex-wrap: wrap; }
+            .ord-modal-footer .btn, .cust-modal-footer .btn, .prod-modal-footer .btn { flex: 1 1 auto; justify-content: center; }
+        }
+
         /* ══ Orders: Detail Panel ══ */
         .detail-panel { display: none; }
         .detail-panel.show { display: block; }
@@ -346,8 +407,34 @@
         .type-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 0.82em; font-weight: 600; background: var(--primary-light); color: var(--primary-dark); border: 1px solid #c7d2fe; }
         .type-chip .del { cursor: pointer; font-size: 11px; background: none; border: none; color: #666; padding: 0 0 0 2px; line-height: 1; }
         .type-chip .del:hover { color: #ef4444; }
+        .cfg-pcfg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 12px; margin-top: 10px; }
+        .cfg-pcfg-item { border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px; background: #fff; }
+        .cfg-pcfg-item h4 { font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray-500); margin-bottom: 8px; }
+        .cfg-pcfg-item .row { display: flex; gap: 8px; align-items: center; }
+        .cfg-pcfg-item input { flex: 1; padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-size: 0.86em; }
         /* ══ Org Chart embed ══ */
         #section-orgchart { margin: -24px -20px; }
+        /* ══ Activity Feed ══ */
+        .act-feed-item { display:flex; gap:12px; padding:14px 0; border-bottom:1px solid var(--gray-100); }
+        .act-feed-item:last-child { border-bottom:none; }
+        .act-avatar { width:38px; height:38px; min-width:38px; border-radius:50%; background:var(--primary-light); color:var(--primary-dark); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.85em; text-transform:uppercase; }
+        .act-body { flex:1; min-width:0; }
+        .act-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:3px; }
+        .act-name { font-weight:600; font-size:0.9em; color:var(--gray-800); }
+        .act-time { font-size:0.75em; color:var(--gray-400); margin-left:auto; white-space:nowrap; }
+        .act-badge { font-size:0.72em; font-weight:600; padding:2px 8px; border-radius:12px; }
+        .act-badge.Created  { background:#dcfce7; color:#15803d; }
+        .act-badge.Updated  { background:#dbeafe; color:#1d4ed8; }
+        .act-badge.Deleted  { background:#fee2e2; color:#dc2626; }
+        .act-badge.Approved { background:#dcfce7; color:#15803d; }
+        .act-badge.Rejected { background:#fee2e2; color:#dc2626; }
+        .act-badge.Cancelled{ background:#fef3c7; color:#92400e; }
+        .act-badge.StatusChanged { background:#ede9fe; color:#6d28d9; }
+        .act-desc { font-size:0.875em; color:var(--gray-700); line-height:1.45; }
+        .act-desc strong { color:var(--gray-900); }
+        .act-details { font-size:0.78em; color:var(--gray-500); margin-top:3px; }
+        .act-source { font-size:0.72em; padding:1px 7px; border-radius:10px; background:var(--gray-100); color:var(--gray-500); margin-left:4px; }
+        .act-empty { text-align:center; padding:60px 0; color:var(--gray-400); font-size:0.9em; }
     </style>
 </head>
 <body>
@@ -378,6 +465,7 @@
             <a data-section="tracking"   onclick="showSection('tracking')" class="admin-only"><span class="ni">📍</span> Tracking</a>
             <a data-section="apk"        onclick="showSection('apk')"><span class="ni">📱</span> Mobile App</a>
             <a data-section="orgchart"   onclick="showSection('orgchart')"><span class="ni">🌳</span> Org Chart</a>
+            <a data-section="activity"   onclick="showSection('activity')" class="admin-only"><span class="ni">📜</span> Activity Log</a>
         </nav>
     </div>
 
@@ -457,6 +545,7 @@
                 <div class="card-body-collapse">
                 <div class="tab-btns" style="margin-top:14px">
                     <button class="tab-btn active" onclick="cfgSwitchTab('list',this)">All Sales Persons</button>
+                    <button class="tab-btn" onclick="cfgSwitchTab('hierarchy',this)">🔗 Hierarchy</button>
                     <button class="tab-btn" onclick="cfgSwitchTab('org',this)">Org Chart</button>
                 </div>
                 <div id="cfg-tab-list" class="tab-pane active">
@@ -478,8 +567,16 @@
                     </div>
                     <div id="cfg-usersTable"><div class="loading">Loading…</div></div>
                 </div>
+                <div id="cfg-tab-hierarchy" class="tab-pane">
+                    <div style="display:flex;align-items:center;gap:10px;margin:14px 0 10px">
+                        <span style="font-size:0.88em;color:var(--gray-500)">Drag the <b>Reports To</b> column to reassign managers. Changes are saved per row.</span>
+                        <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="cfgLoadHierarchy()">↻ Refresh</button>
+                    </div>
+                    <div id="cfg-hierarchyMsg"></div>
+                    <div id="cfg-hierarchyTable" class="table-wrap"><div class="loading">Loading…</div></div>
+                </div>
                 <div id="cfg-tab-org" class="tab-pane">
-                    <iframe id="cfg-orgchart-frame" src="" style="width:100%;height:calc(100vh - 180px);min-height:500px;border:none;display:block;border-radius:0 0 10px 10px;" sandbox="allow-scripts allow-forms"></iframe>
+                    <iframe id="cfg-orgchart-frame" src="" style="width:100%;height:calc(100vh - 180px);min-height:500px;border:none;display:block;border-radius:0 0 10px 10px;" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
                 </div>
                 </div>
             </div>
@@ -555,6 +652,299 @@
                 <div id="cfg-custTypeMsg" style="margin-top:8px;font-size:0.836em;color:var(--gray-500)"></div>
             </div>
 
+            <!-- Product Dropdown Configuration (Admin only) -->
+            <div class="card" id="cfg-productCfgCard" style="display:none">
+                <div class="card-header">
+                    <div class="card-icon">🧩</div>
+                    <h2>Product Configuration</h2>
+                    <span style="font-size:0.82em;color:var(--gray-500);margin-left:8px">Manage dropdown values used in product forms (supports free text search)</span>
+                </div>
+                <div class="cfg-pcfg-grid">
+                    <div class="cfg-pcfg-item">
+                        <h4>Series</h4>
+                        <div class="row"><input id="cfg-pcfg-new-category" type="text" placeholder="Add series value" onkeydown="if(event.key==='Enter'){cfgAddProductCfg('category');event.preventDefault();}"><button class="btn btn-primary btn-sm" onclick="cfgAddProductCfg('category')">Add</button></div>
+                        <div id="cfg-pcfg-chips-category" class="type-chips"></div>
+                    </div>
+                    <div class="cfg-pcfg-item">
+                        <h4>Size</h4>
+                        <div class="row"><input id="cfg-pcfg-new-size" type="text" placeholder="Add size value" onkeydown="if(event.key==='Enter'){cfgAddProductCfg('size');event.preventDefault();}"><button class="btn btn-primary btn-sm" onclick="cfgAddProductCfg('size')">Add</button></div>
+                        <div id="cfg-pcfg-chips-size" class="type-chips"></div>
+                    </div>
+                    <div class="cfg-pcfg-item">
+                        <h4>Quality</h4>
+                        <div class="row"><input id="cfg-pcfg-new-quality" type="text" placeholder="Add quality value" onkeydown="if(event.key==='Enter'){cfgAddProductCfg('quality');event.preventDefault();}"><button class="btn btn-primary btn-sm" onclick="cfgAddProductCfg('quality')">Add</button></div>
+                        <div id="cfg-pcfg-chips-quality" class="type-chips"></div>
+                    </div>
+                    <div class="cfg-pcfg-item">
+                        <h4>Type</h4>
+                        <div class="row"><input id="cfg-pcfg-new-type" type="text" placeholder="Add type value" onkeydown="if(event.key==='Enter'){cfgAddProductCfg('type');event.preventDefault();}"><button class="btn btn-primary btn-sm" onclick="cfgAddProductCfg('type')">Add</button></div>
+                        <div id="cfg-pcfg-chips-type" class="type-chips"></div>
+                    </div>
+                    <div class="cfg-pcfg-item">
+                        <h4>Finish</h4>
+                        <div class="row"><input id="cfg-pcfg-new-finish" type="text" placeholder="Add finish value" onkeydown="if(event.key==='Enter'){cfgAddProductCfg('finish');event.preventDefault();}"><button class="btn btn-primary btn-sm" onclick="cfgAddProductCfg('finish')">Add</button></div>
+                        <div id="cfg-pcfg-chips-finish" class="type-chips"></div>
+                    </div>
+                    <div class="cfg-pcfg-item">
+                        <h4>Shade</h4>
+                        <div class="row"><input id="cfg-pcfg-new-shade" type="text" placeholder="Add shade value" onkeydown="if(event.key==='Enter'){cfgAddProductCfg('shade');event.preventDefault();}"><button class="btn btn-primary btn-sm" onclick="cfgAddProductCfg('shade')">Add</button></div>
+                        <div id="cfg-pcfg-chips-shade" class="type-chips"></div>
+                    </div>
+                    <div class="cfg-pcfg-item">
+                        <h4>Unit</h4>
+                        <div class="row"><input id="cfg-pcfg-new-unit" type="text" placeholder="Add unit value" onkeydown="if(event.key==='Enter'){cfgAddProductCfg('unit');event.preventDefault();}"><button class="btn btn-primary btn-sm" onclick="cfgAddProductCfg('unit')">Add</button></div>
+                        <div id="cfg-pcfg-chips-unit" class="type-chips"></div>
+                    </div>
+                </div>
+                <div id="cfg-pcfgMsg" style="margin-top:8px;font-size:0.836em;color:var(--gray-500)"></div>
+            </div>
+
+        <!-- ══ CREATE / EDIT USER MODAL ══ -->
+        <div id="cfg-createModal" class="modal-overlay" onclick="if(event.target===this)cfgCloseCreateModal()">
+            <div class="modal-box" style="max-width:680px;width:95%">
+                <div class="modal-header">
+                    <h3 id="cfg-formTitle">Add New Sales Person</h3>
+                    <button class="close-btn" onclick="cfgCloseCreateModal()">&#x2715;</button>
+                </div>
+                <form id="cfg-createForm" onsubmit="cfgSaveUser(event)" autocomplete="off">
+                    <input type="hidden" id="cfg-editId">
+                    <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:12px 20px">
+                        <div class="form-group">
+                            <label>Username <span style="color:red">*</span></label>
+                            <input type="text" id="cfg-username" required placeholder="e.g. john.doe">
+                        </div>
+                        <div class="form-group">
+                            <label>Password <span style="color:red">*</span></label>
+                            <input type="password" id="cfg-password" placeholder="Enter password">
+                        </div>
+                        <div class="form-group">
+                            <label>Full Name <span style="color:red">*</span></label>
+                            <input type="text" id="cfg-fullName" required placeholder="e.g. John Doe">
+                        </div>
+                        <div class="form-group">
+                            <label>Role</label>
+                            <select id="cfg-role">
+                                <option value="Salesperson">Salesperson</option>
+                                <option value="Supervisor">Supervisor</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="cfg-email" placeholder="john@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="text" id="cfg-phone" placeholder="9800000000">
+                        </div>
+                        <div class="form-group">
+                            <label>Employee Code</label>
+                            <input type="text" id="cfg-employeeCode" placeholder="EMP-001">
+                        </div>
+                        <div class="form-group">
+                            <label>Designation</label>
+                            <select id="cfg-designation">
+                                <option value="">-- None --</option>
+                                <option>National Sales Manager</option>
+                                <option>Zonal Sales Manager</option>
+                                <option>Regional Sales Manager</option>
+                                <option>Area Sales Manager</option>
+                                <option>Territory Sales Manager</option>
+                                <option>Senior Sales Executive</option>
+                                <option>Sales Executive</option>
+                                <option>Salesperson</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Department</label>
+                            <input type="text" id="cfg-department" placeholder="e.g. Sales">
+                        </div>
+                        <div class="form-group">
+                            <label>Branch</label>
+                            <input type="text" id="cfg-branch" placeholder="e.g. Kathmandu">
+                        </div>
+                        <div class="form-group">
+                            <label>Territory</label>
+                            <input type="text" id="cfg-territory" placeholder="e.g. West Zone">
+                        </div>
+                        <div class="form-group">
+                            <label>City</label>
+                            <input type="text" id="cfg-city" placeholder="e.g. Pokhara">
+                        </div>
+                        <div class="form-group">
+                            <label>State / Province</label>
+                            <input type="text" id="cfg-state" placeholder="e.g. Gandaki">
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="cfg-isActive">
+                                <option value="true">Active</option>
+                                <option value="false">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="grid-column:1/-1">
+                            <label>Reports To</label>
+                            <select id="cfg-reportsToId" style="width:100%"><option value="">-- No Manager --</option></select>
+                            <div id="cfg-reportsToInfo" style="font-size:0.8em;color:var(--gray-500);margin-top:4px"></div>
+                        </div>
+                        <div class="form-group" style="grid-column:1/-1">
+                            <label style="font-weight:700;margin-bottom:6px;display:block">🌐 Web Permissions</label>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px">
+                                <label id="cfg-wft-dashboard"    class="feature-toggle"><input type="checkbox" value="dashboard"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dashboard</label>
+                                <label id="cfg-wft-customers"    class="feature-toggle"><input type="checkbox" value="customers"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Customers</label>
+                                <label id="cfg-wft-orders"       class="feature-toggle"><input type="checkbox" value="orders"         onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Orders</label>
+                                <label id="cfg-wft-products"     class="feature-toggle"><input type="checkbox" value="products"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Products</label>
+                                <label id="cfg-wft-reports"      class="feature-toggle"><input type="checkbox" value="reports"        onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Reports</label>
+                                <label id="cfg-wft-attendance"   class="feature-toggle"><input type="checkbox" value="attendance"     onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Attendance</label>
+                                <label id="cfg-wft-location"     class="feature-toggle"><input type="checkbox" value="location"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Location</label>
+                                <label id="cfg-wft-stock"        class="feature-toggle"><input type="checkbox" value="stock"          onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Stock</label>
+                                <label id="cfg-wft-approveOrders"  class="feature-toggle"><input type="checkbox" value="approveOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Approve Orders</label>
+                                <label id="cfg-wft-dispatchOrders" class="feature-toggle"><input type="checkbox" value="dispatchOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dispatch Orders</label>
+                                <label id="cfg-wft-deliverOrders"  class="feature-toggle"><input type="checkbox" value="deliverOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Deliver Orders</label>
+                                <label id="cfg-wft-cancelOrders"   class="feature-toggle"><input type="checkbox" value="cancelOrders"   onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Cancel Orders</label>
+                            </div>
+                        </div>
+                        <div class="form-group" style="grid-column:1/-1">
+                            <label style="font-weight:700;margin-bottom:6px;display:block">📱 Mobile Permissions</label>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px">
+                                <label id="cfg-mft-dashboard"    class="feature-toggle"><input type="checkbox" value="dashboard"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dashboard</label>
+                                <label id="cfg-mft-customers"    class="feature-toggle"><input type="checkbox" value="customers"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Customers</label>
+                                <label id="cfg-mft-orders"       class="feature-toggle"><input type="checkbox" value="orders"         onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Orders</label>
+                                <label id="cfg-mft-products"     class="feature-toggle"><input type="checkbox" value="products"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Products</label>
+                                <label id="cfg-mft-route"        class="feature-toggle"><input type="checkbox" value="route"          onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Route</label>
+                                <label id="cfg-mft-team"         class="feature-toggle"><input type="checkbox" value="team"           onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Team</label>
+                                <label id="cfg-mft-expenses"     class="feature-toggle"><input type="checkbox" value="expenses"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Expenses</label>
+                                <label id="cfg-mft-schemes"      class="feature-toggle"><input type="checkbox" value="schemes"        onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Schemes</label>
+                                <label id="cfg-mft-payments"     class="feature-toggle"><input type="checkbox" value="payments"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Payments</label>
+                                <label id="cfg-mft-reports"      class="feature-toggle"><input type="checkbox" value="reports"        onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Reports</label>
+                                <label id="cfg-mft-attendance"   class="feature-toggle"><input type="checkbox" value="attendance"     onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Attendance</label>
+                                <label id="cfg-mft-location"     class="feature-toggle"><input type="checkbox" value="location"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Location</label>
+                                <label id="cfg-mft-approveOrders"  class="feature-toggle"><input type="checkbox" value="approveOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Approve Orders</label>
+                                <label id="cfg-mft-dispatchOrders" class="feature-toggle"><input type="checkbox" value="dispatchOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dispatch Orders</label>
+                                <label id="cfg-mft-deliverOrders"  class="feature-toggle"><input type="checkbox" value="deliverOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Deliver Orders</label>
+                                <label id="cfg-mft-cancelOrders"   class="feature-toggle"><input type="checkbox" value="cancelOrders"   onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Cancel Orders</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="cfg-message" style="margin-top:12px"></div>
+                    <div class="modal-footer" style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px">
+                        <button type="button" class="btn btn-secondary" onclick="cfgCloseCreateModal()">Cancel</button>
+                        <button type="submit" id="cfg-submitBtn" class="btn btn-primary">Create Sales Person</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ══ PROFILE / EDIT USER MODAL ══ -->
+        <div id="cfg-profileModal" class="modal-overlay" onclick="if(event.target===this)cfgCloseProfileModal()">
+            <div class="modal-box" style="max-width:700px;width:95%">
+                <div class="modal-header">
+                    <h3 id="cfg-pmTitle">User Profile</h3>
+                    <button class="close-btn" onclick="cfgCloseProfileModal()">&#x2715;</button>
+                </div>
+                <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:12px 20px">
+                    <input type="hidden" id="cfg-pmUserId">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="cfg-pmUsername" readonly style="background:var(--gray-50)">
+                    </div>
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="cfg-pmFullName" placeholder="Full Name">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="cfg-pmEmail" placeholder="email@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="text" id="cfg-pmPhone" placeholder="9800000000">
+                    </div>
+                    <div class="form-group">
+                        <label>City</label>
+                        <input type="text" id="cfg-pmCity" placeholder="e.g. Kathmandu">
+                    </div>
+                    <div class="form-group">
+                        <label>Territory</label>
+                        <input type="text" id="cfg-pmTerritory" placeholder="e.g. West Zone">
+                    </div>
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" id="cfg-pmDepartment" placeholder="e.g. Sales">
+                    </div>
+                    <div class="form-group">
+                        <label>Branch</label>
+                        <input type="text" id="cfg-pmBranch" placeholder="e.g. Kathmandu">
+                    </div>
+                    <div class="form-group">
+                        <label>State / Province</label>
+                        <input type="text" id="cfg-pmState" placeholder="e.g. Bagmati">
+                    </div>
+                    <div class="form-group">
+                        <label>Employee Code</label>
+                        <input type="text" id="cfg-pmEmployeeCode" placeholder="EMP-001">
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="cfg-pmRoleSelect">
+                            <option value="Salesperson">Salesperson</option>
+                            <option value="Supervisor">Supervisor</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Designation</label>
+                        <select id="cfg-pmDesigSelect">
+                            <option value="">-- None --</option>
+                            <option>National Sales Manager</option>
+                            <option>Zonal Sales Manager</option>
+                            <option>Regional Sales Manager</option>
+                            <option>Area Sales Manager</option>
+                            <option>Territory Sales Manager</option>
+                            <option>Senior Sales Executive</option>
+                            <option>Sales Executive</option>
+                            <option>Salesperson</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="cfg-pmIsActive">
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Reports To</label>
+                        <select id="cfg-pmReportsTo" style="width:100%"><option value="">-- No Manager --</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="cfg-pmNewPwd" placeholder="Leave blank to keep">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="cfg-pmConfirmPwd" placeholder="Repeat new password">
+                    </div>
+                    <div id="cfg-pmWebSection" class="form-group" style="grid-column:1/-1">
+                        <label style="font-weight:700;margin-bottom:6px;display:block">🌐 Web Permissions</label>
+                        <div id="cfg-pmWebGrid" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+                        <span id="cfg-pmFeaturesLockNote" style="font-size:0.78em;color:#94a3b8"></span>
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1">
+                        <label style="font-weight:700;margin-bottom:6px;display:block">📱 Mobile Permissions</label>
+                        <div id="cfg-pmMobileGrid" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+                        <span id="cfg-pmMobileLockNote" style="font-size:0.78em;color:#94a3b8"></span>
+                    </div>
+                </div>
+                <div id="cfg-pmMsg" style="margin:8px 16px 0"></div>
+                <div class="modal-footer" style="margin-top:16px;display:flex;justify-content:space-between;gap:10px">
+                    <button id="cfg-pmDeleteBtn" class="btn btn-danger btn-sm" onclick="cfgDeleteFromModal()" style="margin-right:auto">🗑 Delete</button>
+                    <button class="btn btn-secondary" onclick="cfgCloseProfileModal()">Cancel</button>
+                    <button id="cfg-pmSaveBtn" class="btn btn-primary" onclick="cfgSaveProfileModal()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+
         </div><!-- /section-config -->
 
         <!-- ══ CUSTOMERS SECTION ══ -->
@@ -623,6 +1013,19 @@
                     <div class="modal-body" id="ord-detailContent" style="max-height:75vh;overflow-y:auto"></div>
                     <div style="display:flex;justify-content:flex-end;padding:12px 22px;border-top:1px solid var(--gray-100)">
                         <button class="btn btn-secondary" onclick="ordCloseDetail()">Close</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Shared Entity Activity Log Modal -->
+            <div id="entity-logModal" class="modal-overlay" onclick="if(event.target===this)document.getElementById('entity-logModal').style.display='none'" style="display:none">
+                <div class="modal-box" style="max-width:700px;width:94%">
+                    <div class="modal-header" style="background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;border-radius:12px 12px 0 0;padding:14px 22px">
+                        <h3 id="entity-logTitle" style="color:#fff;font-size:1.05em">Activity Log</h3>
+                        <button class="close-btn" onclick="document.getElementById('entity-logModal').style.display='none'" style="color:#fff;opacity:.8;font-size:1.2em">&#x2715;</button>
+                    </div>
+                    <div class="modal-body" id="entity-logContent" style="max-height:65vh;overflow-y:auto;padding:16px 22px"></div>
+                    <div style="display:flex;justify-content:flex-end;padding:10px 22px;border-top:1px solid var(--gray-100)">
+                        <button class="btn btn-secondary" onclick="document.getElementById('entity-logModal').style.display='none'">Close</button>
                     </div>
                 </div>
             </div>
@@ -720,19 +1123,55 @@
 
     <!-- ══ PRODUCT CREATE/EDIT MODAL ══ -->
     <div id="prod-createModal" class="modal-overlay">
-        <div class="modal-box" style="max-width:780px">
+        <div class="modal-box prod-modal-box">
             <div class="modal-header">
                 <h3 id="prod-formTitle">Add New Product</h3>
                 <button class="close-btn" onclick="prodCancelEdit()">&#x2715;</button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body prod-modal-body">
                 <form id="prod-prodForm" onsubmit="prodSaveProduct(event)">
                     <input type="hidden" id="prod-editId" value="">
-                    <div class="section-title">Basic Info</div>
+                    <div style="font-size:0.8em;color:var(--gray-500);margin-bottom:10px">Fields marked <span class="req">*</span> are required.</div>
+                    <div class="section-title">Required Fields</div>
                     <div class="form-row">
-                        <div class="form-group"><label>Product Name <span class="req">*</span></label><input type="text" id="prod-name" required placeholder="e.g. Calacatta White"></div>
-                        <div class="form-group"><label>Code</label><input type="text" id="prod-code" placeholder="PRD-001"></div>
-                        <div class="form-group"><label>Category</label><select id="prod-category"><option>Tiles</option><option>Marble</option><option>Granite</option><option>Sanitaryware</option><option>Other</option></select></div>
+                        <div class="form-group"><label>Item No. <span class="req">*</span></label><input type="text" id="prod-itemNo" required placeholder="1"></div>
+                        <div class="form-group" style="flex:2"><label>Item Description <span class="req">*</span></label><input type="text" id="prod-name" required placeholder="e.g. Calacatta White 600x600"></div>
+                    </div>
+                    <div class="form-row">
+                        <!-- Series / Category -->
+                        <div class="form-group" id="prod-category-wrap">
+                            <label>Series <span class="req">*</span></label>
+                            <select id="prod-category-sel" onchange="prodToggleOther('category')"></select>
+                            <input type="text" id="prod-category" style="display:none;margin-top:4px" placeholder="Enter series name">
+                        </div>
+                        <!-- Size -->
+                        <div class="form-group" id="prod-size-wrap">
+                            <label>Size <span class="req">*</span></label>
+                            <select id="prod-size-sel" onchange="prodToggleOther('size')"></select>
+                            <input type="text" id="prod-size" style="display:none;margin-top:4px" placeholder="e.g. 600x600">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Box Sqr. Mtr <span class="req">*</span></label><input type="number" id="prod-boxCoverage" step="0.01" min="0.01" required placeholder="0"></div>
+                        <div class="form-group"><label>KG Per Box <span class="req">*</span></label><input type="number" id="prod-kgPerBox" step="0.01" min="0.01" required placeholder="0"></div>
+                        <div class="form-group"><label>Rate Per SQM <span class="req">*</span></label><input type="number" id="prod-ratePerSqm" step="0.01" min="0.01" required placeholder="0"></div>
+                    </div>
+                    <div class="section-title" style="cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none" onclick="var w=document.getElementById('prod-optionalWrap');var a=this.querySelector('.expand-arrow');if(w.style.display==='none'){w.style.display='block';a.textContent='▾'}else{w.style.display='none';a.textContent='▸'}">
+                        <span class="expand-arrow">▸</span> Optional Fields
+                    </div>
+                    <div id="prod-optionalWrap" style="display:none">
+                    <div class="form-row">
+                        <!-- Quality -->
+                        <div class="form-group" id="prod-quality-wrap">
+                            <label>Quality</label>
+                            <select id="prod-quality-sel" onchange="prodToggleOther('quality')"></select>
+                            <input type="text" id="prod-quality" style="display:none;margin-top:4px" placeholder="e.g. Premium">
+                        </div>
+                        <div class="form-group" style="flex:2"><label>Remarks</label><input type="text" id="prod-remarks" placeholder="e.g. Glossy floor tile"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>WT</label><input type="number" id="prod-weight" step="0.01" placeholder="0"></div>
+                        <div class="form-group"><label>Double Name / Item Code</label><input type="text" id="prod-code" placeholder="CAL-600-WHT"></div>
                     </div>
                     <div class="form-row">
                         <div class="form-group" style="flex:2"><label>Description</label><textarea id="prod-description" rows="2" placeholder="Product description..."></textarea></div>
@@ -752,33 +1191,49 @@
                             <div id="prod-uploadMsg" style="font-size:0.8em;margin-top:4px;color:var(--primary)"></div>
                         </div>
                     </div>
-                    <div class="section-title">Tile / Marble Details</div>
                     <div class="form-row">
-                        <div class="form-group"><label>Type</label><select id="prod-type"><option value="">--</option><option>Floor</option><option>Wall</option><option>Outdoor</option><option>Marble</option><option>Other</option></select></div>
-                        <div class="form-group"><label>Size</label><input type="text" id="prod-size" placeholder="600x600"></div>
+                        <!-- Type -->
+                        <div class="form-group" id="prod-type-wrap">
+                            <label>Type</label>
+                            <select id="prod-type-sel" onchange="prodToggleOther('type')"></select>
+                            <input type="text" id="prod-type" style="display:none;margin-top:4px" placeholder="e.g. Floor">
+                        </div>
                         <div class="form-group"><label>Thickness</label><input type="text" id="prod-thickness" placeholder="9mm"></div>
-                        <div class="form-group"><label>Finish</label><select id="prod-finish"><option value="">--</option><option>Glossy</option><option>Matt</option><option>Rustic</option><option>Satin</option><option>Carving</option><option>High Gloss</option></select></div>
-                        <div class="form-group"><label>Shade</label><select id="prod-shade"><option value="">--</option><option>Light</option><option>Medium</option><option>Dark</option></select></div>
+                        <!-- Finish -->
+                        <div class="form-group" id="prod-finish-wrap">
+                            <label>Finish</label>
+                            <select id="prod-finish-sel" onchange="prodToggleOther('finish')"></select>
+                            <input type="text" id="prod-finish" style="display:none;margin-top:4px" placeholder="e.g. Glossy">
+                        </div>
+                        <!-- Shade -->
+                        <div class="form-group" id="prod-shade-wrap">
+                            <label>Shade</label>
+                            <select id="prod-shade-sel" onchange="prodToggleOther('shade')"></select>
+                            <input type="text" id="prod-shade" style="display:none;margin-top:4px" placeholder="e.g. Light">
+                        </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group"><label>Box Coverage (sq.ft)</label><input type="number" id="prod-boxCoverage" step="0.01" placeholder="0"></div>
                         <div class="form-group"><label>Pieces / Box</label><input type="number" id="prod-piecesPerBox" placeholder="0"></div>
-                        <div class="form-group"><label>Unit</label><select id="prod-unit"><option>Box</option><option>SqFt</option><option>Pcs</option></select></div>
+                        <!-- Unit -->
+                        <div class="form-group" id="prod-unit-wrap">
+                            <label>Unit</label>
+                            <select id="prod-unit-sel" onchange="prodToggleOther('unit')"></select>
+                            <input type="text" id="prod-unit" style="display:none;margin-top:4px" placeholder="e.g. Box">
+                        </div>
                     </div>
-                    <div class="section-title">Pricing</div>
                     <div class="form-row">
-                        <div class="form-group"><label>MRP (Rs.) <span class="req">*</span></label><input type="number" id="prod-price" step="0.01" required value="0"></div>
+                        <div class="form-group"><label>MRP (Rs.)</label><input type="number" id="prod-price" step="0.01" value="0"></div>
                         <div class="form-group"><label>Dealer Price (Rs.)</label><input type="number" id="prod-dealerPrice" step="0.01" placeholder="0"></div>
                     </div>
-                    <div class="section-title">Tags &amp; Status</div>
                     <div class="form-row">
                         <div class="form-group"><div class="check-group"><input type="checkbox" id="prod-isNewArrival"><label for="prod-isNewArrival">New Arrival</label></div></div>
                         <div class="form-group"><div class="check-group"><input type="checkbox" id="prod-isDiscontinued"><label for="prod-isDiscontinued">Discontinued</label></div></div>
                         <div class="form-group"><label>Status</label><select id="prod-isActive"><option value="true" selected>Active</option><option value="false">Inactive</option></select></div>
                     </div>
+                    </div><!-- /prod-optionalWrap -->
                 </form>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer prod-modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" id="prod-cancelBtn" style="display:none;margin-right:auto" onclick="prodCancelEdit()">✕ Cancel Edit</button>
                 <button type="button" class="btn btn-secondary" onclick="prodCancelEdit()">Close</button>
                 <button type="button" class="btn btn-primary" id="prod-submitBtn" onclick="document.getElementById('prod-prodForm').requestSubmit()">✚ Create Product</button>
@@ -796,13 +1251,13 @@
             <div class="modal-body">
                 <div id="prod-importMsg"></div>
                 <div style="background:#f0f9ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:14px;font-size:0.88em;color:#334155">
-                    <strong>CSV Format:</strong> The file must include these columns in header:<br>
-                    <code>Item No., Item Description, Series, Size, Box Sqr. Mtr, KG Per Box, Double Name/Item Code, Remarks, New Series</code><br>
-                    <button class="btn btn-sm btn-info" onclick="prodDownloadTemplate()" style="margin-top:8px">📥 Download Template</button>
+                    <strong>CSV / Excel Format:</strong> The file must include these columns in header:<br>
+                    <code>Item No., Item Description, QUALITY, Series, Size, Box Sqr. Mtr, KG Per Box, Rate Per SQM, Remarks</code><br>
+                    <button class="btn btn-sm btn-info" onclick="prodDownloadTemplate()" style="margin-top:8px">📥 Download Excel Template</button>
                 </div>
                 <div class="form-group">
                     <label>Select CSV File <span class="req">*</span></label>
-                    <input type="file" id="prod-importFile" accept=".csv" required style="padding:12px;border:2px dashed var(--primary);border-radius:8px;cursor:pointer">
+                    <input type="file" id="prod-importFile" accept=".csv,.xlsx,.xls" required style="padding:12px;border:2px dashed var(--primary);border-radius:8px;cursor:pointer">
                 </div>
             </div>
             <div class="modal-footer">
@@ -1082,7 +1537,59 @@
 
         <!-- ══ SECTION: ORG CHART ══ -->
         <div id="section-orgchart" class="spa-section">
-            <iframe id="orgchart-frame" src="" style="width:100%;height:calc(100vh - 114px);border:none;display:block" sandbox="allow-scripts allow-forms"></iframe>
+            <iframe id="orgchart-frame" src="" style="width:100%;height:calc(100vh - 114px);border:none;display:block" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+        </div>
+
+        <!-- ══ SECTION: ACTIVITY LOG ══ -->
+        <div id="section-activity" class="spa-section">
+            <!-- Filter bar -->
+            <div class="section-toolbar" style="flex-wrap:wrap;gap:8px;align-items:flex-end">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;flex:1;align-items:flex-end">
+                    <div class="form-group" style="margin:0;min-width:160px">
+                        <label style="font-size:0.75rem;margin-bottom:3px;display:block">User</label>
+                        <select id="act-filterUser" onchange="actLoad(1)" style="height:34px;width:180px">
+                            <option value="">All Users</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin:0;min-width:120px">
+                        <label style="font-size:0.75rem;margin-bottom:3px;display:block">Type</label>
+                        <select id="act-filterType" onchange="actLoad(1)" style="height:34px">
+                            <option value="">All Types</option>
+                            <option value="Customer">Customer</option>
+                            <option value="Order">Order</option>
+                            <option value="Product">Product</option>
+                            <option value="User">User</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin:0;min-width:120px">
+                        <label style="font-size:0.75rem;margin-bottom:3px;display:block">Action</label>
+                        <select id="act-filterAction" onchange="actLoad(1)" style="height:34px">
+                            <option value="">All Actions</option>
+                            <option value="Created">Created</option>
+                            <option value="Updated">Updated</option>
+                            <option value="Deleted">Deleted</option>
+                            <option value="StatusChanged">Status Changed</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Rejected">Rejected</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label style="font-size:0.75rem;margin-bottom:3px;display:block">From</label>
+                        <input type="date" id="act-filterFrom" onchange="actLoad(1)" style="height:34px">
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label style="font-size:0.75rem;margin-bottom:3px;display:block">To</label>
+                        <input type="date" id="act-filterTo" onchange="actLoad(1)" style="height:34px">
+                    </div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="actClearFilters()">✕ Clear</button>
+                <button class="btn btn-primary btn-sm" onclick="actLoad(1)">↺ Refresh</button>
+            </div>
+
+            <!-- Feed -->
+            <div id="act-feed" style="max-width:760px;margin:0 auto;padding:8px 0"></div>
+            <div id="act-pagination" style="display:flex;justify-content:center;gap:8px;padding:16px 0"></div>
         </div>
     </div>
 
@@ -1093,7 +1600,7 @@
     var BASE = window.location.origin;
 
     function getCurrentUser() {
-        try { return JSON.parse(sessionStorage.getItem('sfa_admin_user')); } catch(e) { return null; }
+        try { return JSON.parse(localStorage.getItem('sfa_admin_user')); } catch(e) { return null; }
     }
 
     function getAppName() {
@@ -1141,7 +1648,8 @@
         attendance: { icon: '📋',  sub: 'Attendance Tracking' },
         tracking:   { icon: '📍',  sub: 'Live Tracking' },
         apk:        { icon: '📱',  sub: 'Mobile App Download' },
-        orgchart:   { icon: '🌳',  sub: 'Organisation Chart' }
+        orgchart:   { icon: '🌳',  sub: 'Organisation Chart' },
+        activity:   { icon: '📜',  sub: 'User Activity Log' }
     };
 
     function showSection(name) {
@@ -1218,236 +1726,58 @@
         document.querySelectorAll('.nav a[data-section]').forEach(function(a) {
             var sec = a.getAttribute('data-section');
             var permKey = SEC_PERM[sec];
-            if (permKey) a.style.display = webPerms.indexOf(permKey) !== -1 ? '' : 'none';
+            var canView = !permKey || isAdmin || webPerms.indexOf(permKey) >= 0;
+            a.style.display = canView ? '' : 'none';
         });
-        // Start browser location tracking for non-admin users
-        if (cu && !isAdmin) { geoTracking.start(cu.id); }
-        // Navigate to URL hash — only allow sections the user has web permission for
-        var hash = (window.location.hash || '').replace('#', '');
-        var alwaysAllowed = ['config', 'apk', 'orgchart'];
-        var permSections = Object.keys(SEC_PERM).filter(function(s) { return webPerms.indexOf(SEC_PERM[s]) !== -1; });
-        var validSections = alwaysAllowed.concat(permSections);
-        showSection(validSections.indexOf(hash) >= 0 ? hash : 'config');
+
+        // Route to hash section if visible, else fallback to first visible nav section.
+        var startSection = window.location.hash ? window.location.hash.slice(1) : '';
+        var startLink = startSection ? document.querySelector('.nav a[data-section="' + startSection + '"]') : null;
+        if (!startLink || startLink.style.display === 'none') {
+            var firstVisible = Array.prototype.slice.call(document.querySelectorAll('.nav a[data-section]')).find(function(a){
+                return a.style.display !== 'none';
+            });
+            startSection = firstVisible ? firstVisible.getAttribute('data-section') : 'dashboard';
+        }
+        showSection(startSection || 'dashboard');
+        // Pre-load product config from DB so dropdowns are ready
+        if (typeof cfgLoadProductConfigFromDb === 'function') cfgLoadProductConfigFromDb();
     });
-    </script>
 
-    <!-- ══════════════════════════════════════════════════════
-         CONFIG: Add/Edit User Modal
-    ══════════════════════════════════════════════════════ -->
-    <div id="cfg-createModal" class="modal-overlay">
-        <div class="modal-box" style="max-width:700px">
-            <div class="modal-header">
-                <h3 id="cfg-formTitle">Add New Sales Person</h3>
-                <button class="close-btn" onclick="cfgCloseCreateModal()">&#x2715;</button>
-            </div>
-            <div class="modal-body">
-                <div id="cfg-message"></div>
-                <form id="cfg-createForm" onsubmit="cfgSaveUser(event)">
-                    <input type="hidden" id="cfg-editId" value="">
-                    <div class="section-title">Login Credentials</div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Username <span class="req">*</span></label><input type="text" id="cfg-username" required placeholder="e.g. jdoe"></div>
-                        <div class="form-group"><label>Password <span class="req">*</span></label><input type="password" id="cfg-password" placeholder="Enter password" required></div>
-                        <div class="form-group"><label>Role <span class="req">*</span></label>
-                            <select id="cfg-role" required>
-                                <option value="Salesperson" selected>Salesperson</option>
-                                <option value="Supervisor">Supervisor</option>
-                                <option value="Admin">Admin</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="section-title">Personal Information</div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Full Name <span class="req">*</span></label><input type="text" id="cfg-fullName" required placeholder="e.g. John Doe"></div>
-                        <div class="form-group"><label>Email</label><input type="email" id="cfg-email" placeholder="john@example.com"></div>
-                        <div class="form-group"><label>Phone</label><input type="tel" id="cfg-phone" placeholder="+91 98765 43210"></div>
-                    </div>
-                    <div class="section-title">Company / Sales Info</div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Employee Code</label><input type="text" id="cfg-employeeCode" placeholder="SR-0042"></div>
-                        <div class="form-group"><label>Designation</label>
-                            <select id="cfg-designation">
-                                <option value="">-- Select --</option>
-                                <option>Sales Executive</option><option>Senior Sales Executive</option>
-                                <option>Area Sales Manager</option><option>Regional Sales Manager</option>
-                                <option>Zonal Manager</option><option>Sales Head</option>
-                            </select>
-                        </div>
-                        <div class="form-group"><label>Reports To</label>
-                            <select id="cfg-reportsToId"><option value="">-- No Manager --</option></select>
-                            <div id="cfg-reportsToInfo" style="font-size:0.78em;color:#888;margin-top:3px"></div>
-                        </div>
-                        <div class="form-group"><label>Department</label>
-                            <select id="cfg-department">
-                                <option value="">-- Select --</option>
-                                <option>Sales</option><option>Marketing</option><option>Distribution</option><option>Key Accounts</option>
-                            </select>
-                        </div>
-                        <div class="form-group"><label>Branch / Office</label><input type="text" id="cfg-branch" placeholder="e.g. Kathmandu HQ"></div>
-                    </div>
-                    <div class="section-title">Territory</div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Territory / Area</label><input type="text" id="cfg-territory" placeholder="e.g. West Zone"></div>
-                        <div class="form-group"><label>City</label><input type="text" id="cfg-city"></div>
-                        <div class="form-group"><label>Province</label><input type="text" id="cfg-state"></div>
-                    </div>
-                    <div class="section-title">Feature Permissions</div>
-                    <div style="margin-bottom:10px">
-                        <div style="font-size:0.82em;color:#888;margin-bottom:8px">Defaults applied automatically based on role. Web and Mobile permissions are independent.</div>
-                        <div style="font-size:0.8em;font-weight:700;color:#0ea5e9;margin:4px 0 6px;letter-spacing:0.04em">🖥 WEB PANEL</div>
-                        <div class="feature-grid" id="cfg-webFeatureGrid">
-                            <label class="feature-toggle" id="cfg-wft-dashboard"><input type="checkbox" value="dashboard" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dashboard</label>
-                            <label class="feature-toggle" id="cfg-wft-customers"><input type="checkbox" value="customers" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Customers</label>
-                            <label class="feature-toggle" id="cfg-wft-orders"><input type="checkbox" value="orders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Orders</label>
-                            <label class="feature-toggle" id="cfg-wft-products"><input type="checkbox" value="products" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Products</label>
-                            <label class="feature-toggle" id="cfg-wft-reports"><input type="checkbox" value="reports" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Reports</label>
-                            <label class="feature-toggle" id="cfg-wft-attendance"><input type="checkbox" value="attendance" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Attendance</label>
-                            <label class="feature-toggle" id="cfg-wft-location"><input type="checkbox" value="location" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Location</label>
-                            <label class="feature-toggle" id="cfg-wft-stock"><input type="checkbox" value="stock" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Stock</label>
-                            <label class="feature-toggle" id="cfg-wft-approveOrders"><input type="checkbox" value="approveOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Approve Orders</label>
-                            <label class="feature-toggle" id="cfg-wft-dispatchOrders"><input type="checkbox" value="dispatchOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dispatch Orders</label>
-                            <label class="feature-toggle" id="cfg-wft-deliverOrders"><input type="checkbox" value="deliverOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Deliver Orders</label>
-                            <label class="feature-toggle" id="cfg-wft-cancelOrders"><input type="checkbox" value="cancelOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Cancel Orders</label>
-                        </div>
-                        <div style="font-size:0.8em;font-weight:700;color:#0ea5e9;margin:12px 0 6px;letter-spacing:0.04em">📱 MOBILE APP</div>
-                        <div class="feature-grid" id="cfg-mobileFeatureGrid">
-                            <label class="feature-toggle" id="cfg-mft-dashboard"><input type="checkbox" value="dashboard" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dashboard</label>
-                            <label class="feature-toggle" id="cfg-mft-customers"><input type="checkbox" value="customers" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Customers</label>
-                            <label class="feature-toggle" id="cfg-mft-orders"><input type="checkbox" value="orders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Orders</label>
-                            <label class="feature-toggle" id="cfg-mft-products"><input type="checkbox" value="products" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Products</label>
-                            <label class="feature-toggle" id="cfg-mft-route"><input type="checkbox" value="route" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Route</label>
-                            <label class="feature-toggle" id="cfg-mft-team"><input type="checkbox" value="team" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Team</label>
-                            <label class="feature-toggle" id="cfg-mft-expenses"><input type="checkbox" value="expenses" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Expenses</label>
-                            <label class="feature-toggle" id="cfg-mft-schemes"><input type="checkbox" value="schemes" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Schemes</label>
-                            <label class="feature-toggle" id="cfg-mft-payments"><input type="checkbox" value="payments" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Payments</label>
-                            <label class="feature-toggle" id="cfg-mft-reports"><input type="checkbox" value="reports" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Reports</label>
-                            <label class="feature-toggle" id="cfg-mft-attendance"><input type="checkbox" value="attendance" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Attendance</label>
-                            <label class="feature-toggle" id="cfg-mft-location"><input type="checkbox" value="location" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Location</label>
-                            <label class="feature-toggle" id="cfg-mft-approveOrders"><input type="checkbox" value="approveOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Approve Orders</label>
-                            <label class="feature-toggle" id="cfg-mft-dispatchOrders"><input type="checkbox" value="dispatchOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dispatch Orders</label>
-                            <label class="feature-toggle" id="cfg-mft-deliverOrders"><input type="checkbox" value="deliverOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Deliver Orders</label>
-                            <label class="feature-toggle" id="cfg-mft-cancelOrders"><input type="checkbox" value="cancelOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Cancel Orders</label>
-                        </div>
-                    </div>
-                    <div class="section-title">Status</div>
-                    <div class="form-row">
-                        <div class="form-group" style="max-width:200px"><label>Active</label>
-                            <select id="cfg-isActive"><option value="true" selected>Active</option><option value="false">Inactive</option></select>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="cfgCloseCreateModal()">Cancel</button>
-                <button id="cfg-submitBtn" class="btn btn-primary" onclick="document.getElementById('cfg-createForm').requestSubmit()">Create Sales Person</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════════════════
-         CONFIG: Profile / Edit Modal
-    ══════════════════════════════════════════════════════ -->
-    <div id="cfg-profileModal" class="modal-overlay">
-        <div class="modal-box" style="max-width:530px">
-            <div class="modal-header">
-                <h3 id="cfg-pmTitle">Profile</h3>
-                <button class="close-btn" onclick="cfgCloseProfileModal()">&#x2715;</button>
-            </div>
-            <div class="modal-body">
-                <div id="cfg-pmMsg"></div>
-                <input type="hidden" id="cfg-pmUserId">
-                <div class="pm-section">Account Info</div>
-                <div class="pm-grid">
-                    <div class="pm-field"><label>Username</label><input type="text" id="cfg-pmUsername" readonly></div>
-                    <div class="pm-field"><label>Role</label>
-                        <select id="cfg-pmRoleSelect" disabled>
-                            <option value="Salesperson">Salesperson</option>
-                            <option value="Supervisor">Supervisor</option>
-                            <option value="Admin">Admin</option>
-                        </select>
-                    </div>
-                    <div class="pm-field"><label>Designation</label>
-                        <select id="cfg-pmDesigSelect" disabled>
-                            <option value="">-- None --</option>
-                            <option>Sales Executive</option><option>Senior Sales Executive</option>
-                            <option>Area Sales Manager</option><option>Regional Sales Manager</option>
-                            <option>Zonal Manager</option><option>Sales Head</option>
-                        </select>
-                    </div>
-                    <div class="pm-field"><label>Employee Code</label><input type="text" id="cfg-pmEmployeeCode"></div>
-                    <div class="pm-field"><label>Status</label>
-                        <select id="cfg-pmIsActive" disabled>
-                            <option value="true">Active</option><option value="false">Inactive</option>
-                        </select>
-                    </div>
-                    <div class="pm-field"><label>Reports To</label>
-                        <select id="cfg-pmReportsTo" disabled><option value="">-- No Manager --</option></select>
-                    </div>
-                </div>
-                <div class="pm-section">Personal Info</div>
-                <div class="pm-grid">
-                    <div class="pm-field full"><label>Full Name</label><input type="text" id="cfg-pmFullName" placeholder="Full name"></div>
-                    <div class="pm-field"><label>Email</label><input type="email" id="cfg-pmEmail"></div>
-                    <div class="pm-field"><label>Phone</label><input type="tel" id="cfg-pmPhone"></div>
-                </div>
-                <div class="pm-section">Work Info</div>
-                <div class="pm-grid">
-                    <div class="pm-field"><label>City</label><input type="text" id="cfg-pmCity"></div>
-                    <div class="pm-field"><label>Territory</label><input type="text" id="cfg-pmTerritory"></div>
-                    <div class="pm-field"><label>Department</label><input type="text" id="cfg-pmDepartment"></div>
-                    <div class="pm-field"><label>Branch</label><input type="text" id="cfg-pmBranch"></div>
-                    <div class="pm-field"><label>Province</label><input type="text" id="cfg-pmState"></div>
-                </div>
-                <div class="pm-section">Feature Permissions
-                    <span id="cfg-pmFeaturesLockNote" style="font-size:0.8em;font-weight:400;color:#aaa;text-transform:none;margin-left:8px"></span>
-                </div>
-                <div id="cfg-pmWebSection">
-                    <div style="font-size:0.8em;font-weight:700;color:#0ea5e9;margin:4px 0 6px;letter-spacing:0.04em">🖥 Web Panel <span style="font-size:0.85em;font-weight:400;color:#aaa">(direct manager only)</span></div>
-                    <div class="feature-grid" id="cfg-pmWebGrid" style="margin-bottom:12px"></div>
-                </div>
-                <div style="font-size:0.8em;font-weight:700;color:#0ea5e9;margin:4px 0 6px;letter-spacing:0.04em">📱 Mobile App <span id="cfg-pmMobileLockNote" style="font-size:0.85em;font-weight:400;color:#aaa"></span></div>
-                <div class="feature-grid" id="cfg-pmMobileGrid" style="margin-bottom:12px"></div>
-                <div class="pm-section">Change Password <span style="font-size:0.85em;font-weight:400;color:#aaa;text-transform:none">(leave blank to keep current)</span></div>
-                <div class="pm-grid">
-                    <div class="pm-field"><label>New Password</label><input type="password" id="cfg-pmNewPwd" placeholder="New password"></div>
-                    <div class="pm-field"><label>Confirm Password</label><input type="password" id="cfg-pmConfirmPwd" placeholder="Confirm password"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-danger" id="cfg-pmDeleteBtn" style="margin-right:auto;display:none" onclick="cfgDeleteFromModal()">Delete User</button>
-                <button class="btn btn-secondary" onclick="cfgCloseProfileModal()">Cancel</button>
-                <button class="btn btn-primary" id="cfg-pmSaveBtn" onclick="cfgSaveProfileModal()">Save Changes</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════════════════
-         CONFIG SECTION JAVASCRIPT
-    ══════════════════════════════════════════════════════ -->
-    <script>
-    (function() {
-        var CFG_API = BASE + '/api/users';
-        var CFG_WEB_FEATURES    = ['dashboard','customers','orders','products','reports','attendance','location','stock','approveOrders','dispatchOrders','deliverOrders','cancelOrders'];
-        var CFG_MOBILE_FEATURES  = ['dashboard','customers','orders','products','route','team','expenses','schemes','payments','reports','attendance','location','approveOrders','dispatchOrders','deliverOrders','cancelOrders'];
-        var CFG_ALL_FEATURES     = CFG_WEB_FEATURES; // kept for any legacy references
-        var CFG_WEB_DEFAULTS = {
-            'Admin':       ['dashboard','customers','orders','products','reports','attendance','location','stock','approveOrders','dispatchOrders','deliverOrders','cancelOrders'],
-            'Supervisor':  ['dashboard','customers','orders','products','reports','attendance','approveOrders','dispatchOrders','deliverOrders','cancelOrders'],
-            'Salesperson': ['dashboard','customers','orders','products']
-        };
-        var CFG_MOBILE_DEFAULTS = {
-            'Admin':       ['dashboard','customers','orders','products','route','team','expenses','schemes','payments','reports','attendance','location','approveOrders','dispatchOrders','deliverOrders','cancelOrders'],
-            'Supervisor':  ['dashboard','customers','orders','products','route','team','reports','attendance','approveOrders','dispatchOrders','deliverOrders','cancelOrders'],
-            'Salesperson': ['dashboard','customers','orders','products','route']
-        };
-        var CFG_ROLE_DEFAULTS = CFG_MOBILE_DEFAULTS; // kept for backward compat
-        var CFG_PERM_LABELS = {'dashboard':'Dashboard','customers':'Customers','orders':'Orders','products':'Products','route':'Route','team':'Team','expenses':'Expenses','schemes':'Schemes','payments':'Payments','reports':'Reports','attendance':'Attendance','location':'Location','stock':'Stock','approveOrders':'Approve Orders','dispatchOrders':'Dispatch Orders','deliverOrders':'Deliver Orders','cancelOrders':'Cancel Orders'};
-        var CFG_DESIG_LEVEL = {
-            'Sales Head':1,'Zonal Manager':2,'Regional Sales Manager':3,
-            'Area Sales Manager':4,'Senior Sales Executive':5,'Sales Executive':6
-        };
         var cfgCachedUsers = [], cfgCachedIsAdmin = false, cfgCachedCurrentUser = null;
         var cfgEditingUserReportsToId = null, cfgSectionLoaded = false;
+        var CFG_API = ((typeof getApiBase === 'function') ? getApiBase() : '') + '/api/users';
+
+        // ── Permission feature lists (must match PermissionKeys in server) ──
+        var CFG_WEB_FEATURES = ['dashboard','customers','orders','products','reports','attendance','location','stock','approveOrders','dispatchOrders','deliverOrders','cancelOrders'];
+        var CFG_MOBILE_FEATURES = ['dashboard','customers','orders','products','route','team','expenses','schemes','payments','reports','attendance','location','approveOrders','dispatchOrders','deliverOrders','cancelOrders'];
+
+        var CFG_PERM_LABELS = {
+            dashboard:'Dashboard', customers:'Customers', orders:'Orders', products:'Products',
+            reports:'Reports', attendance:'Attendance', location:'Location', stock:'Stock',
+            route:'Route', team:'Team', expenses:'Expenses', schemes:'Schemes', payments:'Payments',
+            approveOrders:'Approve Orders', dispatchOrders:'Dispatch Orders',
+            deliverOrders:'Deliver Orders', cancelOrders:'Cancel Orders'
+        };
+
+        // Default permissions set when creating/switching to a role
+        var CFG_WEB_DEFAULTS = {
+            'Admin':      CFG_WEB_FEATURES.slice(),
+            'Supervisor': ['dashboard','customers','orders','products','reports','attendance','approveOrders','dispatchOrders','deliverOrders','cancelOrders'],
+            'Salesperson':['dashboard','customers','orders','products']
+        };
+        var CFG_MOBILE_DEFAULTS = {
+            'Admin':      CFG_MOBILE_FEATURES.slice(),
+            'Supervisor': ['dashboard','customers','orders','products','route','team','reports','attendance','approveOrders','dispatchOrders','deliverOrders','cancelOrders'],
+            'Salesperson':['dashboard','customers','orders','products']
+        };
+
+        // Designation hierarchy — lower number = higher level (used to filter "Reports To" candidates)
+        var CFG_DESIG_LEVEL = {
+            'National Sales Manager':1, 'Zonal Sales Manager':2, 'Regional Sales Manager':3,
+            'Area Sales Manager':4, 'Territory Sales Manager':5,
+            'Senior Sales Executive':6, 'Sales Executive':7, 'Salesperson':8
+        };
 
         // ── App Config ──
         window.cfgSaveAppConfig = function() {
@@ -1635,9 +1965,8 @@
                 var isAdmin=cu&&cu.role==='Admin', isSelf=cu&&cu.id===u.id;
                 var isDirectMgr=cu&&!isSelf&&cu.id===u.reportsToId;
                 var canEditAdmin=isAdmin&&!isSelf;
-                // Web permissions are editable only by the user's direct manager (reportsToId)
-                var canEditWebPerms=isDirectMgr;
-                // Mobile permissions editable by Admin (any user) OR direct manager
+                // Web + Mobile permissions editable by Admin OR direct manager
+                var canEditWebPerms=isDirectMgr||(isAdmin&&!isSelf);
                 var canEditMobilePerms=isDirectMgr||(isAdmin&&!isSelf);
                 document.getElementById('cfg-pmUserId').value=u.id;
                 document.getElementById('cfg-pmUsername').value=u.username||'';
@@ -1707,8 +2036,7 @@
                 document.getElementById('cfg-pmFeaturesLockNote').textContent='';
                 var mln=document.getElementById('cfg-pmMobileLockNote');
                 if (mln) mln.textContent=canEditMobilePerms?'':'(view only — only admin or direct manager can edit)';
-                // Web permissions editable only by direct manager
-                document.getElementById('cfg-pmWebSection').style.display = canEditWebPerms ? '' : 'none';
+                document.getElementById('cfg-pmWebSection').style.display = '';
                 document.getElementById('cfg-pmDeleteBtn').style.display=(isAdmin&&!isSelf)?'':'none';
                 document.getElementById('cfg-pmTitle').textContent=isSelf?'My Profile — '+(u.fullName||u.username):'Edit Profile — '+(u.fullName||u.username);
                 document.getElementById('cfg-pmSaveBtn').disabled=false;
@@ -1730,6 +2058,7 @@
             var canEditAdmin=isAdmin&&!isSelf;
             var uRtId=parseInt(document.getElementById('cfg-pmReportsTo').dataset.reportsToId||'0')||null;
             var isDirectMgr=cu&&!isSelf&&uRtId&&cu.id===uRtId;
+            var canSaveWebPerms=isDirectMgr||(isAdmin&&!isSelf);
             var canSaveMobilePerms=isDirectMgr||(isAdmin&&!isSelf);
             if (pwd&&pwd!==cpwd) { msgEl.innerHTML='<div class="pm-msg error">Passwords do not match.</div>'; return; }
             var body={ fullName:document.getElementById('cfg-pmFullName').value.trim(),email:document.getElementById('cfg-pmEmail').value.trim()||null,phone:document.getElementById('cfg-pmPhone').value.trim()||null,city:document.getElementById('cfg-pmCity').value.trim()||null,territory:document.getElementById('cfg-pmTerritory').value.trim()||null,department:document.getElementById('cfg-pmDepartment').value.trim()||null,branch:document.getElementById('cfg-pmBranch').value.trim()||null,state:document.getElementById('cfg-pmState').value.trim()||null };
@@ -1750,8 +2079,8 @@
             try {
                 var r2=await fetch(CFG_API+'/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
                 if (!r2.ok) { var t2=await r2.text(); throw new Error(t2||'Save failed'); }
-                // Web permissions: editable only by direct manager
-                if (isDirectMgr) {
+                // Web permissions: editable by Admin OR direct manager
+                if (canSaveWebPerms) {
                     var rw=await fetch(CFG_API+'/'+id+'/web-permissions',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(selWeb)});
                     if (!rw.ok) console.warn('Web permissions save failed:',await rw.text());
                 }
@@ -1835,11 +2164,65 @@
 
         // ── Sub-Tabs ──
         window.cfgSwitchTab = function(tab,btn) {
-            document.querySelectorAll('#cfg-tab-list,#cfg-tab-org').forEach(function(p){p.classList.remove('active');});
+            document.querySelectorAll('#cfg-tab-list,#cfg-tab-org,#cfg-tab-hierarchy').forEach(function(p){p.classList.remove('active');});
             document.querySelectorAll('#section-config .tab-btn').forEach(function(b){b.classList.remove('active');});
             btn.classList.add('active');
             document.getElementById('cfg-tab-'+tab).classList.add('active');
             if (tab==='org') cfgLoadOrgChart();
+            if (tab==='hierarchy') cfgLoadHierarchy();
+        };
+
+        // ── Hierarchy Editor ──
+        window.cfgLoadHierarchy = async function() {
+            var wrap = document.getElementById('cfg-hierarchyTable');
+            var msgEl = document.getElementById('cfg-hierarchyMsg');
+            wrap.innerHTML = '<div class="loading">Loading…</div>'; msgEl.innerHTML = '';
+            try {
+                var users = await (await fetch(CFG_API)).json();
+                // Sort by designation level then name
+                users.sort(function(a,b){ return (a.designationLevel||99)-(b.designationLevel||99)||(a.fullName||'').localeCompare(b.fullName||''); });
+                var html = '<table><thead><tr>'
+                    +'<th>Name</th><th>Username</th><th>Designation</th><th>Current Manager</th>'
+                    +'<th style="min-width:220px">Reports To (Change)</th><th>Action</th></tr></thead><tbody>';
+                users.forEach(function(u) {
+                    var lvl = u.designationLevel||99;
+                    // Candidates = users with strictly higher authority (lower level number)
+                    var candidates = users.filter(function(x){ return x.id!==u.id && (x.designationLevel||99) < lvl; });
+                    var opts = '<option value="">— No Manager —</option>';
+                    candidates.forEach(function(c){
+                        var sel = c.id===u.reportsToId?' selected':'';
+                        opts += '<option value="'+c.id+'"'+sel+'>'+esc(c.fullName||c.username)+' · '+esc(c.designation||'')+'</option>';
+                    });
+                    var badge = u.isActive
+                        ? '<span class="badge badge-active">Active</span>'
+                        : '<span class="badge badge-inactive">Inactive</span>';
+                    html += '<tr id="hier-row-'+u.id+'">';
+                    html += '<td><b>'+esc(u.fullName||u.username)+'</b><br><span style="font-size:0.75em;color:#94a3b8">#'+u.id+'</span></td>';
+                    html += '<td style="font-size:0.82em;color:#64748b">@'+esc(u.username)+'</td>';
+                    html += '<td style="font-size:0.85em">'+esc(u.designation||'—')+'</td>';
+                    html += '<td style="font-size:0.85em;color:var(--gray-700)">'+esc(u.reportsToName||'—')+'</td>';
+                    html += '<td><select id="hier-sel-'+u.id+'" style="width:100%;padding:6px 8px;border:1.5px solid var(--gray-200);border-radius:7px;font-size:0.85em" '+(candidates.length===0?'disabled title="No valid managers available"':'')+'>';
+                    html += opts+'</select></td>';
+                    html += '<td><button class="btn btn-primary btn-sm" onclick="cfgSaveManagerChange('+u.id+')">Save</button></td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                wrap.innerHTML = html;
+            } catch(e) { wrap.innerHTML = '<div class="message error">'+e.message+'</div>'; }
+        };
+
+        window.cfgSaveManagerChange = async function(userId) {
+            var sel = document.getElementById('hier-sel-'+userId);
+            var msgEl = document.getElementById('cfg-hierarchyMsg');
+            var rtv = sel.value;
+            var body = rtv ? { reportsToId: parseInt(rtv) } : { clearReportsTo: true };
+            try {
+                var r = await fetch(CFG_API+'/'+userId, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+                if (!r.ok) { var t=await r.text(); throw new Error(t||'Save failed'); }
+                var updated = await r.json();
+                msgEl.innerHTML = '<div class="message success" style="margin-bottom:8px">✔ Manager updated for <b>'+esc(updated.fullName||updated.username)+'</b>.</div>';
+                setTimeout(function(){ msgEl.innerHTML=''; cfgLoadHierarchy(); cfgLoadUsers(); }, 1800);
+            } catch(e) { msgEl.innerHTML = '<div class="message error" style="margin-bottom:8px">'+e.message+'</div>'; }
         };
 
         // ── Org Chart ──
@@ -1908,6 +2291,8 @@
                     if (npCard) { npCard.style.display = ''; }
                     var ctCard = document.getElementById('cfg-custTypesCard');
                     if (ctCard) { ctCard.style.display = ''; cfgRenderTypeChips(); }
+                    var pcfgCard = document.getElementById('cfg-productCfgCard');
+                    if (pcfgCard) { pcfgCard.style.display = ''; cfgLoadProductConfigFromDb(); }
                 } else {
                     var cc = document.getElementById('cfg-configCard');
                     if (cc) cc.style.display = 'none';
@@ -1955,7 +2340,216 @@
             cfgRenderTypeChips();
         };
 
-    })(); // end config IIFE
+        // ── Product Dropdown Configuration (DB-backed) ────────────────
+        var _productCfgCache = null;
+        function cfgProductConfigDefaults() {
+            return {
+                category: ['Tiles','Marble','Granite','Sanitaryware','Other'],
+                size: ['600x600','800x800','300x600'],
+                quality: ['Premium','Standard','Block'],
+                type: ['Floor','Wall','Outdoor','Marble','Other'],
+                finish: ['Glossy','Matt','Rustic','Satin','Carving','High Gloss'],
+                shade: ['Light','Medium','Dark'],
+                unit: ['Box','SqFt','Pcs']
+            };
+        }
+        function cfgNormalizeList(arr) {
+            var out = [];
+            (arr || []).forEach(function(v) {
+                var t = String(v || '').trim();
+                if (!t) return;
+                if (out.some(function(x){ return x.toLowerCase() === t.toLowerCase(); })) return;
+                out.push(t);
+            });
+            return out;
+        }
+        function cfgGetProductConfig() {
+            if (_productCfgCache) return _productCfgCache;
+            return cfgProductConfigDefaults();
+        }
+        function cfgSetCache(data) {
+            var d = cfgProductConfigDefaults();
+            Object.keys(d).forEach(function(k) {
+                d[k] = (data && data[k] && data[k].length) ? data[k] : d[k];
+            });
+            _productCfgCache = d;
+        }
+        function cfgProductConfigApiBase() {
+            return ((typeof getApiBase === 'function') ? getApiBase() : '') + '/api/product-config';
+        }
+        window.cfgLoadProductConfigFromDb = function(cb) {
+            fetch(cfgProductConfigApiBase())
+                .then(function(r) { return r.ok ? r.json() : null; })
+                .then(function(data) {
+                    if (data) cfgSetCache(data);
+                    if (typeof cfgRenderProductCfg === 'function') cfgRenderProductCfg();
+                    if (typeof cfgApplyProductCfgToForms === 'function') cfgApplyProductCfgToForms();
+                    if (cb) cb();
+                })
+                .catch(function() { if (cb) cb(); });
+        };
+        function cfgSaveProductConfigToDb(cfg, cb) {
+            fetch(cfgProductConfigApiBase(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cfg)
+            })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) {
+                if (data) cfgSetCache(data);
+                if (typeof cfgRenderProductCfg === 'function') cfgRenderProductCfg();
+                if (typeof cfgApplyProductCfgToForms === 'function') cfgApplyProductCfgToForms();
+                if (cb) cb();
+            })
+            .catch(function() { if (cb) cb(); });
+        }
+        function cfgRenderProductCfgChips(key) {
+            var cfg = cfgGetProductConfig();
+            var cont = document.getElementById('cfg-pcfg-chips-' + key);
+            if (!cont) return;
+            cont.innerHTML = (cfg[key] || []).map(function(v) {
+                return '<span class="type-chip">' + esc(v) + '<button class="del" onclick="cfgRemoveProductCfg(\'' + key + '\',\'' + esc(v).replace(/'/g, "\\'") + '\')" title="Remove">&times;</button></span>';
+            }).join('');
+        }
+        window.cfgRenderProductCfg = function() {
+            ['category','size','quality','type','finish','shade','unit'].forEach(cfgRenderProductCfgChips);
+            if (typeof cfgApplyProductCfgToForms === 'function') cfgApplyProductCfgToForms();
+        };
+        window.cfgAddProductCfg = function(key) {
+            var inp = document.getElementById('cfg-pcfg-new-' + key);
+            var v = (inp && inp.value || '').trim();
+            if (!v) return;
+            fetch(cfgProductConfigApiBase() + '/' + encodeURIComponent(key), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value: v })
+            })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) {
+                if (data) cfgSetCache(data);
+                if (inp) inp.value = '';
+                cfgRenderProductCfg();
+                var m = document.getElementById('cfg-pcfgMsg');
+                if (m) { m.textContent = 'Saved.'; setTimeout(function(){ m.textContent = ''; }, 1800); }
+            });
+        };
+        window.cfgRemoveProductCfg = function(key, value) {
+            var cfg = cfgGetProductConfig();
+            if (!cfg[key] || cfg[key].length <= 1) {
+                var m = document.getElementById('cfg-pcfgMsg');
+                if (m) m.textContent = 'Keep at least one value.';
+                return;
+            }
+            fetch(cfgProductConfigApiBase() + '/' + encodeURIComponent(key) + '/' + encodeURIComponent(value), {
+                method: 'DELETE'
+            })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) {
+                if (data) cfgSetCache(data);
+                cfgRenderProductCfg();
+            });
+        };
+        window.cfgApplyProductCfgToForms = function(currentValues) {
+            var cfg = cfgGetProductConfig();
+            currentValues = currentValues || {};
+            var fields = [
+                ['category', 'prod-category-sel', 'prod-category', 'prod-category-wrap', true],
+                ['size',     'prod-size-sel',     'prod-size',     'prod-size-wrap',     true],
+                ['quality',  'prod-quality-sel',  'prod-quality',  'prod-quality-wrap',  false],
+                ['type',     'prod-type-sel',     'prod-type',     'prod-type-wrap',     false],
+                ['finish',   'prod-finish-sel',   'prod-finish',   'prod-finish-wrap',   false],
+                ['shade',    'prod-shade-sel',    'prod-shade',    'prod-shade-wrap',    false],
+                ['unit',     'prod-unit-sel',     'prod-unit',     'prod-unit-wrap',     false],
+            ];
+            fields.forEach(function(f) {
+                var key = f[0], selId = f[1], txtId = f[2], wrapId = f[3], required = f[4];
+                var values = cfg[key] || [];
+                var wrap = document.getElementById(wrapId);
+                var sel = document.getElementById(selId);
+                var txt = document.getElementById(txtId);
+                if (!sel || !txt) return;
+                var preset = currentValues[key] || '';
+                if (values.length === 0) {
+                    if (wrap) wrap.style.display = '';
+                    sel.style.display = 'none';
+                    txt.style.display = '';
+                    txt.required = required;
+                    txt.value = preset;
+                } else {
+                    if (wrap) wrap.style.display = '';
+                    sel.style.display = '';
+                    sel.required = required;
+                    var opts = (required ? '' : '<option value="">— Select —</option>');
+                    opts += values.map(function(v) {
+                        return '<option value="' + esc(v) + '"' + (v === preset ? ' selected' : '') + '>' + esc(v) + '</option>';
+                    }).join('');
+                    opts += '<option value="__other__"' + (preset && values.indexOf(preset) === -1 ? ' selected' : '') + '>— Other (type below) —</option>';
+                    sel.innerHTML = opts;
+                    var isOther = preset && values.indexOf(preset) === -1;
+                    txt.style.display = isOther ? '' : 'none';
+                    txt.value = isOther ? preset : '';
+                    txt.required = false;
+                }
+            });
+        };
+        window.prodToggleOther = function(key) {
+            var sel = document.getElementById('prod-' + key + '-sel');
+            var txt = document.getElementById('prod-' + key);
+            if (!sel || !txt) return;
+            if (sel.value === '__other__') {
+                txt.style.display = '';
+                txt.focus();
+            } else {
+                txt.style.display = 'none';
+                txt.value = '';
+            }
+        };
+        window.prodGetFieldValue = function(key) {
+            var sel = document.getElementById('prod-' + key + '-sel');
+            var txt = document.getElementById('prod-' + key);
+            if (!sel || sel.style.display === 'none') {
+                return txt ? txt.value.trim() : '';
+            }
+            if (sel.value === '__other__') {
+                return txt ? txt.value.trim() : '';
+            }
+            return sel.value;
+        };
+        window.cfgSyncProductCfgFromProducts = function(products) {
+            var cfg = cfgGetProductConfig();
+            var changed = false;
+            (products || []).forEach(function(p) {
+                ['category','size','quality','type','finish','shade','unit'].forEach(function(k) {
+                    if (p[k]) {
+                        var v = String(p[k]).trim();
+                        if (v && !cfg[k].some(function(x){ return x.toLowerCase() === v.toLowerCase(); })) {
+                            cfg[k].push(v);
+                            changed = true;
+                        }
+                    }
+                });
+            });
+            if (changed) {
+                cfgSaveProductConfigToDb(cfg);
+            }
+        };
+        window.cfgUpsertProductCfgValues = function(values) {
+            var cfg = cfgGetProductConfig();
+            var changed = false;
+            Object.keys(values || {}).forEach(function(k) {
+                if (!cfg[k]) return;
+                var v = String(values[k] || '').trim();
+                if (!v) return;
+                if (!cfg[k].some(function(x){ return x.toLowerCase() === v.toLowerCase(); })) {
+                    cfg[k].push(v);
+                    changed = true;
+                }
+            });
+            if (changed) {
+                cfgSaveProductConfigToDb(cfg);
+            }
+        };
+
     </script>
 
     <!-- ══════════════════════════════════════════════════════
@@ -2091,12 +2685,12 @@
          CUSTOMERS: Add/Edit Customer Modal
     ══════════════════════════════════════════════════════ -->
     <div id="cust-createModal" class="modal-overlay">
-        <div class="modal-box" style="max-width:700px">
+        <div class="modal-box cust-modal-box">
             <div class="modal-header">
                 <h3 id="cust-formTitle">Add New Customer</h3>
                 <button class="close-btn" onclick="custCloseCreateModal()">&#x2715;</button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body cust-modal-body">
                 <div id="cust-message"></div>
                 <form id="cust-custForm" onsubmit="custSaveCustomer(event)">
                     <input type="hidden" id="cust-editId" value="">
@@ -2132,7 +2726,7 @@
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer cust-modal-footer">
                 <button class="btn btn-secondary" style="margin:0" onclick="custCloseCreateModal()">Cancel</button>
                 <button id="cust-submitBtn" class="btn btn-primary" onclick="document.getElementById('cust-custForm').requestSubmit()">Create Customer</button>
             </div>
@@ -2339,8 +2933,9 @@
                 }
                 if (canEdit) {
                     html += '<button class="btn btn-edit btn-sm" onclick="custEditCustomer('+c.id+')">Edit</button> ';
-                    html += '<button class="btn btn-danger btn-sm" onclick="custDeleteCustomer('+c.id+')">Del</button>';
+                    html += '<button class="btn btn-danger btn-sm" onclick="custDeleteCustomer('+c.id+')">Del</button> ';
                 }
+                html += '<button class="btn btn-secondary btn-sm" onclick="showEntityLog(\'Customer\','+c.id+',\''+esc(c.name).replace(/'/g,"\\'")+'\')">Log</button>';
                 html += '</td>'+
                     '<td><span style="font-size:0.78em;color:#94a3b8">#'+c.id+'</span></td>'+
                     '<td><code>'+esc(c.code||'—')+'</code></td>'+
@@ -2830,6 +3425,11 @@
             }
         });
 
+        // ── Activity Feed section loader ─────────────────────
+        registerSection('activity', function() {
+            actEnsureLoaded();
+        });
+
         // ── Populate customer type dropdowns on page load ───
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof custPopulateTypeDropdowns === 'function') custPopulateTypeDropdowns('Dealer');
@@ -2843,55 +3443,67 @@
          ORDERS: Create/Edit Order Modal
     ══════════════════════════════════════════════════════ -->
     <div id="ord-createModal" class="modal-overlay">
-        <div class="modal-box" style="max-width:760px">
+        <div class="modal-box ord-modal-box">
             <div class="modal-header">
                 <h3 id="ord-formTitle">Create New Order</h3>
                 <button class="close-btn" onclick="ordCancelEdit()">&#x2715;</button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body ord-modal-body">
                 <div id="ord-message"></div>
                 <form id="ord-orderForm" onsubmit="ordSaveOrder(event)">
                     <input type="hidden" id="ord-editId" value="">
-                    <div class="section-title">Order Info</div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Customer <span class="req">*</span></label>
-                            <input type="hidden" id="ord-customerId">
-                            <div class="search-wrap">
-                                <input type="text" id="ord-custSearch" placeholder="Type to search by name, city, type…" oninput="ordFilterCustomers()" onfocus="ordFilterCustomers()" onblur="ordHideCustDropdown()" autocomplete="off">
-                                <div id="ord-custDropdown" class="search-dropdown"></div>
+                    <div class="ord-form-block ord-order-info">
+                        <div class="section-title">Order Info</div>
+                        <div class="form-row">
+                            <div class="form-group" style="flex:1.4;min-width:180px">
+                                <label>Customer <span class="req">*</span></label>
+                                <input type="hidden" id="ord-customerId">
+                                <div class="search-wrap">
+                                    <input type="text" id="ord-custSearch" placeholder="Type to search by name, city, type…" oninput="ordFilterCustomers()" onfocus="ordFilterCustomers()" onblur="ordHideCustDropdown()" autocomplete="off">
+                                    <div id="ord-custDropdown" class="search-dropdown"></div>
+                                </div>
+                                <div id="ord-custSelectedChip" class="sel-chip" style="display:none">
+                                    <span id="ord-custSelectedLabel" class="sel-chip-lbl"></span>
+                                    <span class="sel-chip-x" onmousedown="ordClearCustSelection()">✕</span>
+                                </div>
                             </div>
-                            <div id="ord-custSelectedChip" class="sel-chip" style="display:none">
-                                <span id="ord-custSelectedLabel" class="sel-chip-lbl"></span>
-                                <span class="sel-chip-x" onmousedown="ordClearCustSelection()">✕</span>
+                            <div class="form-group">
+                                <label>Created By (Salesperson) <span class="req">*</span></label>
+                                <select id="ord-createdByUserId" required onchange="ordRefreshRequiredFields()"><option value="">-- Select --</option></select>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Created By (Salesperson) <span class="req">*</span></label>
-                            <select id="ord-createdByUserId" required><option value="">-- Select --</option></select>
-                        </div>
-                        <div class="form-group">
-                            <label>Discount %</label>
-                            <input type="number" id="ord-discountPercent" placeholder="0" step="0.01" min="0" max="100" value="0" oninput="ordRecalcTotals()">
+                            <div class="form-group">
+                                <label>Locations <span class="req">*</span></label>
+                                <input type="text" id="ord-locations" placeholder="Auto from customer" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Department <span class="req">*</span></label>
+                                <input type="text" id="ord-department" placeholder="Auto from salesperson" readonly>
+                            </div>
+                            <div class="form-group remarks-sm">
+                                <label>Remarks (Optional)</label>
+                                <input type="text" id="ord-remarks" placeholder="Any special instructions...">
+                            </div>
+                            <input type="hidden" id="ord-discountPercent" value="0">
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group" style="flex:2">
-                            <label>Remarks</label>
-                            <textarea id="ord-remarks" rows="2" placeholder="Any special instructions..."></textarea>
+
+                    <div class="ord-form-block">
+                        <div class="section-title">Line Items</div>
+                        <div class="ord-items-head">
+                            <div style="font-size:0.8em;color:var(--gray-500)">Fields marked <span class="req">*</span> are required.</div>
+                            <div id="ord-itemCountBadge" class="ord-items-count">0 items</div>
                         </div>
-                    </div>
-                    <div class="section-title">Line Items</div>
-                    <div class="line-items-wrap" id="ord-lineItemsWrap"></div>
-                    <button type="button" class="btn btn-info btn-sm" onclick="ordAddLineItem()" style="margin-bottom:14px">+ Add Item</button>
-                    <div class="totals" id="ord-totalsSection">
-                        <div class="tot-row"><span>Sub Total:</span> <strong id="ord-dispSubTotal">Rs. 0</strong></div>
-                        <div class="tot-row"><span>Discount:</span> <strong id="ord-dispDiscount">Rs. 0</strong></div>
-                        <div class="tot-row grand"><span>Total:</span> <strong id="ord-dispTotal">Rs. 0</strong></div>
+                        <div class="line-items-wrap" id="ord-lineItemsWrap"></div>
+                        <button type="button" class="btn btn-info btn-sm" onclick="ordAddLineItem()" style="margin-bottom:8px">+ Add Product Line</button>
+                        <div class="totals" id="ord-totalsSection">
+                            <div class="tot-row"><span>Total WEIGHT:</span> <strong id="ord-dispWeight">0</strong></div>
+                            <div class="tot-row"><span>Total Sq.Mtr:</span> <strong id="ord-dispSqm">0</strong></div>
+                            <div class="tot-row grand"><span>Total Sales:</span> <strong id="ord-dispTotal">Rs. 0</strong></div>
+                        </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer ord-modal-footer">
                 <button type="button" class="btn btn-secondary" id="ord-cancelEditBtn" style="display:none;margin-right:auto" onclick="ordCancelEdit()">✕ Cancel Edit</button>
                 <button type="button" class="btn btn-secondary" onclick="ordCancelEdit()">Close</button>
                 <button type="button" class="btn btn-primary" id="ord-submitBtn" onclick="document.getElementById('ord-orderForm').requestSubmit()">Submit Order</button>
@@ -2957,6 +3569,7 @@
             }
             // Pre-select current user
             if (ordCurrentUser && ordCurrentUser.id) userSel.value = ordCurrentUser.id;
+            ordRefreshRequiredFields();
             document.getElementById('ord-createModal').classList.add('open');
             if (!document.getElementById('ord-lineItemsWrap').children.length) ordAddLineItem();
         };
@@ -2971,6 +3584,8 @@
             document.getElementById('ord-submitBtn').textContent = 'Submit Order';
             document.getElementById('ord-cancelEditBtn').style.display = 'none';
             document.getElementById('ord-message').innerHTML = '';
+            document.getElementById('ord-locations').value = '';
+            document.getElementById('ord-department').value = '';
             ordRecalcTotals();
             document.getElementById('ord-createModal').classList.remove('open');
         };
@@ -3164,20 +3779,41 @@
             var d = data || {};
             var row = document.createElement('div');
             row.className = 'line-item'; row.id = 'ord-li-'+idx;
+            // Build Quality & Series options from product config
+            var qualityOpts = '<option value="">--</option>';
+            var seriesOpts = '<option value="">--</option>';
+            if (typeof cfgGetProductConfig === 'function') {
+                var pcfg = cfgGetProductConfig();
+                (pcfg.quality||[]).forEach(function(v){ qualityOpts+='<option>'+esc(v)+'</option>'; });
+                (pcfg.category||[]).forEach(function(v){ seriesOpts+='<option>'+esc(v)+'</option>'; });
+            } else {
+                qualityOpts+='<option>Premium</option><option>Standard</option><option>Block</option>';
+                var seen = {};
+                ordAllProducts.forEach(function(p){ if(p.category && !seen[p.category]){ seen[p.category]=true; seriesOpts+='<option>'+esc(p.category)+'</option>'; }});
+            }
             row.innerHTML =
-                '<div class="form-group" style="flex:1.5;min-width:160px"><label>Product <span style="color:#dc3545">*</span></label>'+
+                '<div class="form-group" style="flex:1.15;min-width:125px"><label>Product <span class="req">*</span></label>'+
                 '<div class="search-wrap"><input type="text" id="ord-li-ps-'+idx+'" placeholder="Search product…" oninput="ordFilterProd('+idx+')" onfocus="ordFilterProd('+idx+')" onblur="ordHideProdDd('+idx+')" autocomplete="off">'+
                 '<div id="ord-li-pd-'+idx+'" class="search-dropdown"></div></div>'+
                 '<div id="ord-li-pc-'+idx+'" class="sel-chip" style="display:none"><span id="ord-li-pcl-'+idx+'" class="sel-chip-lbl"></span><span class="sel-chip-x" onmousedown="ordClearProd('+idx+')">✕</span></div></div>'+
                 '<input type="hidden" id="ord-li-pid-'+idx+'" value="'+(d.productId||'')+'">'+
-                '<div class="form-group" style="flex:1.2;min-width:130px"><label>Name</label><input type="text" id="ord-li-n-'+idx+'" placeholder="Auto-filled or custom" value="'+esc(d.productName||'')+'"></div>'+
-                '<div class="form-group sm"><label>Size</label><input type="text" id="ord-li-sz-'+idx+'" placeholder="600x600" value="'+esc(d.size||'')+'"></div>'+
-                '<div class="form-group sm"><label>Type</label><select id="ord-li-ty-'+idx+'"><option>Floor</option><option>Wall</option><option>Marble</option><option>Other</option></select></div>'+
-                '<div class="form-group sm"><label>Finish</label><select id="ord-li-fi-'+idx+'"><option>Glossy</option><option>Matt</option><option>Rustic</option><option>Satin</option><option>Carving</option><option>High Gloss</option></select></div>'+
-                '<div class="form-group sm"><label>Unit</label><select id="ord-li-u-'+idx+'"><option>Box</option><option>SqFt</option><option>Pcs</option></select></div>'+
-                '<div class="form-group xs"><label>Qty</label><input type="number" id="ord-li-q-'+idx+'" min="1" value="'+(d.quantity||1)+'" oninput="ordRecalcTotals()"></div>'+
-                '<div class="form-group xs"><label>Price</label><input type="number" id="ord-li-pr-'+idx+'" step="0.01" value="'+(d.unitPrice||0)+'" oninput="ordRecalcTotals()"></div>'+
-                '<div class="form-group xs"><label>Disc %</label><input type="number" id="ord-li-d-'+idx+'" min="0" max="100" step="0.01" value="'+(d.discountPercent||0)+'" oninput="ordRecalcTotals()"></div>'+
+                '<div class="form-group sm"><label>Item No.</label><input type="text" id="ord-li-it-'+idx+'" value="'+esc(d.itemNo||'')+'" readonly></div>'+
+                '<div class="form-group" style="flex:1;min-width:110px"><label>Item Description</label><input type="text" id="ord-li-n-'+idx+'" value="'+esc(d.productName||'')+'" readonly></div>'+
+                '<div class="form-group sm"><label>Quality</label><select id="ord-li-ql-'+idx+'">'+qualityOpts+'</select></div>'+
+                '<div class="form-group sm"><label>Series</label><select id="ord-li-ty-'+idx+'">'+seriesOpts+'</select></div>'+
+                '<div class="form-group sm"><label>Size</label><input type="text" id="ord-li-sz-'+idx+'" value="'+esc(d.size||'')+'" readonly></div>'+
+                '<div class="form-group xs"><label>Box Sqr. Mtr</label><input type="number" id="ord-li-bx-'+idx+'" step="0.01" value="'+(d.inBoxSqMtr||0)+'" readonly></div>'+
+                '<div class="form-group xs"><label>Rate/SQM</label><input type="number" id="ord-li-pr-'+idx+'" step="0.01" value="'+(d.unitPrice||0)+'" readonly></div>'+
+                '<div class="form-group xs"><label>KG/Box</label><input type="number" id="ord-li-kgb-'+idx+'" step="0.01" value="'+(d.kgPerBox||0)+'" readonly></div>'+
+                '<div class="form-group" style="flex:0.75;min-width:96px"><label>Remarks</label><input type="text" id="ord-li-rem-'+idx+'" value="'+esc(d.remarks||'')+'" readonly></div>'+
+                '<div class="form-group xs"><label>Order in Unit (BOX) <span class="req">*</span></label><input type="number" id="ord-li-q-'+idx+'" min="1" value="'+(d.quantity||'')+'" placeholder="0" oninput="ordRecalcTotals()"></div>'+
+                '<div class="form-group xs"><label>WEIGHT</label><input type="text" id="ord-li-cwt-'+idx+'" value="0" readonly style="background:var(--gray-50);font-weight:700"></div>'+
+                '<div class="form-group xs"><label>Total Sq.Mtr</label><input type="text" id="ord-li-tsqm-'+idx+'" value="0" readonly style="background:var(--gray-50);font-weight:700"></div>'+
+                '<div class="form-group xs"><label>Total Sales</label><input type="text" id="ord-li-tsal-'+idx+'" value="0" readonly style="background:var(--gray-50);font-weight:700"></div>'+
+                '<input type="hidden" id="ord-li-fi-'+idx+'" value="'+(d.finish||'Glossy')+'">'+
+                '<input type="hidden" id="ord-li-u-'+idx+'" value="Box">'+
+                '<input type="hidden" id="ord-li-d-'+idx+'" value="0">'+
+                '<input type="hidden" id="ord-li-wt-'+idx+'" value="'+(d.weight||0)+'">'+
                 '<button type="button" class="remove-btn" onclick="ordRemoveLi('+idx+')">&times;</button>';
             wrap.appendChild(row);
             if (d.productId) {
@@ -3187,9 +3823,8 @@
                     document.getElementById('ord-li-pc-'+idx).style.display = 'inline-flex';
                 }
             }
-            if (d.type) { var te=document.getElementById('ord-li-ty-'+idx); for(var i=0;i<te.options.length;i++){if(te.options[i].value===d.type){te.selectedIndex=i;break;}} }
-            if (d.finish) { var fe=document.getElementById('ord-li-fi-'+idx); for(var i=0;i<fe.options.length;i++){if(fe.options[i].value===d.finish){fe.selectedIndex=i;break;}} }
-            if (d.unit) { var ue=document.getElementById('ord-li-u-'+idx); for(var i=0;i<ue.options.length;i++){if(ue.options[i].value===d.unit){ue.selectedIndex=i;break;}} }
+            if (d.type) { var te=document.getElementById('ord-li-ty-'+idx); prodEnsureSelectOption(te, d.type); for(var i=0;i<te.options.length;i++){if(te.options[i].value===d.type){te.selectedIndex=i;break;}} }
+            if (d.quality) { var qe=document.getElementById('ord-li-ql-'+idx); for(var i=0;i<qe.options.length;i++){if(qe.options[i].value===d.quality){qe.selectedIndex=i;break;}} }
             ordRecalcTotals();
         };
 
@@ -3202,18 +3837,29 @@
             document.getElementById('ord-lineItemsWrap').querySelectorAll('.line-item').forEach(function(row) {
                 var idx = row.id.replace('ord-li-','');
                 var qty = parseFloat(document.getElementById('ord-li-q-'+idx).value)||0;
-                var price = parseFloat(document.getElementById('ord-li-pr-'+idx).value)||0;
-                var disc = parseFloat(document.getElementById('ord-li-d-'+idx).value)||0;
+                var ratePerSqm = parseFloat(document.getElementById('ord-li-pr-'+idx).value)||0;
+                var bsm = parseFloat(document.getElementById('ord-li-bx-'+idx).value)||0;
+                var kgb = parseFloat(document.getElementById('ord-li-kgb-'+idx).value)||0;
                 var pidEl = document.getElementById('ord-li-pid-'+idx);
                 items.push({
                     productId: pidEl&&pidEl.value ? parseInt(pidEl.value) : null,
+                    itemNo: document.getElementById('ord-li-it-'+idx).value.trim(),
                     productName: document.getElementById('ord-li-n-'+idx).value.trim(),
+                    quality: (document.getElementById('ord-li-ql-'+idx)||{}).value||'',
                     size: document.getElementById('ord-li-sz-'+idx).value.trim(),
                     type: document.getElementById('ord-li-ty-'+idx).value,
-                    finish: document.getElementById('ord-li-fi-'+idx).value,
-                    unit: document.getElementById('ord-li-u-'+idx).value,
-                    quantity: qty, unitPrice: price, discountPercent: disc,
-                    lineTotal: Math.round(qty*price*(1-disc/100)*100)/100
+                    finish: document.getElementById('ord-li-fi-'+idx).value||'Glossy',
+                    inBoxSqMtr: bsm,
+                    ratePerSqm: ratePerSqm,
+                    kgPerBox: kgb,
+                    remarks: (document.getElementById('ord-li-rem-'+idx)||{}).value||'',
+                    weight: qty * kgb,
+                    totalSqm: bsm * qty,
+                    unit: document.getElementById('ord-li-u-'+idx).value||'Box',
+                    quantity: qty,
+                    unitPrice: ratePerSqm,
+                    discountPercent: 0,
+                    lineTotal: Math.round(ratePerSqm * bsm * qty * 100)/100
                 });
             });
             return items;
@@ -3221,12 +3867,28 @@
 
         window.ordRecalcTotals = function() {
             var items = ordGetLineItems();
-            var sub = 0; items.forEach(function(i){sub+=i.lineTotal;});
-            var discPct = parseFloat(document.getElementById('ord-discountPercent').value)||0;
-            var discAmt = sub*discPct/100;
-            document.getElementById('ord-dispSubTotal').textContent = 'Rs. '+sub.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-            document.getElementById('ord-dispDiscount').textContent = 'Rs. '+discAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+' ('+discPct+'%)';
-            document.getElementById('ord-dispTotal').textContent = 'Rs. '+(sub-discAmt).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+            var totalSales = 0, totalWt = 0, totalSqm = 0;
+            items.forEach(function(i){
+                totalSales += i.lineTotal;
+                totalWt += i.weight;
+                totalSqm += i.totalSqm;
+            });
+            var countEl = document.getElementById('ord-itemCountBadge');
+            if (countEl) countEl.textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
+            // Update per-row calculated fields
+            document.getElementById('ord-lineItemsWrap').querySelectorAll('.line-item').forEach(function(row) {
+                var idx = row.id.replace('ord-li-','');
+                var qty = parseFloat(document.getElementById('ord-li-q-'+idx).value)||0;
+                var bsm = parseFloat(document.getElementById('ord-li-bx-'+idx).value)||0;
+                var kgb = parseFloat(document.getElementById('ord-li-kgb-'+idx).value)||0;
+                var rate = parseFloat(document.getElementById('ord-li-pr-'+idx).value)||0;
+                document.getElementById('ord-li-cwt-'+idx).value = (qty * kgb).toFixed(2);
+                document.getElementById('ord-li-tsqm-'+idx).value = (bsm * qty).toFixed(2);
+                document.getElementById('ord-li-tsal-'+idx).value = (rate * bsm * qty).toFixed(2);
+            });
+            document.getElementById('ord-dispWeight').textContent = totalWt.toFixed(2);
+            document.getElementById('ord-dispSqm').textContent = totalSqm.toFixed(2);
+            document.getElementById('ord-dispTotal').textContent = 'Rs. '+totalSales.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
         };
 
         window.ordSaveOrder = async function(e) {
@@ -3238,11 +3900,19 @@
             var body = {
                 customerId: parseInt(document.getElementById('ord-customerId').value),
                 createdByUserId: parseInt(document.getElementById('ord-createdByUserId').value),
+                locations: document.getElementById('ord-locations').value.trim()||null,
+                department: document.getElementById('ord-department').value.trim()||null,
                 discountPercent: parseFloat(document.getElementById('ord-discountPercent').value)||0,
                 remarks: document.getElementById('ord-remarks').value.trim()||null,
                 items: items
             };
             if (!body.customerId || !body.createdByUserId) { msgDiv.innerHTML='<div class="message error">Customer and Salesperson are required.</div>'; return; }
+            if (!body.locations || !body.department) { msgDiv.innerHTML='<div class="message error">Locations and Department are required.</div>'; return; }
+            for (var li = 0; li < items.length; li++) {
+                var it = items[li], ln = li + 1;
+                if (!it.productId) { msgDiv.innerHTML='<div class="message error">Line '+ln+': Product is required.</div>'; return; }
+                if (!(it.quantity > 0)) { msgDiv.innerHTML='<div class="message error">Line '+ln+': Order in Unit (BOX) must be greater than 0.</div>'; return; }
+            }
             btn.disabled=true; btn.textContent='Saving...'; msgDiv.innerHTML='';
             try {
                 var res = await fetch(editId?ORD_API+'/'+editId:ORD_API, {method:editId?'PUT':'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
@@ -3275,10 +3945,23 @@
                 if (ec) { document.getElementById('ord-customerId').value=ec.id; document.getElementById('ord-custSelectedLabel').textContent=ec.name+' ('+ec.customerType+')'; document.getElementById('ord-custSelectedChip').style.display='inline-flex'; }
                 else { document.getElementById('ord-customerId').value=o.customerId; }
                 userSel.value = o.createdByUserId;
+                ordRefreshRequiredFields();
                 document.getElementById('ord-discountPercent').value=o.discountPercent||0;
                 document.getElementById('ord-remarks').value=o.remarks||'';
                 document.getElementById('ord-lineItemsWrap').innerHTML=''; ordLineItemCount=0;
-                (o.items||[]).forEach(function(item){ordAddLineItem(item);});
+                (o.items||[]).forEach(function(item){
+                    // Enrich line item data from product master for display
+                    var prod = item.productId ? ordAllProducts.find(function(p){return p.id===item.productId;}) : null;
+                    var enriched = {
+                        productId: item.productId, itemNo: item.itemNo || (prod?prod.itemNo||prod.code:''),
+                        productName: item.productName, size: item.size || (prod?prod.size:''),
+                        type: item.type || (prod?prod.category:''), finish: item.finish,
+                        quality: prod?prod.quality:'', inBoxSqMtr: prod?prod.boxCoverage:0,
+                        unitPrice: prod?prod.ratePerSqm:item.unitPrice, kgPerBox: prod?prod.kgPerBox:0,
+                        remarks: prod?prod.remarks:'', quantity: item.quantity, weight: item.weight
+                    };
+                    ordAddLineItem(enriched);
+                });
                 document.getElementById('ord-formTitle').textContent='Edit Order — '+o.orderNumber;
                 document.getElementById('ord-submitBtn').textContent='Update Order';
                 document.getElementById('ord-cancelEditBtn').style.display='inline-flex';
@@ -3306,43 +3989,91 @@
                 html += '</div>';
                 // Totals strip
                 html += '<div style="display:flex;gap:0;border:1px solid var(--gray-200);border-radius:10px;overflow:hidden;margin-bottom:18px;text-align:center">';
-                html += '<div style="flex:1;padding:13px 8px;border-right:1px solid var(--gray-200)"><div style="font-size:.73em;color:var(--gray-500);font-weight:700;text-transform:uppercase;letter-spacing:.04em">Sub Total</div><div style="font-size:1.1em;font-weight:700;margin-top:3px">Rs. '+Number(o.subTotal||0).toLocaleString()+'</div></div>';
-                html += '<div style="flex:1;padding:13px 8px;border-right:1px solid var(--gray-200)"><div style="font-size:.73em;color:var(--gray-500);font-weight:700;text-transform:uppercase;letter-spacing:.04em">Discount</div><div style="font-size:1.1em;font-weight:700;margin-top:3px;color:#f59e0b">'+(o.discountPercent||0)+'% <span style="font-size:.78em;font-weight:500;color:var(--gray-500)">Rs. '+Number(o.discountAmount||0).toLocaleString()+'</span></div></div>';
-                html += '<div style="flex:1;padding:13px 8px"><div style="font-size:.73em;color:var(--gray-500);font-weight:700;text-transform:uppercase;letter-spacing:.04em">Total</div><div style="font-size:1.25em;font-weight:800;margin-top:3px;color:var(--primary)">Rs. '+Number(o.totalAmount||0).toLocaleString()+'</div></div>';
+                html += '<div style="flex:1;padding:13px 8px;border-right:1px solid var(--gray-200)"><div style="font-size:.73em;color:var(--gray-500);font-weight:700;text-transform:uppercase;letter-spacing:.04em">Total WEIGHT</div><div style="font-size:1.1em;font-weight:700;margin-top:3px">'+Number(o.items?o.items.reduce(function(s,i){var pr=i.productId&&ordAllProducts.find(function(p){return p.id===i.productId;});return s+(i.quantity||0)*(pr?pr.kgPerBox||0:0);},0):0).toFixed(2)+'</div></div>';
+                html += '<div style="flex:1;padding:13px 8px;border-right:1px solid var(--gray-200)"><div style="font-size:.73em;color:var(--gray-500);font-weight:700;text-transform:uppercase;letter-spacing:.04em">Total Sq.Mtr</div><div style="font-size:1.1em;font-weight:700;margin-top:3px">'+Number(o.items?o.items.reduce(function(s,i){var pr=i.productId&&ordAllProducts.find(function(p){return p.id===i.productId;});return s+(i.quantity||0)*(pr?pr.boxCoverage||0:0);},0):0).toFixed(2)+'</div></div>';
+                html += '<div style="flex:1;padding:13px 8px"><div style="font-size:.73em;color:var(--gray-500);font-weight:700;text-transform:uppercase;letter-spacing:.04em">Total Sales</div><div style="font-size:1.25em;font-weight:800;margin-top:3px;color:var(--primary)">Rs. '+Number(o.totalAmount||0).toLocaleString()+'</div></div>';
                 html += '</div>';
                 // Line items
                 if (o.items && o.items.length) {
                     html += '<div style="font-size:.78em;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Line Items ('+o.items.length+')</div>';
                     html += '<div style="overflow-x:auto;border:1px solid var(--gray-200);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:.84em">';
                     html += '<thead><tr style="background:var(--gray-50);font-size:.76em;text-transform:uppercase;letter-spacing:.03em">';
-                    ['#','Product','Size','Type','Finish','Unit','Qty','Price','Disc%','Total'].forEach(function(h,i){
-                        var align = i>=6 ? 'right' : 'left';
+                    ['#','Product','Quality','Series','Size','BOX','Rate/SQM','WEIGHT','Total Sq.Mtr','Total Sales'].forEach(function(h,i){
+                        var align = i>=5 ? 'right' : 'left';
                         html += '<th style="padding:9px 11px;text-align:'+align+';border-bottom:1px solid var(--gray-200);color:var(--gray-500);font-weight:700">'+h+'</th>';
                     });
                     html += '</tr></thead><tbody>';
                     o.items.forEach(function(item, i) {
                         var bg = i%2===0 ? '#fff' : 'var(--gray-50)';
+                        var prod = item.productId ? ordAllProducts.find(function(p){return p.id===item.productId;}) : null;
+                        var bsm = item.inBoxSqMtr || (prod ? prod.boxCoverage||0 : 0);
+                        var kgb = item.kgPerBox || (prod ? prod.kgPerBox||0 : 0);
+                        var rate = item.unitPrice || (prod ? prod.ratePerSqm||0 : 0);
+                        var qty = item.quantity||0;
+                        var wt = (qty * kgb).toFixed(2);
+                        var tsqm = (bsm * qty).toFixed(2);
+                        var tsal = (rate * bsm * qty).toFixed(2);
                         html += '<tr style="background:'+bg+'">'+
                             '<td style="padding:9px 11px;color:var(--gray-500);width:32px">'+(i+1)+'</td>'+
                             '<td style="padding:9px 11px;font-weight:600">'+esc(item.productName||'-')+'</td>'+
-                            '<td style="padding:9px 11px">'+esc(item.size||'-')+'</td>'+
+                            '<td style="padding:9px 11px">'+esc(prod?prod.quality||'-':'-')+'</td>'+
                             '<td style="padding:9px 11px">'+esc(item.type||'-')+'</td>'+
-                            '<td style="padding:9px 11px">'+esc(item.finish||'-')+'</td>'+
-                            '<td style="padding:9px 11px">'+esc(item.unit||'-')+'</td>'+
-                            '<td style="padding:9px 11px;text-align:right">'+(item.quantity||0)+'</td>'+
-                            '<td style="padding:9px 11px;text-align:right">Rs. '+Number(item.unitPrice||0).toLocaleString()+'</td>'+
-                            '<td style="padding:9px 11px;text-align:right">'+(item.discountPercent||0)+'%</td>'+
-                            '<td style="padding:9px 11px;text-align:right;font-weight:700;color:var(--primary)">Rs. '+Number(item.lineTotal||0).toLocaleString()+'</td>'+
+                            '<td style="padding:9px 11px">'+esc(item.size||'-')+'</td>'+
+                            '<td style="padding:9px 11px;text-align:right">'+qty+'</td>'+
+                            '<td style="padding:9px 11px;text-align:right">Rs. '+Number(rate).toLocaleString()+'</td>'+
+                            '<td style="padding:9px 11px;text-align:right">'+wt+'</td>'+
+                            '<td style="padding:9px 11px;text-align:right">'+tsqm+'</td>'+
+                            '<td style="padding:9px 11px;text-align:right;font-weight:700;color:var(--primary)">Rs. '+Number(tsal).toLocaleString()+'</td>'+
                         '</tr>';
                     });
                     html += '</tbody></table></div>';
                 }
+                // Activity Log section
+                html += '<div style="margin-top:18px">';
+                html += '<div style="font-size:.78em;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Activity Log</div>';
+                html += '<div id="ord-detailLogs"><div class="loading" style="padding:12px 0;text-align:center;font-size:.85em">Loading…</div></div>';
+                html += '</div>';
                 html += '</div>';
                 content.innerHTML = html;
+                // Load activity logs for this order
+                try {
+                    var logs = await (await fetch('/api/activity-logs/entity/Order/'+o.id)).json();
+                    var lw = document.getElementById('ord-detailLogs');
+                    if (!logs.length) { lw.innerHTML='<div style="color:var(--gray-400);font-size:.85em;padding:8px 0">No activity logs.</div>'; }
+                    else {
+                        var lh='';
+                        logs.forEach(function(l){ lh+='<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--gray-100);font-size:.84em"><span style="min-width:140px;color:var(--gray-400);font-size:.9em">'+(l.timestamp?new Date(l.timestamp).toLocaleString():'')+'</span><span style="font-weight:600;min-width:80px">'+esc(l.action||'')+'</span><span style="color:var(--gray-500)">'+esc(l.changedByName||'System')+'</span><span style="flex:1;color:var(--gray-400);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(l.details||'')+'</span></div>'; });
+                        lw.innerHTML=lh;
+                    }
+                } catch(e) { var lw2=document.getElementById('ord-detailLogs'); if(lw2) lw2.innerHTML='<div style="color:var(--gray-400);font-size:.85em">Could not load logs.</div>'; }
             } catch(err) { content.innerHTML='<div class="message error" style="margin:16px 22px">'+err.message+'</div>'; }
         };
 
         window.ordCloseDetail = function() { document.getElementById('ord-detailModal').style.display='none'; };
+
+        // ── Shared Entity Activity Log Modal ──────────────────────────────
+        window.showEntityLog = async function(entityType, entityId, entityName) {
+            var modal = document.getElementById('entity-logModal');
+            var title = document.getElementById('entity-logTitle');
+            var content = document.getElementById('entity-logContent');
+            title.textContent = entityType + ' Log: ' + (entityName||'#'+entityId);
+            content.innerHTML = '<div class="loading" style="padding:18px 0;text-align:center">Loading…</div>';
+            modal.style.display = 'flex';
+            try {
+                var logs = await (await fetch('/api/activity-logs/entity/'+entityType+'/'+entityId)).json();
+                if (!logs.length) { content.innerHTML='<div style="color:var(--gray-400);font-size:.88em;padding:12px 0">No activity logs found.</div>'; return; }
+                var h='';
+                logs.forEach(function(l){
+                    h+='<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--gray-100);font-size:.86em;align-items:baseline">';
+                    h+='<span style="min-width:145px;color:var(--gray-400);font-size:.88em">'+(l.timestamp?new Date(l.timestamp).toLocaleString():'')+'</span>';
+                    h+='<span style="font-weight:700;min-width:85px;color:var(--primary)">'+esc(l.action||'')+'</span>';
+                    h+='<span style="color:var(--gray-600);min-width:100px">'+esc(l.changedByName||'System')+'</span>';
+                    h+='<span style="flex:1;color:var(--gray-400);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(l.details||'')+'">'+esc(l.details||'')+'</span>';
+                    h+='</div>';
+                });
+                content.innerHTML=h;
+            } catch(err) { content.innerHTML='<div class="message error">'+err.message+'</div>'; }
+        };
 
         window.ordChangeStatus = async function(id, newStatus) {
             if (!confirm(newStatus+' this order?')) return;
@@ -3375,6 +4106,7 @@
             document.getElementById('ord-custSelectedLabel').textContent = el.getAttribute('data-name')+' ('+el.getAttribute('data-type')+')';
             document.getElementById('ord-custSelectedChip').style.display = 'inline-flex';
             document.getElementById('ord-custDropdown').classList.remove('open');
+            ordRefreshRequiredFields();
         };
         window.ordSelectCustomer = function(id, name, type) {
             document.getElementById('ord-customerId').value = id;
@@ -3382,11 +4114,13 @@
             document.getElementById('ord-custSelectedLabel').textContent = name+' ('+type+')';
             document.getElementById('ord-custSelectedChip').style.display = 'inline-flex';
             document.getElementById('ord-custDropdown').classList.remove('open');
+            ordRefreshRequiredFields();
         };
         window.ordClearCustSelection = function() {
             document.getElementById('ord-customerId').value = '';
             document.getElementById('ord-custSearch').value = '';
             document.getElementById('ord-custSelectedChip').style.display = 'none';
+            ordRefreshRequiredFields();
         };
         window.ordHideCustDropdown = function() { setTimeout(function(){document.getElementById('ord-custDropdown').classList.remove('open');},200); };
 
@@ -3396,32 +4130,65 @@
             var dd = document.getElementById('ord-li-pd-'+idx); if (!dd||!q) { if(dd) dd.classList.remove('open'); return; }
             var filtered = ordAllProducts.filter(function(p){ return p.name.toLowerCase().includes(q)||(p.code||'').toLowerCase().includes(q)||(p.size||'').toLowerCase().includes(q); }).slice(0,25);
             dd.innerHTML = !filtered.length ? '<div class="sdd-item" style="color:var(--gray-500)">No products found</div>' :
-                filtered.map(function(p){ return '<div class="sdd-item" data-idx="'+idx+'" data-id="'+p.id+'" data-name="'+esc(p.name)+'" data-size="'+esc(p.size||'')+'" data-type="'+esc(p.type||'Floor')+'" data-finish="'+esc(p.finish||'Glossy')+'" data-unit="'+esc(p.unit||'Box')+'" data-price="'+(p.price||0)+'" onmousedown="ordSelectProd(this)"><strong>'+esc(p.name)+'</strong>'+(p.size?' <span style="color:var(--gray-500);font-size:0.85em">'+esc(p.size)+'</span>':'')+(p.price>0?' <span style="color:var(--primary);font-weight:700">Rs. '+p.price+'</span>':'')+'</div>'; }).join('');
+                filtered.map(function(p){ return '<div class="sdd-item" data-idx="'+idx+'" data-id="'+p.id+'" data-itemno="'+esc(p.itemNo||p.code||'')+'" data-name="'+esc(p.name)+'" data-size="'+esc(p.size||'')+'" data-series="'+esc(p.category||'')+'" data-quality="'+esc(p.quality||'')+'" data-finish="'+esc(p.finish||'Glossy')+'" data-unit="'+esc(p.unit||'Box')+'" data-rate="'+(p.ratePerSqm||0)+'" data-box="'+(p.boxCoverage||0)+'" data-kgb="'+(p.kgPerBox||0)+'" data-remarks="'+esc(p.remarks||'')+'" onmousedown="ordSelectProd(this)"><strong>'+esc(p.name)+'</strong>'+(p.size?' <span style="color:var(--gray-500);font-size:0.85em">'+esc(p.size)+'</span>':'')+(p.ratePerSqm?' <span style="color:var(--primary);font-weight:700">Rs.'+p.ratePerSqm+'/sqm</span>':'')+'</div>'; }).join('');
             dd.classList.add('open');
         };
         window.ordSelectProd = function(el) {
-            var idx=el.getAttribute('data-idx'), name=el.getAttribute('data-name'), size=el.getAttribute('data-size');
-            var type=el.getAttribute('data-type'), finish=el.getAttribute('data-finish'), unit=el.getAttribute('data-unit');
-            var price=parseFloat(el.getAttribute('data-price'))||0;
+            var idx=el.getAttribute('data-idx');
+            var itemNo=el.getAttribute('data-itemno')||'', name=el.getAttribute('data-name'), size=el.getAttribute('data-size');
+            var series=el.getAttribute('data-series'), quality=el.getAttribute('data-quality');
+            var rate=parseFloat(el.getAttribute('data-rate'))||0;
+            var inBox=parseFloat(el.getAttribute('data-box'))||0;
+            var kgb=parseFloat(el.getAttribute('data-kgb'))||0;
+            var remarks=el.getAttribute('data-remarks')||'';
             document.getElementById('ord-li-pid-'+idx).value = el.getAttribute('data-id');
+            document.getElementById('ord-li-it-'+idx).value = itemNo;
             document.getElementById('ord-li-n-'+idx).value = name;
             document.getElementById('ord-li-sz-'+idx).value = size;
-            var te=document.getElementById('ord-li-ty-'+idx); for(var i=0;i<te.options.length;i++){if(te.options[i].value===type){te.selectedIndex=i;break;}}
-            var fe=document.getElementById('ord-li-fi-'+idx); for(var i=0;i<fe.options.length;i++){if(fe.options[i].value===finish){fe.selectedIndex=i;break;}}
-            var ue=document.getElementById('ord-li-u-'+idx); for(var i=0;i<ue.options.length;i++){if(ue.options[i].value===unit){ue.selectedIndex=i;break;}}
-            if (price>0) document.getElementById('ord-li-pr-'+idx).value = price;
-            document.getElementById('ord-li-pcl-'+idx).textContent = name+(size?' · '+size:'')+(price?' — Rs. '+price:'');
+            document.getElementById('ord-li-bx-'+idx).value = inBox;
+            document.getElementById('ord-li-pr-'+idx).value = rate;
+            document.getElementById('ord-li-kgb-'+idx).value = kgb;
+            document.getElementById('ord-li-rem-'+idx).value = remarks;
+            // Auto-select series
+            var te=document.getElementById('ord-li-ty-'+idx); prodEnsureSelectOption(te, series); for(var i=0;i<te.options.length;i++){if(te.options[i].value===series){te.selectedIndex=i;break;}}
+            // Auto-select quality if matches
+            if (quality) { var qe=document.getElementById('ord-li-ql-'+idx); for(var i=0;i<qe.options.length;i++){if(qe.options[i].value===quality){qe.selectedIndex=i;break;}} }
+            document.getElementById('ord-li-fi-'+idx).value = el.getAttribute('data-finish')||'Glossy';
+            document.getElementById('ord-li-pcl-'+idx).textContent = name+(size?' · '+size:'')+(rate?' — Rs.'+rate+'/sqm':'');
             document.getElementById('ord-li-pc-'+idx).style.display = 'inline-flex';
             document.getElementById('ord-li-ps-'+idx).value = '';
             document.getElementById('ord-li-pd-'+idx).classList.remove('open');
             ordRecalcTotals();
+            // Auto-add new line if this is the last item
+            var allLines = document.querySelectorAll('#ord-lineItemsWrap .line-item');
+            var lastLine = allLines[allLines.length - 1];
+            if (lastLine && lastLine.id === 'ord-li-'+idx) { ordAddLineItem(); }
         };
         window.ordClearProd = function(idx) {
             document.getElementById('ord-li-pid-'+idx).value = '';
             document.getElementById('ord-li-ps-'+idx).value = '';
             document.getElementById('ord-li-pc-'+idx).style.display = 'none';
+            document.getElementById('ord-li-it-'+idx).value = '';
             document.getElementById('ord-li-n-'+idx).value = '';
+            document.getElementById('ord-li-bx-'+idx).value = 0;
+            document.getElementById('ord-li-pr-'+idx).value = 0;
+            document.getElementById('ord-li-kgb-'+idx).value = 0;
+            document.getElementById('ord-li-rem-'+idx).value = '';
             ordRecalcTotals();
+        };
+
+        window.ordRefreshRequiredFields = function() {
+            var cid = parseInt(document.getElementById('ord-customerId').value || '0');
+            var uid = parseInt(document.getElementById('ord-createdByUserId').value || '0');
+            var c = ordAllCustomers.find(function(x){ return x.id === cid; });
+            var u = ordAllUsers.find(function(x){ return x.id === uid; });
+            var location = '';
+            if (c) {
+                var parts = [c.city, c.state, c.territory].filter(function(x){ return x && String(x).trim(); });
+                location = parts.join(' / ');
+            }
+            document.getElementById('ord-locations').value = location;
+            document.getElementById('ord-department').value = (u && u.department) ? u.department : '';
         };
         window.ordHideProdDd = function(idx) { setTimeout(function(){var d=document.getElementById('ord-li-pd-'+idx);if(d)d.classList.remove('open');},200); };
 
@@ -3570,13 +4337,49 @@
         };
 
         window.prodOpenCreateModal = function() {
+            if (typeof cfgApplyProductCfgToForms === 'function') cfgApplyProductCfgToForms();
             document.getElementById('prod-createModal').classList.add('open');
         };
+
+        function prodEnsureSelectOption(selectEl, value) {
+            if (!selectEl || !value) return;
+            for (var i = 0; i < selectEl.options.length; i++) {
+                if (selectEl.options[i].value === value) return;
+            }
+            var opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = value;
+            selectEl.appendChild(opt);
+        }
+
+        function prodSyncCategoryFilterOptions() {
+            var sel = document.getElementById('prod-filterCat');
+            if (!sel) return;
+            var existing = {};
+            for (var i = 0; i < sel.options.length; i++) {
+                existing[sel.options[i].value] = true;
+            }
+            var categories = {};
+            (prodAllProducts || []).forEach(function(p) {
+                var c = (p.category || '').trim();
+                if (c) categories[c] = true;
+            });
+            Object.keys(categories).sort().forEach(function(c) {
+                if (!existing[c]) {
+                    var opt = document.createElement('option');
+                    opt.value = c;
+                    opt.textContent = c;
+                    sel.appendChild(opt);
+                }
+            });
+        }
 
         window.prodLoadProducts = async function() {
             try {
                 var res = await fetch(PROD_API);
                 prodAllProducts = await res.json();
+                if (typeof cfgSyncProductCfgFromProducts === 'function') cfgSyncProductCfgFromProducts(prodAllProducts);
+                prodSyncCategoryFilterOptions();
                 prodUpdateStats(); prodRenderTable();
             } catch(e) { document.getElementById('prod-prodTable').innerHTML='<div class="message error">'+e.message+'</div>'; }
         };
@@ -3608,28 +4411,25 @@
             document.getElementById('prod-filterCount').textContent = filtered.length+' of '+prodAllProducts.length+' products';
             if (!filtered.length) { c.innerHTML='<div class="empty">No products found.</div>'; return; }
             var isAdmin = prodCurrentUser && (prodCurrentUser.role||'').toLowerCase() === 'admin';
-            var h='<div class="table-wrap"><table><thead><tr>'+(isAdmin?'<th>Actions</th>':'')+'<th>ID</th><th>Code</th><th>Name</th><th>Category</th><th>Type</th><th>Size</th><th>Finish</th><th>MRP</th><th>Dealer</th><th>Unit</th><th>Tags</th><th>Status</th></tr></thead><tbody>';
+            var h='<div class="table-wrap"><table><thead><tr>'+(isAdmin?'<th>Actions</th>':'')+'<th>Item No.</th><th>Item Description</th><th>Quality</th><th>Series</th><th>Size</th><th>WT</th><th>Box Sqr.Mtr</th><th>KG/Box</th><th>Rate/SQM</th><th>Code</th><th>Remarks</th><th>Status</th></tr></thead><tbody>';
             filtered.forEach(function(p) {
-                var tags='';
-                if (p.isNewArrival) tags+='<span class="badge badge-new">NEW</span> ';
-                if (p.isDiscontinued) tags+='<span class="badge badge-disc">DISC</span> ';
-                if (!tags) tags='<span style="color:var(--gray-500);font-size:0.82em">—</span>';
                 h+='<tr>'+
                     (isAdmin?'<td class="actions">'+
                     '<button class="btn btn-edit btn-sm" onclick="prodEditProduct('+p.id+')">Edit</button> '+
-                    '<button class="btn btn-danger btn-sm" onclick="prodDeleteProduct('+p.id+')">Del</button>'+
+                    '<button class="btn btn-danger btn-sm" onclick="prodDeleteProduct('+p.id+')">Del</button> '+
+                    '<button class="btn btn-secondary btn-sm" onclick="showEntityLog(\'Product\','+p.id+',\''+esc(p.name).replace(/'/g,"\\'")+'\')">Log</button>'+
                     '</td>':'')+
-                    '<td style="color:var(--gray-500)">'+p.id+'</td>'+
-                    '<td><code>'+esc(p.code||'—')+'</code></td>'+
+                    '<td>'+esc(p.itemNo||'—')+'</td>'+
                     '<td><strong>'+esc(p.name)+'</strong></td>'+
+                    '<td>'+esc(p.quality||'—')+'</td>'+
                     '<td>'+esc(p.category||'—')+'</td>'+
-                    '<td>'+esc(p.type||'—')+'</td>'+
                     '<td>'+esc(p.size||'—')+'</td>'+
-                    '<td>'+esc(p.finish||'—')+'</td>'+
-                    '<td style="font-weight:700">Rs. '+Number(p.price||0).toLocaleString()+'</td>'+
-                    '<td>'+(p.dealerPrice?'Rs. '+Number(p.dealerPrice).toLocaleString():'—')+'</td>'+
-                    '<td>'+esc(p.unit||'Box')+'</td>'+
-                    '<td>'+tags+'</td>'+
+                    '<td>'+(p.weight||'—')+'</td>'+
+                    '<td>'+(p.boxCoverage||'—')+'</td>'+
+                    '<td>'+(p.kgPerBox||'—')+'</td>'+
+                    '<td>'+(p.ratePerSqm!=null?p.ratePerSqm:'—')+'</td>'+
+                    '<td><code>'+esc(p.code||'—')+'</code></td>'+
+                    '<td>'+esc(p.remarks||'—')+'</td>'+
                     '<td>'+(p.isActive?'<span class="badge badge-active">Active</span>':'<span class="badge badge-inactive">Inactive</span>')+'</td>'+
                     '</tr>';
             });
@@ -3641,23 +4441,41 @@
             var msg=document.getElementById('prod-message'), btn=document.getElementById('prod-submitBtn');
             var editId=document.getElementById('prod-editId').value;
             var body = {
-                name:val('prod-name'), description:val('prod-description')||null, code:val('prod-code')||null,
-                imageUrl:val('prod-imageUrl')||null, category:val('prod-category'),
-                type:val('prod-type')||null, size:val('prod-size')||null, thickness:val('prod-thickness')||null,
-                finish:val('prod-finish')||null, shade:val('prod-shade')||null,
-                boxCoverage:parseFloat(val('prod-boxCoverage'))||null, piecesPerBox:parseInt(val('prod-piecesPerBox'))||null,
+                itemNo:val('prod-itemNo')||null, name:val('prod-name'),
+                quality:prodGetFieldValue('quality')||null,
+                category:prodGetFieldValue('category'),
+                size:prodGetFieldValue('size')||null,
+                weight:parseFloat(val('prod-weight'))||null,
+                boxCoverage:parseFloat(val('prod-boxCoverage'))||null,
+                kgPerBox:parseFloat(val('prod-kgPerBox'))||null,
+                ratePerSqm:parseFloat(val('prod-ratePerSqm'))||null,
+                code:val('prod-code')||null, remarks:val('prod-remarks')||null,
+                description:val('prod-description')||null, imageUrl:val('prod-imageUrl')||null,
+                type:prodGetFieldValue('type')||null, thickness:val('prod-thickness')||null,
+                finish:prodGetFieldValue('finish')||null,
+                shade:prodGetFieldValue('shade')||null,
+                piecesPerBox:parseInt(val('prod-piecesPerBox'))||null,
                 price:parseFloat(val('prod-price'))||0, dealerPrice:parseFloat(val('prod-dealerPrice'))||null,
-                unit:val('prod-unit'),
+                unit:prodGetFieldValue('unit')||null,
                 isNewArrival:document.getElementById('prod-isNewArrival').checked,
                 isDiscontinued:document.getElementById('prod-isDiscontinued').checked,
                 isActive:document.getElementById('prod-isActive').value==='true'
             };
-            if (!body.name) { msg.innerHTML='<div class="message error">Product name is required.</div>'; return; }
+            if (!body.itemNo) { msg.innerHTML='<div class="message error">Item No. is required.</div>'; return; }
+            if (!body.name) { msg.innerHTML='<div class="message error">Item Description is required.</div>'; return; }
+            if (!body.category) { msg.innerHTML='<div class="message error">Series is required.</div>'; return; }
+            if (!body.size) { msg.innerHTML='<div class="message error">Size is required.</div>'; return; }
+            if (!(body.boxCoverage>0)) { msg.innerHTML='<div class="message error">Box Sqr. Mtr must be greater than 0.</div>'; return; }
+            if (!(body.kgPerBox>0)) { msg.innerHTML='<div class="message error">KG Per Box must be greater than 0.</div>'; return; }
+            if (!(body.ratePerSqm>0)) { msg.innerHTML='<div class="message error">Rate Per SQM must be greater than 0.</div>'; return; }
             btn.disabled=true; btn.textContent='Saving...'; msg.innerHTML='';
             try {
                 var res=await fetch(editId?PROD_API+'/'+editId:PROD_API,{method:editId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
                 if (!res.ok) throw new Error(await res.text()||'Error '+res.status);
                 var result=await res.json();
+                if (typeof cfgUpsertProductCfgValues === 'function') {
+                    cfgUpsertProductCfgValues({category:body.category,size:body.size,quality:body.quality,type:body.type,finish:body.finish,shade:body.shade,unit:body.unit});
+                }
                 msg.innerHTML='<div class="message success">Product "'+esc(result.name||body.name)+'" '+(editId?'updated':'created')+'!</div>';
                 setTimeout(function(){ prodCancelEdit(); prodLoadProducts(); }, 900);
             } catch(err) { msg.innerHTML='<div class="message error">'+err.message+'</div>'; }
@@ -3666,10 +4484,20 @@
 
         window.prodEditProduct = function(id) {
             var p=prodAllProducts.find(function(x){return x.id===id;}); if(!p) return;
+            // Populate config-driven selects with existing product values
+            if (typeof cfgApplyProductCfgToForms === 'function') cfgApplyProductCfgToForms({
+                category: p.category||'', size: p.size||'', quality: p.quality||'',
+                type: p.type||'', finish: p.finish||'', shade: p.shade||'', unit: p.unit||''
+            });
             document.getElementById('prod-editId').value=p.id;
+            document.getElementById('prod-itemNo').value=p.itemNo||'';
             document.getElementById('prod-name').value=p.name||'';
-            document.getElementById('prod-code').value=p.code||'';
-            document.getElementById('prod-category').value=p.category||'Tiles';
+            document.getElementById('prod-weight').value=p.weight||'';
+            document.getElementById('prod-boxCoverage').value=p.boxCoverage||'';
+            document.getElementById('prod-kgPerBox').value=p.kgPerBox||'';
+            document.getElementById('prod-ratePerSqm').value=p.ratePerSqm!=null?p.ratePerSqm:'';
+            document.getElementById('prod-code').value=p.code||''
+            document.getElementById('prod-remarks').value=p.remarks||'';
             document.getElementById('prod-description').value=p.description||'';
             document.getElementById('prod-imageUrl').value=p.imageUrl||'';
             // show image preview & upload button
@@ -3679,16 +4507,10 @@
             if (p.imageUrl) { prev.src=p.imageUrl; prevWrap.style.display='block'; } else { prevWrap.style.display='none'; }
             if (upBtn) upBtn.style.display='none';
             if (document.getElementById('prod-uploadMsg')) document.getElementById('prod-uploadMsg').textContent='';
-            document.getElementById('prod-type').value=p.type||'';
-            document.getElementById('prod-size').value=p.size||'';
             document.getElementById('prod-thickness').value=p.thickness||'';
-            document.getElementById('prod-finish').value=p.finish||'';
-            document.getElementById('prod-shade').value=p.shade||'';
-            document.getElementById('prod-boxCoverage').value=p.boxCoverage||'';
             document.getElementById('prod-piecesPerBox').value=p.piecesPerBox||'';
             document.getElementById('prod-price').value=p.price||0;
             document.getElementById('prod-dealerPrice').value=p.dealerPrice||'';
-            document.getElementById('prod-unit').value=p.unit||'Box';
             document.getElementById('prod-isNewArrival').checked=p.isNewArrival;
             document.getElementById('prod-isDiscontinued').checked=p.isDiscontinued;
             document.getElementById('prod-isActive').value=p.isActive?'true':'false';
@@ -3712,6 +4534,7 @@
         window.prodCancelEdit = function() {
             document.getElementById('prod-editId').value='';
             document.getElementById('prod-prodForm').reset();
+            if (typeof cfgApplyProductCfgToForms === 'function') cfgApplyProductCfgToForms();
             document.getElementById('prod-formTitle').textContent='Add New Product';
             document.getElementById('prod-submitBtn').textContent='✚ Create Product';
             document.getElementById('prod-cancelBtn').style.display='none';
@@ -3720,7 +4543,7 @@
         };
 
         window.prodEnsureLoaded = function() {
-            prodCurrentUser = JSON.parse(sessionStorage.getItem('sfa_admin_user') || '{}');
+            prodCurrentUser = JSON.parse(localStorage.getItem('sfa_admin_user') || '{}');
             var isAdmin = (prodCurrentUser.role || '').toLowerCase() === 'admin';
             var addBtn = document.getElementById('prod-addBtn');
             var templateBtn = document.getElementById('prod-templateBtn');
@@ -3732,7 +4555,7 @@
         };
 
         registerSection('products', function() {
-            prodCurrentUser = JSON.parse(sessionStorage.getItem('sfa_admin_user') || '{}');
+            prodCurrentUser = JSON.parse(localStorage.getItem('sfa_admin_user') || '{}');
         });
     })(); // end products IIFE
     </script>
@@ -5104,6 +5927,192 @@
         var msg = document.getElementById('apk-copyMsg');
         if (msg) { msg.textContent = '✅ Link copied to clipboard!'; setTimeout(function(){ msg.textContent = ''; }, 3000); }
     }
+    </script>
+
+    <!-- ══════════════════════════════════════════════════════
+         ACTIVITY LOG SECTION JAVASCRIPT
+    ══════════════════════════════════════════════════════ -->
+    <script>
+    (function() {
+        var ACT_API = BASE + '/api/activity-logs';
+        var ACT_USERS_API = BASE + '/api/users';
+        var actPageSize = 30;
+        var actCurrentPage = 1;
+        var actSectionLoaded = false;
+        var actAllUsers = [];
+
+        // Action → icon & colour class
+        var ACT_ACTION_META = {
+            'Created':      { icon: '✚',  cls: 'Created'  },
+            'Updated':      { icon: '✎',  cls: 'Updated'  },
+            'Deleted':      { icon: '✕',  cls: 'Deleted'  },
+            'Approved':     { icon: '✔',  cls: 'Approved' },
+            'Rejected':     { icon: '✘',  cls: 'Rejected' },
+            'Cancelled':    { icon: '⊘',  cls: 'Cancelled'},
+            'StatusChanged':{ icon: '⇄',  cls: 'StatusChanged' },
+            'PasswordReset':{ icon: '🔑', cls: 'Updated'  },
+            'Deactivated':  { icon: '⊘',  cls: 'Cancelled'},
+            'Activated':    { icon: '✔',  cls: 'Approved' }
+        };
+
+        // Entity → human-friendly verb sentence
+        function actDescribe(log) {
+            var action = log.action || '';
+            var entity = log.entityType || '';
+            var name   = log.entityName ? '<strong>' + esc(log.entityName) + '</strong>' : '#' + log.entityId;
+            var map = {
+                'Order:Created':         'created Order ' + name,
+                'Order:Updated':         'updated Order ' + name,
+                'Order:StatusChanged':   'changed status of Order ' + name,
+                'Order:Approved':        'approved Order ' + name,
+                'Order:Rejected':        'rejected Order ' + name,
+                'Order:Cancelled':       'cancelled Order ' + name,
+                'Order:Deleted':         'deleted Order ' + name,
+                'Customer:Created':      'added Customer ' + name,
+                'Customer:Updated':      'updated Customer ' + name,
+                'Customer:Deleted':      'deleted Customer ' + name,
+                'Product:Created':       'added Product ' + name,
+                'Product:Updated':       'updated Product ' + name,
+                'Product:Deleted':       'deleted Product ' + name,
+                'User:Created':          'created User ' + name,
+                'User:Updated':          'updated User ' + name,
+                'User:Deleted':          'deleted User ' + name,
+                'User:PasswordReset':    'reset password for ' + name,
+                'User:Deactivated':      'deactivated User ' + name,
+                'User:Activated':        'activated User ' + name
+            };
+            return map[entity + ':' + action] || (esc(action) + ' ' + esc(entity) + ' ' + name);
+        }
+
+        function actInitials(name) {
+            if (!name) return '?';
+            var parts = name.trim().split(/\s+/);
+            return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+        }
+
+        function actTimeAgo(iso) {
+            if (!iso) return '';
+            var d = new Date(iso);
+            var now = new Date();
+            var diff = now - d;
+            if (diff < 60000)    return 'just now';
+            if (diff < 3600000)  return Math.floor(diff/60000)  + 'm ago';
+            if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+            if (diff < 604800000)return Math.floor(diff/86400000)+'d ago';
+            return d.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+        }
+
+        function actRenderFeed(items) {
+            var feed = document.getElementById('act-feed');
+            if (!items || items.length === 0) {
+                feed.innerHTML = '<div class="act-empty">No activity found for the selected filters.</div>';
+                return;
+            }
+            var html = '';
+            items.forEach(function(log) {
+                var meta   = ACT_ACTION_META[log.action] || { icon: '•', cls: 'Updated' };
+                var initials = actInitials(log.changedByName);
+                var desc   = actDescribe(log);
+                var source = log.source ? '<span class="act-source">' + esc(log.source) + '</span>' : '';
+                var details = log.details ? '<div class="act-details">' + esc(log.details) + '</div>' : '';
+                var timeStr = actTimeAgo(log.timestamp);
+                var fullTime = log.timestamp ? new Date(log.timestamp).toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}) : '';
+
+                html += '<div class="act-feed-item">';
+                html += '<div class="act-avatar">' + esc(initials) + '</div>';
+                html += '<div class="act-body">';
+                html += '<div class="act-meta">';
+                html += '<span class="act-name">' + esc(log.changedByName || 'System') + '</span>';
+                html += '<span class="act-badge ' + meta.cls + '">' + meta.icon + ' ' + esc(log.action) + '</span>';
+                html += source;
+                html += '<span class="act-time" title="' + esc(fullTime) + '">' + timeStr + '</span>';
+                html += '</div>';
+                html += '<div class="act-desc">' + desc + '</div>';
+                html += details;
+                html += '</div>';
+                html += '</div>';
+            });
+            feed.innerHTML = html;
+        }
+
+        function actRenderPagination(total, page) {
+            var pages = Math.ceil(total / actPageSize);
+            var pg = document.getElementById('act-pagination');
+            if (pages <= 1) { pg.innerHTML = ''; return; }
+            var html = '';
+            html += '<button class="btn btn-secondary btn-sm" onclick="actLoad(' + (page-1) + ')" ' + (page<=1?'disabled':'') + '>◀ Prev</button>';
+            html += '<span style="padding:6px 12px;font-size:0.85em;color:var(--gray-600)">' + page + ' / ' + pages + ' &nbsp;(' + total + ' events)</span>';
+            html += '<button class="btn btn-secondary btn-sm" onclick="actLoad(' + (page+1) + ')" ' + (page>=pages?'disabled':'') + '>Next ▶</button>';
+            pg.innerHTML = html;
+        }
+
+        window.actLoad = async function(page) {
+            page = page || 1;
+            actCurrentPage = page;
+            var feed = document.getElementById('act-feed');
+            feed.innerHTML = '<div class="act-empty">Loading…</div>';
+
+            var params = new URLSearchParams({
+                page: page,
+                pageSize: actPageSize
+            });
+            var userId = document.getElementById('act-filterUser').value;
+            var type   = document.getElementById('act-filterType').value;
+            var action = document.getElementById('act-filterAction').value;
+            var from   = document.getElementById('act-filterFrom').value;
+            var to     = document.getElementById('act-filterTo').value;
+            if (userId) params.set('changedByUserId', userId);
+            if (type)   params.set('entityType', type);
+            if (action) params.set('action', action);
+            if (from)   params.set('from', from);
+            if (to)     params.set('to', to + 'T23:59:59');
+
+            try {
+                var res = await fetch(ACT_API + '?' + params.toString());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                var data = await res.json();
+                actRenderFeed(data.items);
+                actRenderPagination(data.total, page);
+            } catch(e) {
+                feed.innerHTML = '<div class="act-empty" style="color:#ef4444">Failed to load activity: ' + esc(e.message) + '</div>';
+            }
+        };
+
+        window.actClearFilters = function() {
+            document.getElementById('act-filterUser').value   = '';
+            document.getElementById('act-filterType').value   = '';
+            document.getElementById('act-filterAction').value = '';
+            document.getElementById('act-filterFrom').value   = '';
+            document.getElementById('act-filterTo').value     = '';
+            actLoad(1);
+        };
+
+        async function actLoadUsers() {
+            if (actAllUsers.length > 0) return;
+            try {
+                var res = await fetch(ACT_USERS_API);
+                if (!res.ok) return;
+                var users = await res.json();
+                actAllUsers = users;
+                var sel = document.getElementById('act-filterUser');
+                if (!sel) return;
+                var opts = '<option value="">All Users</option>';
+                users.forEach(function(u) {
+                    opts += '<option value="' + u.id + '">' + esc(u.fullName || u.username) + (u.role ? ' (' + u.role + ')' : '') + '</option>';
+                });
+                sel.innerHTML = opts;
+            } catch(e) { /* silently ignore */ }
+        }
+
+        window.actEnsureLoaded = function() {
+            actLoadUsers();
+            if (!actSectionLoaded) {
+                actSectionLoaded = true;
+                actLoad(1);
+            }
+        };
+
+    })(); // end activity IIFE
     </script>
 
 </body>

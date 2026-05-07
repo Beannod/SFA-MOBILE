@@ -459,13 +459,17 @@ fun OrderCard(
 data class OrderLineState(
     var productId: Int? = null,
     var productName: String = "",
-    var size: String = "",
-    var type: String = "Floor",
-    var finish: String = "Glossy",
-    var unit: String = "Box",
+    var itemNo: String = "",          // product code (readonly, from product)
+    var size: String = "",             // auto-filled from product
+    var type: String = "",             // auto-filled from product (hidden in form)
+    var finish: String = "",           // auto-filled from product (hidden in form)
+    var unit: String = "Box",          // auto-filled from product (hidden in form)
+    var quality: String = "",          // user-selectable Quality dropdown
+    var inBoxSqMtr: Double = 0.0,      // sq.mtr per box (from product.boxCoverage)
+    var kgPerBox: Double = 0.0,        // kg per box (from product.kgPerBox)
     var quantity: String = "1",
-    var unitPrice: String = "",
-    var discountPercent: String = "0"
+    var unitPrice: String = "",        // rate per sq.mtr (from product.ratePerSqm)
+    var discountPercent: String = "0"  // always 0 (no per-line disc in mobile)
 )
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -483,6 +487,9 @@ fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack
     // Products for item dropdown
     val products = remember { mutableStateListOf<Product>() }
 
+    // Product config for dropdowns
+    val productConfig = remember { mutableStateOf(ProductConfig.Default) }
+
     // Order-level fields
     val discountPercent = remember { mutableStateOf("0") }
     val remarks = remember { mutableStateOf("") }
@@ -490,7 +497,7 @@ fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack
     // Order items
     val lines = remember { mutableStateListOf(OrderLineState()) }
 
-    // Load customers and products; pre-fill customer if navigating from customer detail
+    // Load customers, products, and product config
     LaunchedEffect(Unit) {
         val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
         val isAdmin = user.role.equals("Admin", ignoreCase = true)
@@ -502,13 +509,15 @@ fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack
         }
         customers.clear()
         if (fetched != null) {
-            customers.addAll(fetched)
-            if (preselectedCustomerId != 0 && fetched.any { it.id == preselectedCustomerId }) {
+            val eligible = fetched.filter { it.isActive && it.approvalStatus.equals("Approved", ignoreCase = true) }
+            customers.addAll(eligible)
+            if (preselectedCustomerId != 0 && eligible.any { it.id == preselectedCustomerId }) {
                 selectedCustomerId.value = preselectedCustomerId
             }
         }
         val fetchedProducts = fetchProducts("${base}/api/products?discontinued=false")
         products.addAll(fetchedProducts)
+        productConfig.value = fetchProductConfig(base)
     }
 
     Column(modifier = Modifier.fillMaxHeight(0.94f)) {
@@ -762,6 +771,7 @@ fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack
                     index = index,
                     line = line,
                     products = products,
+                    productConfig = productConfig.value,
                     onRemove = { if (lines.size > 1) lines.removeAt(index) },
                     onChanged = { lines[index] = it },
                     onAddMoreLines = { extras -> lines.addAll(extras) }
@@ -793,18 +803,30 @@ fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack
 
             // ── Summary ──
             val subTotal = lines.sumOf { l ->
-                val qty = l.quantity.toDoubleOrNull() ?: 0.0
-                val price = l.unitPrice.toDoubleOrNull() ?: 0.0
-                val disc = l.discountPercent.toDoubleOrNull() ?: 0.0
-                (qty * price) * (1 - disc / 100.0)
+                val qty  = l.quantity.toDoubleOrNull() ?: 0.0
+                val rate = l.unitPrice.toDoubleOrNull() ?: 0.0
+                rate * l.inBoxSqMtr * qty  // rate/sqmtr × sqmtr/box × boxes
             }
             val overallDisc = discountPercent.value.toDoubleOrNull() ?: 0.0
             val discAmt = subTotal * overallDisc / 100.0
             val total = subTotal - discAmt
+            val totalSqMtrAll = lines.sumOf { l -> (l.quantity.toDoubleOrNull() ?: 0.0) * l.inBoxSqMtr }
+            val totalWeightAll = lines.sumOf { l -> (l.quantity.toDoubleOrNull() ?: 0.0) * l.kgPerBox }
 
             Spacer(modifier = Modifier.height(12.dp))
             Card(elevation = 2.dp, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(12.dp)) {
+                    if (totalSqMtrAll > 0) {
+                        Row {
+                            Text("Total Sq.Mtr", modifier = Modifier.weight(1f), color = Color.Gray)
+                            Text("%.2f m²".format(totalSqMtrAll), fontWeight = FontWeight.Bold)
+                        }
+                        Row {
+                            Text("Total Weight", modifier = Modifier.weight(1f), color = Color.Gray)
+                            Text("%.2f KG".format(totalWeightAll), fontWeight = FontWeight.Bold)
+                        }
+                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+                    }
                     Row {
                         Text("Subtotal", modifier = Modifier.weight(1f), color = Color.Gray)
                         Text("Rs. %.2f".format(subTotal), fontWeight = FontWeight.Bold)
@@ -840,7 +862,11 @@ fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack
                         return@Button
                     }
                     if (lines.any { it.unitPrice.isBlank() || (it.unitPrice.toDoubleOrNull() ?: 0.0) <= 0.0 }) {
-                        errorMsg.value = "Fill a valid price for all items"
+                        errorMsg.value = "Fill a valid rate for all items"
+                        return@Button
+                    }
+                    if (lines.any { (it.quantity.toDoubleOrNull() ?: 0.0) <= 0.0 }) {
+                        errorMsg.value = "Fill a valid quantity for all items"
                         return@Button
                     }
                     errorMsg.value = null
@@ -1010,20 +1036,15 @@ fun OrderReviewScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 val qty   = line.quantity.toDoubleOrNull() ?: 0.0
-                                val price = line.unitPrice.toDoubleOrNull() ?: 0.0
-                                val disc  = line.discountPercent.toDoubleOrNull() ?: 0.0
-                                Text("%.1f %s × Rs. %.2f".format(qty, line.unit, price),
+                                val rate  = line.unitPrice.toDoubleOrNull() ?: 0.0
+                                Text("%.1f BOX × %.2f m² × Rs. %.2f".format(qty, line.inBoxSqMtr, rate),
                                     style = MaterialTheme.typography.body2, color = Color.DarkGray)
-                                if (disc > 0) {
-                                    Text("Discount: $disc%",
-                                        style = MaterialTheme.typography.caption,
-                                        color = Color(0xFFD32F2F))
-                                }
+                                Text("Sq.Mtr: %.2f  |  Wt: %.2f KG".format(qty * line.inBoxSqMtr, qty * line.kgPerBox),
+                                    style = MaterialTheme.typography.caption, color = Color.Gray)
                             }
                             val qty   = line.quantity.toDoubleOrNull() ?: 0.0
-                            val price = line.unitPrice.toDoubleOrNull() ?: 0.0
-                            val disc  = line.discountPercent.toDoubleOrNull() ?: 0.0
-                            val lt    = qty * price * (1 - disc / 100.0)
+                            val rate  = line.unitPrice.toDoubleOrNull() ?: 0.0
+                            val lt    = rate * line.inBoxSqMtr * qty
                             Text("Rs. %.2f".format(lt),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp, color = Color(0xFF1976D2))
@@ -1258,11 +1279,13 @@ fun QuickAddCustomerDialog(
                         val created = createCustomer(
                             name = name.value.trim(),
                             customerType = customerType.value,
+                            code = "",
                             contactPerson = contactPerson.value.trim(),
                             phone = phone.value.trim(),
                             email = "", address = "",
                             city = city.value.trim(),
                             state = "", pincode = "", creditLimit = 0.0,
+                            outstandingBalance = 0.0,
                             assignedUserId = user.id,
                             createdByUserId = user.id,
                             territory = user.territory
@@ -1296,23 +1319,17 @@ fun OrderItemForm(
     index: Int,
     line: OrderLineState,
     products: List<Product> = emptyList(),
+    productConfig: ProductConfig = ProductConfig.Default,
     onRemove: () -> Unit,
     onChanged: (OrderLineState) -> Unit,
     onAddMoreLines: (List<OrderLineState>) -> Unit = {}
 ) {
-    val typeOptions = listOf("Floor", "Wall", "Marble", "Other")
-    val finishOptions = listOf("Glossy", "Matt", "Rustic", "Sugar Finish", "Polished", "Other")
-    val unitOptions = listOf("Box", "SqFt", "Pcs")
-    val typeExpanded = remember { mutableStateOf(false) }
-    val finishExpanded = remember { mutableStateOf(false) }
-    val unitExpanded = remember { mutableStateOf(false) }
-
     // Product picker dialog state
     val showProductPicker = remember { mutableStateOf(false) }
     val pickerSearch = remember { mutableStateOf("") }
     val pickerCategory = remember { mutableStateOf("All") }
-    val categories = remember(products) {
-        listOf("All") + products.map { it.category }.filter { it.isNotBlank() }.distinct().sorted()
+    val categories = remember(products, productConfig) {
+        listOf("All") + productConfig.category
     }
     val pickerFiltered = remember(pickerSearch.value, pickerCategory.value, products) {
         products.filter { p ->
@@ -1532,11 +1549,18 @@ fun OrderItemForm(
                             onChanged(line.copy(
                                 productId   = first.id,
                                 productName = first.name,
-                                size        = first.size.ifBlank { line.size },
-                                type        = first.type.ifBlank { line.type },
-                                finish      = first.finish.ifBlank { line.finish },
-                                unit        = first.unit.ifBlank { line.unit },
-                                unitPrice   = if (first.price > 0) "%.2f".format(first.price) else line.unitPrice,
+                                itemNo      = first.code,
+                                size        = first.size,
+                                type        = first.type,
+                                finish      = first.finish,
+                                unit        = first.unit.ifBlank { "Box" },
+                                inBoxSqMtr  = first.boxCoverage ?: 0.0,
+                                kgPerBox    = first.kgPerBox ?: 0.0,
+                                unitPrice   = when {
+                                    (first.ratePerSqm ?: 0.0) > 0 -> "%.2f".format(first.ratePerSqm)
+                                    first.price > 0               -> "%.2f".format(first.price)
+                                    else                          -> line.unitPrice
+                                },
                                 quantity    = "1"
                             ))
                             // Remaining products become new lines
@@ -1545,11 +1569,18 @@ fun OrderItemForm(
                                     OrderLineState(
                                         productId   = p.id,
                                         productName = p.name,
+                                        itemNo      = p.code,
                                         size        = p.size,
-                                        type        = p.type.ifBlank { "Floor" },
-                                        finish      = p.finish.ifBlank { "Glossy" },
+                                        type        = p.type,
+                                        finish      = p.finish,
                                         unit        = p.unit.ifBlank { "Box" },
-                                        unitPrice   = if (p.price > 0) "%.2f".format(p.price) else "",
+                                        inBoxSqMtr  = p.boxCoverage ?: 0.0,
+                                        kgPerBox    = p.kgPerBox ?: 0.0,
+                                        unitPrice   = when {
+                                            (p.ratePerSqm ?: 0.0) > 0 -> "%.2f".format(p.ratePerSqm)
+                                            p.price > 0               -> "%.2f".format(p.price)
+                                            else                      -> ""
+                                        },
                                         quantity    = "1"
                                     )
                                 })
@@ -1581,16 +1612,18 @@ fun OrderItemForm(
 
     Card(elevation = 1.dp, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
+            // ── Header: Item N + remove ─────────────────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Item ${index + 1}", fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                Text("Item ${index + 1}", fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                    modifier = Modifier.weight(1f))
                 IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = "Remove", tint = Color(0xFFD32F2F), modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Delete, contentDescription = "Remove",
+                        tint = Color(0xFFD32F2F), modifier = Modifier.size(18.dp))
                 }
             }
 
-            // Product picker — shows selected chip or "tap to pick" button
+            // ── Product picker ──────────────────────────────────────────────
             if (line.productId != null && line.productName.isNotBlank()) {
-                // Selected product chip
                 Surface(
                     color = MaterialTheme.colors.primary.copy(alpha = 0.08f),
                     shape = RoundedCornerShape(8.dp),
@@ -1608,20 +1641,24 @@ fun OrderItemForm(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(line.productName, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                                 color = MaterialTheme.colors.primary)
-                            val chips = listOfNotNull(
+                            // Auto-filled info row (like web's readonly fields)
+                            val info = listOfNotNull(
+                                line.itemNo.takeIf { it.isNotBlank() }?.let { "# $it" },
                                 line.size.takeIf { it.isNotBlank() },
+                                line.finish.takeIf { it.isNotBlank() },
                                 line.type.takeIf { it.isNotBlank() },
-                                line.finish.takeIf { it.isNotBlank() }
-                            ).joinToString(" • ")
-                            if (chips.isNotBlank())
-                                Text(chips, style = MaterialTheme.typography.caption, color = Color.Gray)
+                                line.unit.takeIf { it.isNotBlank() }
+                            ).joinToString("  ·  ")
+                            if (info.isNotBlank())
+                                Text(info, style = MaterialTheme.typography.caption, color = Color.Gray)
                         }
                         TextButton(
                             onClick = { showProductPicker.value = true },
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                         ) { Text("Change", fontSize = 12.sp) }
                         IconButton(
-                            onClick = { onChanged(line.copy(productId = null, productName = "")) },
+                            onClick = { onChanged(line.copy(productId = null, productName = "",
+                                itemNo = "", size = "", type = "", finish = "", unit = "Box")) },
                             modifier = Modifier.size(24.dp)
                         ) {
                             Icon(Icons.Default.Clear, contentDescription = "Clear",
@@ -1630,7 +1667,6 @@ fun OrderItemForm(
                     }
                 }
             } else {
-                // No product selected — show picker button
                 OutlinedButton(
                     onClick = { showProductPicker.value = true },
                     modifier = Modifier.fillMaxWidth(),
@@ -1643,7 +1679,7 @@ fun OrderItemForm(
                     Text(if (products.isEmpty()) "Loading products…" else "Select Product *",
                         fontWeight = FontWeight.Bold)
                 }
-                // Also allow typing a custom name when no catalog product is chosen
+                // Allow typing a name manually if product isn't in the catalog
                 OutlinedTextField(
                     value = line.productName,
                     onValueChange = { onChanged(line.copy(productName = it)) },
@@ -1652,103 +1688,102 @@ fun OrderItemForm(
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                 )
             }
-            OutlinedTextField(
-                value = line.size,
-                onValueChange = { onChanged(line.copy(size = it)) },
-                label = { Text("Size (e.g. 600x600)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
 
-            // Type + Finish (row)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedTextField(
-                        value = line.type,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Type") },
-                        modifier = Modifier.fillMaxWidth().clickable { typeExpanded.value = true },
-                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                    )
-                    DropdownMenu(expanded = typeExpanded.value, onDismissRequest = { typeExpanded.value = false }) {
-                        typeOptions.forEach { opt ->
-                            DropdownMenuItem(onClick = { onChanged(line.copy(type = opt)); typeExpanded.value = false }) { Text(opt) }
-                        }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ── Quality dropdown (matches web form) ─────────────────────────
+            val qualityOptions = productConfig.quality
+            val qualityExpanded = remember { mutableStateOf(false) }
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = line.quality,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Quality") },
+                    placeholder = { Text("Select quality…", color = Color.LightGray) },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null,
+                            modifier = Modifier.size(18.dp))
                     }
-                }
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedTextField(
-                        value = line.finish,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Finish") },
-                        modifier = Modifier.fillMaxWidth().clickable { finishExpanded.value = true },
-                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                    )
-                    DropdownMenu(expanded = finishExpanded.value, onDismissRequest = { finishExpanded.value = false }) {
-                        finishOptions.forEach { opt ->
-                            DropdownMenuItem(onClick = { onChanged(line.copy(finish = opt)); finishExpanded.value = false }) { Text(opt) }
-                        }
+                )
+                // Invisible overlay — readOnly TextField swallows clicks so we need this
+                Box(modifier = Modifier.matchParentSize().clickable { qualityExpanded.value = true })
+                DropdownMenu(
+                    expanded = qualityExpanded.value,
+                    onDismissRequest = { qualityExpanded.value = false }
+                ) {
+                    DropdownMenuItem(onClick = {
+                        onChanged(line.copy(quality = ""))
+                        qualityExpanded.value = false
+                    }) { Text("— None —", color = Color.Gray) }
+                    qualityOptions.forEach { opt ->
+                        DropdownMenuItem(onClick = {
+                            onChanged(line.copy(quality = opt))
+                            qualityExpanded.value = false
+                        }) { Text(opt) }
                     }
                 }
             }
 
-            // Qty + Unit + Price (row)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ── Qty (BOX) + Rate row ────────────────────────────────────────
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = line.quantity,
                     onValueChange = { onChanged(line.copy(quantity = it)) },
-                    label = { Text("Qty") },
+                    label = { Text("Qty (BOX) *") },
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedTextField(
-                        value = line.unit,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Unit") },
-                        modifier = Modifier.fillMaxWidth().clickable { unitExpanded.value = true },
-                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                    )
-                    DropdownMenu(expanded = unitExpanded.value, onDismissRequest = { unitExpanded.value = false }) {
-                        unitOptions.forEach { opt ->
-                            DropdownMenuItem(onClick = { onChanged(line.copy(unit = opt)); unitExpanded.value = false }) { Text(opt) }
-                        }
-                    }
-                }
                 OutlinedTextField(
                     value = line.unitPrice,
                     onValueChange = { onChanged(line.copy(unitPrice = it)) },
-                    label = { Text("Price *") },
+                    label = { Text("Rate/SqMtr *") },
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
             }
 
-            // Line discount + line total
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = line.discountPercent,
-                    onValueChange = { onChanged(line.copy(discountPercent = it)) },
-                    label = { Text("Disc %") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                )
-                val qty = line.quantity.toDoubleOrNull() ?: 0.0
-                val price = line.unitPrice.toDoubleOrNull() ?: 0.0
-                val disc = line.discountPercent.toDoubleOrNull() ?: 0.0
-                val lt = (qty * price) * (1 - disc / 100.0)
-                Text(
-                    text = "= Rs. %.2f".format(lt),
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1976D2),
-                    modifier = Modifier.weight(1f)
-                )
+            // ── Calculated totals row (qty × sqmtr, weight, total sales) ───
+            val qty      = line.quantity.toDoubleOrNull() ?: 0.0
+            val rate     = line.unitPrice.toDoubleOrNull() ?: 0.0
+            val totalSqM = qty * line.inBoxSqMtr
+            val weight   = qty * line.kgPerBox
+            val lineTotal = rate * totalSqM   // rate/sqmtr × sqmtr = sales
+            if (qty > 0 || rate > 0) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    color = Color(0xFFF0F4FF),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Sq.Mtr", style = MaterialTheme.typography.overline, color = Color.Gray)
+                            Text("%.2f".format(totalSqM), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Weight (KG)", style = MaterialTheme.typography.overline, color = Color.Gray)
+                            Text("%.2f".format(weight), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Total Sales", style = MaterialTheme.typography.overline, color = Color.Gray)
+                            Text(
+                                "Rs. %.2f".format(lineTotal),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = Color(0xFF1976D2)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -1980,6 +2015,14 @@ fun OrderDetailScreen(orderId: Int, user: LoggedInUser, onBack: () -> Unit) {
 
                     // Items list — stored in order_item_sfa table, shown item-by-item
                     itemsIndexed(itemsList) { idx, item ->
+                        val qty = item.optDouble("quantity")
+                        val unitPrice = item.optDouble("unitPrice")
+                        val inBoxSqMtr = if (item.isNull("inBoxSqMtr")) 0.0 else item.optDouble("inBoxSqMtr")
+                        val kgPerBox = if (item.isNull("kgPerBox")) 0.0 else item.optDouble("kgPerBox")
+                        val totalSqMtr = inBoxSqMtr * qty
+                        val totalWeight = kgPerBox * qty
+                        val totalSales = unitPrice * inBoxSqMtr * qty
+
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             elevation = 1.dp,
@@ -2013,31 +2056,108 @@ fun OrderDetailScreen(orderId: Int, user: LoggedInUser, onBack: () -> Unit) {
                                         modifier = Modifier.padding(top = 2.dp))
                                 }
                                 Divider(modifier = Modifier.padding(vertical = 6.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+
+                                // Qty, Rate, Unit row
+                                Row(modifier = Modifier.fillMaxWidth()) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            "%.1f %s × Rs. %.0f".format(
-                                                item.optDouble("quantity"),
-                                                item.optString("unit"),
-                                                item.optDouble("unitPrice")
-                                            ),
-                                            style = MaterialTheme.typography.body2,
-                                            color = Color.DarkGray
-                                        )
-                                        if (item.optDouble("discountPercent") > 0) {
-                                            Text(
-                                                "Discount: ${item.optDouble("discountPercent")}%",
-                                                style = MaterialTheme.typography.caption,
-                                                color = Color(0xFFD32F2F)
-                                            )
+                                        Text("Qty", fontSize = 10.sp, color = Color.Gray)
+                                        Text("%.0f %s".format(qty, item.optString("unit")), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Rate/SQM", fontSize = 10.sp, color = Color.Gray)
+                                        Text("Rs. %.2f".format(unitPrice), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    }
+                                    if (inBoxSqMtr > 0) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("Box Sqr.Mtr", fontSize = 10.sp, color = Color.Gray)
+                                            Text("%.2f".format(inBoxSqMtr), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                         }
                                     }
+                                    if (kgPerBox > 0) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("KG/Box", fontSize = 10.sp, color = Color.Gray)
+                                            Text("%.2f".format(kgPerBox), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                        }
+                                    }
+                                }
+
+                                // Calculated totals row
+                                if (inBoxSqMtr > 0 || kgPerBox > 0) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Divider(color = Color(0xFFEEEEEE))
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        if (inBoxSqMtr > 0) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text("Total Sq.Mtr", fontSize = 10.sp, color = Color.Gray)
+                                                Text("%.2f".format(totalSqMtr), fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color(0xFF00796B))
+                                            }
+                                        }
+                                        if (kgPerBox > 0) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text("Total Weight", fontSize = 10.sp, color = Color.Gray)
+                                                Text("%.2f kg".format(totalWeight), fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color(0xFF5D4037))
+                                            }
+                                        }
+                                        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                                            Text("Total Sales", fontSize = 10.sp, color = Color.Gray)
+                                            Text("Rs. %.0f".format(if (inBoxSqMtr > 0) totalSales else item.optDouble("lineTotal")),
+                                                fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF1976D2))
+                                        }
+                                    }
+                                } else {
+                                    // Fallback: just show line total
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                        Text(
+                                            "Rs. %.0f".format(item.optDouble("lineTotal")),
+                                            fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF1976D2)
+                                        )
+                                    }
+                                }
+
+                                if (item.optDouble("discountPercent") > 0) {
                                     Text(
-                                        "Rs. %.0f".format(item.optDouble("lineTotal")),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp,
-                                        color = Color(0xFF1976D2)
+                                        "Discount: ${item.optDouble("discountPercent")}%",
+                                        style = MaterialTheme.typography.caption,
+                                        color = Color(0xFFD32F2F),
+                                        modifier = Modifier.padding(top = 2.dp)
                                     )
+                                }
+                            }
+                        }
+                    }
+
+                    // Order-level totals summary (Sq.Mtr, Weight)
+                    item {
+                        val allItems = (0 until itemsArr.length()).map { itemsArr.getJSONObject(it) }
+                        val grandSqMtr = allItems.sumOf { i ->
+                            val bx = if (i.isNull("inBoxSqMtr")) 0.0 else i.optDouble("inBoxSqMtr")
+                            bx * i.optDouble("quantity")
+                        }
+                        val grandWeight = allItems.sumOf { i ->
+                            val kg = if (i.isNull("kgPerBox")) 0.0 else i.optDouble("kgPerBox")
+                            kg * i.optDouble("quantity")
+                        }
+                        if (grandSqMtr > 0 || grandWeight > 0) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Card(elevation = 2.dp, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                    if (grandSqMtr > 0) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("Total Sq.Mtr", fontSize = 11.sp, color = Color.Gray)
+                                            Text("%.2f".format(grandSqMtr), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF00796B))
+                                        }
+                                    }
+                                    if (grandWeight > 0) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("Total Weight", fontSize = 11.sp, color = Color.Gray)
+                                            Text("%.2f kg".format(grandWeight), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF5D4037))
+                                        }
+                                    }
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("Total Amount", fontSize = 11.sp, color = Color.Gray)
+                                        Text("Rs. %.0f".format(o.optDouble("totalAmount")), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1976D2))
+                                    }
                                 }
                             }
                         }
@@ -2214,13 +2334,17 @@ suspend fun submitOrder(
                 val lineJson = JSONObject()
                 line.productId?.let { lineJson.put("productId", it) }
                 lineJson.put("productName", line.productName)
+                lineJson.put("itemNo", line.itemNo)
                 lineJson.put("size", line.size)
                 lineJson.put("type", line.type)
                 lineJson.put("finish", line.finish)
                 lineJson.put("unit", line.unit)
+                lineJson.put("quality", line.quality)
+                lineJson.put("inBoxSqMtr", line.inBoxSqMtr)
+                lineJson.put("kgPerBox", line.kgPerBox)
                 lineJson.put("quantity", line.quantity.toDoubleOrNull() ?: 0.0)
                 lineJson.put("unitPrice", line.unitPrice.toDoubleOrNull() ?: 0.0)
-                lineJson.put("discountPercent", line.discountPercent.toDoubleOrNull() ?: 0.0)
+                lineJson.put("discountPercent", 0.0)
                 itemsArr.put(lineJson)
             }
             json.put("items", itemsArr)

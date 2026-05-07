@@ -13,12 +13,13 @@ namespace SfaApi.Controllers
         public ActivityLogsController(AppDbContext db) => _db = db;
 
         // GET /api/activity-logs
-        // ?entityType=Customer&entityId=5&changedByUserId=2&from=2026-01-01&to=2026-12-31&page=1&pageSize=50
+        // ?entityType=Customer&entityId=5&changedByUserId=2&action=Created&from=2026-01-01&to=2026-12-31&page=1&pageSize=50
         [HttpGet]
         public async Task<IActionResult> GetAll(
             [FromQuery] string?   entityType,
             [FromQuery] int?      entityId,
             [FromQuery] int?      changedByUserId,
+            [FromQuery] string?   action,
             [FromQuery] DateTime? from,
             [FromQuery] DateTime? to,
             [FromQuery] int       page     = 1,
@@ -26,11 +27,12 @@ namespace SfaApi.Controllers
         {
             var q = _db.ActivityLogs.AsNoTracking().AsQueryable();
 
-            if (!string.IsNullOrEmpty(entityType))  q = q.Where(a => a.EntityType == entityType);
-            if (entityId.HasValue)                   q = q.Where(a => a.EntityId   == entityId.Value);
-            if (changedByUserId.HasValue)            q = q.Where(a => a.ChangedByUserId == changedByUserId.Value);
-            if (from.HasValue)                       q = q.Where(a => a.Timestamp >= from.Value);
-            if (to.HasValue)                         q = q.Where(a => a.Timestamp <= to.Value);
+            if (!string.IsNullOrEmpty(entityType))     q = q.Where(a => a.EntityType == entityType);
+            if (entityId.HasValue)                      q = q.Where(a => a.EntityId   == entityId.Value);
+            if (changedByUserId.HasValue)               q = q.Where(a => a.ChangedByUserId == changedByUserId.Value);
+            if (!string.IsNullOrEmpty(action))          q = q.Where(a => a.Action == action);
+            if (from.HasValue)                          q = q.Where(a => a.Timestamp >= from.Value);
+            if (to.HasValue)                            q = q.Where(a => a.Timestamp <= to.Value);
 
             var total  = await q.CountAsync();
             var items  = await q

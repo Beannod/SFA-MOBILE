@@ -30,6 +30,8 @@ namespace SfaApi.Data
 		public DbSet<UserMobilePermissions> UserMobilePermissions { get; set; } = null!;
 		/// <summary>Lookup table of Nepal places used for route-planner autocomplete.</summary>
 		public DbSet<NepalPlace> NepalPlaces { get; set; } = null!;
+		/// <summary>Key-value store for product form dropdown options.</summary>
+		public DbSet<ProductConfig> ProductConfigs { get; set; } = null!;
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
@@ -242,6 +244,12 @@ namespace SfaApi.Data
 				.HasIndex(a => new { a.EntityType, a.EntityId });
 			modelBuilder.Entity<ActivityLog>()
 				.HasIndex(a => a.Timestamp);
+
+			// ── ProductConfig ──
+			modelBuilder.Entity<ProductConfig>().ToTable("product_config_sfa");
+			modelBuilder.Entity<ProductConfig>().Property(c => c.ConfigKey).HasMaxLength(32);
+			modelBuilder.Entity<ProductConfig>().Property(c => c.ConfigValue).HasMaxLength(128);
+			modelBuilder.Entity<ProductConfig>().HasIndex(c => new { c.ConfigKey, c.ConfigValue }).IsUnique();
 
 			base.OnModelCreating(modelBuilder);
 		}

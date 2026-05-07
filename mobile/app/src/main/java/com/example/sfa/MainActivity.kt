@@ -39,6 +39,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -143,11 +145,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Full-screen: hide the status bar
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Let system handle status bar and navigation bar areas (no edge-to-edge)
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        // Ensure status bar is visible with light (white) icons
         WindowInsetsControllerCompat(window, window.decorView).let {
-            it.hide(WindowInsetsCompat.Type.statusBars())
-            it.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            it.isAppearanceLightStatusBars = false   // white icons on dark status bar
+            it.isAppearanceLightNavigationBars = true // dark icons on light nav bar
+            it.show(WindowInsetsCompat.Type.statusBars())
+            it.show(WindowInsetsCompat.Type.navigationBars())
         }
         Log.d("SFA", "===== SFA Mobile starting =====")
         Log.d("SFA", "API Base URL: ${BuildConfig.SFA_API_BASE_URL}")
@@ -282,8 +287,15 @@ fun SfaApp(
         }
     }
 
-    when (currentScreen.value) {
-        Screen.LOGIN -> LoginScreen(
+    AnimatedContent(
+        targetState = currentScreen.value == Screen.LOGIN,
+        transitionSpec = {
+            fadeIn(animationSpec = tween(320)) togetherWith fadeOut(animationSpec = tween(200))
+        },
+        label = "login_transition"
+    ) { showLogin ->
+        if (showLogin) {
+            LoginScreen(
             onLoginSuccess = { user ->
                 // Persist session to SharedPreferences
                 val prefs = context.getSharedPreferences("sfa_prefs", android.content.Context.MODE_PRIVATE)
@@ -305,7 +317,7 @@ fun SfaApp(
                 onUserLoggedIn(user.id)
             }
         )
-        else -> {
+        } else {
             val user = loggedInUser.value
             if (user == null) {
                 currentScreen.value = Screen.LOGIN
@@ -503,8 +515,20 @@ fun MainScaffold(
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
-            when (currentScreen.value) {
+        AnimatedContent(
+            targetState = currentScreen.value,
+            modifier = Modifier.padding(padding),
+            transitionSpec = {
+                val direction = if (targetState.ordinal > initialState.ordinal)
+                    AnimatedContentTransitionScope.SlideDirection.Start
+                else
+                    AnimatedContentTransitionScope.SlideDirection.End
+                slideIntoContainer(direction, animationSpec = tween(280, easing = FastOutSlowInEasing)) togetherWith
+                        slideOutOfContainer(direction, animationSpec = tween(220, easing = FastOutLinearInEasing))
+            },
+            label = "screen_transition"
+        ) { screen ->
+            when (screen) {
                 Screen.DASHBOARD -> DashboardScreen(
                     user = user,
                     onNavigate = { currentScreen.value = it },
@@ -1428,6 +1452,222 @@ suspend fun fetchDashboardStats(baseUrl: String, user: LoggedInUser): Map<String
         result.putIfAbsent("lowStockAlerts", 0)
         result.putIfAbsent("teamSize", 0)
         result
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Enhanced Bottom Navigation
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun EnhancedBottomNavigation(
+    currentScreen: MutableState<Screen>,
+    bottomTabs: List<MenuItem>,
+    unreadCount: Int = 0,
+    onNotificationsClick: () -> Unit = {},
+    onMoreClick: () -> Unit = {},
+    onTabClick: (Screen) -> Unit = {}
+) {
+    // Surface extends its white background behind the system navigation bar.
+    // The Row holds the actual nav icons at 56dp; a Spacer below it fills the
+    // system nav bar height so Scaffold correctly offsets the content above.
+    Surface(
+        color = Color.White,
+        elevation = 8.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            bottomTabs.forEach { tab ->
+                val isSelected = currentScreen.value == tab.screen
+                val tabColor by animateColorAsState(
+                    targetValue = if (isSelected) Color(0xFF2196F3) else Color.Gray,
+                    animationSpec = tween(200),
+                    label = "tab_${tab.label}_color"
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable {
+                            currentScreen.value = tab.screen
+                            onTabClick(tab.screen)
+                        },
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        tab.icon,
+                        contentDescription = tab.label,
+                        tint = tabColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        tab.label,
+                        fontSize = 10.sp,
+                        color = tabColor
+                    )
+                }
+            }
+            // Notifications button
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clickable { onNotificationsClick() },
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(contentAlignment = Alignment.TopEnd) {
+                    Icon(Icons.Default.Notifications, contentDescription = "Notifications",
+                        tint = Color.Gray, modifier = Modifier.size(24.dp))
+                    if (unreadCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .background(Color.Red, shape = CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                if (unreadCount > 9) "9+" else unreadCount.toString(),
+                                fontSize = 8.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+                Text("Alerts", fontSize = 10.sp, color = Color.Gray)
+            }
+            // More menu button
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clickable { onMoreClick() },
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(Icons.Default.MoreVert, contentDescription = "More",
+                    tint = Color.Gray, modifier = Modifier.size(24.dp))
+                Text("More", fontSize = 10.sp, color = Color.Gray)
+            }
+            } // end Row
+            // Spacer sized to the system navigation bar height — extends Surface background behind it
+            Spacer(modifier = Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
+        } // end Column
+    } // end Surface
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Enhanced Drawer Content
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun EnhancedDrawerContent(
+    user: LoggedInUser,
+    items: List<MenuItem>,
+    currentScreen: MutableState<Screen>,
+    scaffoldState: ScaffoldState,
+    onLogout: () -> Unit = {}
+) {
+    val scope = rememberCoroutineScope()
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .background(Color.White)
+    ) {
+        // Header with user info
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF2196F3))
+                .padding(16.dp)
+        ) {
+            Column {
+                Text(
+                    user.fullName.ifBlank { user.username },
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    user.designation.ifBlank { user.role },
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+                if (user.territory.isNotBlank()) {
+                    Text(
+                        user.territory,
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+
+        Divider()
+
+        // Menu items
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(items) { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            currentScreen.value = item.screen
+                            scope.launch { scaffoldState.drawerState.close() }
+                        }
+                        .background(
+                            if (currentScreen.value == item.screen) Color(0xFF2196F3).copy(alpha = 0.15f)
+                            else Color.Transparent
+                        )
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        item.icon,
+                        contentDescription = item.label,
+                        tint = if (currentScreen.value == item.screen) Color(0xFF2196F3) else Color.Gray,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .padding(end = 16.dp)
+                    )
+                    Text(
+                        item.label,
+                        fontSize = 14.sp,
+                        color = if (currentScreen.value == item.screen) Color(0xFF2196F3) else Color.Black,
+                        fontWeight = if (currentScreen.value == item.screen) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+
+        Divider()
+
+        // Logout button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    onLogout()
+                    scope.launch { scaffoldState.drawerState.close() }
+                }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Logout, contentDescription = "Logout",
+                tint = Color.Gray, modifier = Modifier.size(24.dp).padding(end = 16.dp))
+            Text("Logout", fontSize = 14.sp, color = Color.Gray)
+        }
     }
 }
 

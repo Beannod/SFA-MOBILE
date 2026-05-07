@@ -3,18 +3,18 @@
  * Include this script in every admin HTML page.
  * It blocks the page behind a login overlay until the user logs in
  * via the same /api/auth/login endpoint used by the mobile app.
- * Session is stored in sessionStorage (cleared on browser tab close).
+ * Session is stored in localStorage (persists across reloads).
  */
 (function () {
     var SESSION_KEY = 'sfa_admin_user';
 
     // ── Check if already logged in ──
     function getUser() {
-        try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)); } catch (e) { return null; }
+        try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch (e) { return null; }
     }
 
-    function setUser(u) { sessionStorage.setItem(SESSION_KEY, JSON.stringify(u)); }
-    function clearUser() { sessionStorage.removeItem(SESSION_KEY); }
+    function setUser(u) { localStorage.setItem(SESSION_KEY, JSON.stringify(u)); }
+    function clearUser() { localStorage.removeItem(SESSION_KEY); }
 
     // ── Build login popup ──
     function showLoginOverlay() {

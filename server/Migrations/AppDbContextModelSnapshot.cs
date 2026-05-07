@@ -446,6 +446,12 @@ namespace SfaApi.Migrations
                     b.Property<string>("Finish")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal?>("InBoxSqMtr")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("KgPerBox")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("LineTotal")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -785,6 +791,13 @@ namespace SfaApi.Migrations
                     b.Property<bool>("IsNewArrival")
                         .HasColumnType("bit");
 
+                    b.Property<string>("ItemNo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("KgPerBox")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -795,6 +808,15 @@ namespace SfaApi.Migrations
                     b.Property<decimal>("Price")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Quality")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("RatePerSqm")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Shade")
                         .HasColumnType("nvarchar(max)");
@@ -815,9 +837,41 @@ namespace SfaApi.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal?>("Weight")
+                        .HasColumnType("decimal(18,2)");
+
                     b.HasKey("Id");
 
                     b.ToTable("product_sfa", (string)null);
+                });
+
+            modelBuilder.Entity("SfaApi.Models.ProductConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ConfigKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("ConfigValue")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConfigKey", "ConfigValue")
+                        .IsUnique();
+
+                    b.ToTable("product_config_sfa", (string)null);
                 });
 
             modelBuilder.Entity("SfaApi.Models.Stock", b =>

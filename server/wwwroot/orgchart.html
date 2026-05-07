@@ -107,7 +107,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f4ff;color:var(--
 <div class="tip" id="tip"></div>
 <script>
 var SESSION_KEY='sfa_admin_user';
-function getUser(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY));}catch(e){return null;}}
+function getUser(){try{return JSON.parse(localStorage.getItem(SESSION_KEY));}catch(e){return null;}}
 var _u=getUser();
 document.getElementById('user-badge').textContent=_u?(_u.fullName||_u.username)+' ('+_u.role+')':'';
 

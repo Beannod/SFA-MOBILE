@@ -38,6 +38,12 @@ app.MapGet("/favicon.ico", async context =>
 	await context.Response.Body.WriteAsync(bytes, 0, bytes.Length);
 });
 
+app.MapGet("/", context =>
+{
+	context.Response.Redirect("/app.html", permanent: false);
+	return Task.CompletedTask;
+});
+
 // app.UseHttpsRedirection(); // Disabled so mobile app can use HTTP
 app.UseStaticFiles(); // Serve static files from wwwroot
 app.UseAuthorization();

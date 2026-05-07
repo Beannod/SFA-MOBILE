@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
 using SfaApi.Models;
 using System.Text;
+using ClosedXML.Excel;
 
 namespace SfaApi.Controllers
 {
@@ -87,6 +88,9 @@ namespace SfaApi.Controllers
 		[HttpPost]
 		public async Task<IActionResult> Create(Product product)
 		{
+			var valErrors = ValidateRequiredFields(product);
+			if (valErrors.Count > 0)
+				return BadRequest(new { error = "Missing required fields", fields = valErrors });
 			if (string.IsNullOrWhiteSpace(product.ItemNo) && !string.IsNullOrWhiteSpace(product.Code))
 				product.ItemNo = product.Code;
 			product.CreatedAt = DateTime.UtcNow;
@@ -114,10 +118,16 @@ namespace SfaApi.Controllers
 			var existing = await _db.Products.FindAsync(id);
 			if (existing == null) return NotFound();
 
+			var valErrors = ValidateRequiredFields(product);
+			if (valErrors.Count > 0)
+				return BadRequest(new { error = "Missing required fields", fields = valErrors });
+
 			existing.Name = product.Name;
 			existing.Description = product.Description;
 			existing.Code = product.Code;
 			existing.ItemNo = string.IsNullOrWhiteSpace(product.ItemNo) ? existing.ItemNo : product.ItemNo;
+			existing.Quality = product.Quality;
+			existing.Weight = product.Weight;
 			existing.Remarks = product.Remarks ?? existing.Remarks;
 			existing.ImageUrl = product.ImageUrl;
 			existing.Category = product.Category;
@@ -127,8 +137,7 @@ namespace SfaApi.Controllers
 			existing.Shade = product.Shade;
 			existing.Type = product.Type;
 			existing.BoxCoverage = product.BoxCoverage;
-			existing.KgPerBox = product.KgPerBox ?? existing.KgPerBox;
-			existing.PiecesPerBox = product.PiecesPerBox;
+			existing.KgPerBox = product.KgPerBox ?? existing.KgPerBox;				existing.RatePerSqm = product.RatePerSqm;			existing.PiecesPerBox = product.PiecesPerBox;
 			existing.Price = product.Price;
 			existing.DealerPrice = product.DealerPrice;
 			existing.Unit = product.Unit;
@@ -178,13 +187,47 @@ namespace SfaApi.Controllers
 		[HttpGet("template")]
 		public IActionResult GetTemplate()
 		{
-			var sb = new StringBuilder();
-			sb.AppendLine("Item No.,Item Description,Series,Size,Box Sqr. Mtr,KG Per Box,Double Name/Item Code,Remarks,New Series");
-			sb.AppendLine("1,Calacatta White 600x600,Calacatta,600x600,1.44,28,CAL-600-WHT,Glossy floor tile,Yes");
-			sb.AppendLine("2,Marble Grey 800x800,Marble Grey,800x800,1.92,34,MBG-800,Matt finish,No");
+			using var workbook = new XLWorkbook();
+			var ws = workbook.Worksheets.Add("Products");
 
-			var bytes = Encoding.UTF8.GetBytes(sb.ToString());
-			return File(bytes, "text/csv", "products-template.csv");
+			var headers = new[] { "Item No.", "Item Description", "QUALITY", "Series", "Size", "Box Sqr. Mtr", "KG Per Box", "Rate Per SQM", "Remarks" };
+			for (int i = 0; i < headers.Length; i++)
+			{
+				var cell = ws.Cell(1, i + 1);
+				cell.Value = headers[i];
+				cell.Style.Font.Bold = true;
+				cell.Style.Fill.BackgroundColor = XLColor.LightSteelBlue;
+				cell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
+			}
+
+			// Sample row 1
+			ws.Cell(2, 1).Value = 1;
+			ws.Cell(2, 2).Value = "Calacatta White 600x600";
+			ws.Cell(2, 3).Value = "Premium";
+			ws.Cell(2, 4).Value = "Calacatta";
+			ws.Cell(2, 5).Value = "600x600";
+			ws.Cell(2, 6).Value = 1.44;
+			ws.Cell(2, 7).Value = 28;
+			ws.Cell(2, 8).Value = 850.00;
+			ws.Cell(2, 9).Value = "Glossy floor tile";
+
+			// Sample row 2
+			ws.Cell(3, 1).Value = 2;
+			ws.Cell(3, 2).Value = "Marble Grey 800x800";
+			ws.Cell(3, 3).Value = "Standard";
+			ws.Cell(3, 4).Value = "Marble Grey";
+			ws.Cell(3, 5).Value = "800x800";
+			ws.Cell(3, 6).Value = 1.92;
+			ws.Cell(3, 7).Value = 34;
+			ws.Cell(3, 8).Value = 920.00;
+			ws.Cell(3, 9).Value = "Matt finish";
+
+			ws.Columns().AdjustToContents();
+
+			var ms = new MemoryStream();
+			workbook.SaveAs(ms);
+			ms.Position = 0;
+			return File(ms, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "products-template.xlsx");
 		}
 
 		// POST /api/products/import
@@ -200,47 +243,82 @@ namespace SfaApi.Controllers
 
 			try
 			{
-				using var reader = new StreamReader(file.OpenReadStream());
-				var headerLine = await reader.ReadLineAsync();
-				if (string.IsNullOrWhiteSpace(headerLine))
-					return BadRequest(new { error = "CSV is empty" });
+				var isExcel = file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase)
+					|| file.FileName.EndsWith(".xls", StringComparison.OrdinalIgnoreCase)
+					|| file.ContentType.Contains("spreadsheetml") || file.ContentType.Contains("ms-excel");
 
-				var headers = ParseCsvLine(headerLine);
-				var headerMap = headers
-					.Select((h, i) => new { key = NormalizeHeader(h), idx = i })
-					.GroupBy(x => x.key)
-					.ToDictionary(g => g.Key, g => g.First().idx);
+				var rows = new List<Dictionary<string, string>>();
 
-				string? GetValue(List<string> cols, params string[] names)
+				if (isExcel)
+				{
+					using var workbook = new XLWorkbook(file.OpenReadStream());
+					var ws = workbook.Worksheet(1);
+					var headerRow = ws.Row(1);
+					var colCount = ws.LastColumnUsed()?.ColumnNumber() ?? 0;
+					var xlHeaders = new List<string>();
+					for (int c = 1; c <= colCount; c++)
+						xlHeaders.Add(headerRow.Cell(c).GetString().Trim());
+
+					var lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
+					for (int r = 2; r <= lastRow; r++)
+					{
+						var row = ws.Row(r);
+						if (row.IsEmpty()) continue;
+						var dict = new Dictionary<string, string>();
+						for (int c = 0; c < xlHeaders.Count; c++)
+							dict[NormalizeHeader(xlHeaders[c])] = row.Cell(c + 1).GetString().Trim();
+						rows.Add(dict);
+					}
+				}
+				else
+				{
+					using var reader = new StreamReader(file.OpenReadStream());
+					var headerLine = await reader.ReadLineAsync();
+					if (string.IsNullOrWhiteSpace(headerLine))
+						return BadRequest(new { error = "CSV is empty" });
+
+					var csvHeaders = ParseCsvLine(headerLine);
+					var normalizedHeaders = csvHeaders.Select(h => NormalizeHeader(h)).ToList();
+
+					string? line;
+					while ((line = await reader.ReadLineAsync()) != null)
+					{
+						if (string.IsNullOrWhiteSpace(line)) continue;
+						var cols = ParseCsvLine(line);
+						var dict = new Dictionary<string, string>();
+						for (int i = 0; i < normalizedHeaders.Count && i < cols.Count; i++)
+							dict[normalizedHeaders[i]] = cols[i].Trim();
+						rows.Add(dict);
+					}
+				}
+
+				string? GetVal(Dictionary<string, string> dict, params string[] names)
 				{
 					foreach (var name in names)
 					{
 						var key = NormalizeHeader(name);
-						if (headerMap.TryGetValue(key, out var idx) && idx < cols.Count)
-							return cols[idx].Trim();
+						if (dict.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v))
+							return v;
 					}
 					return null;
 				}
 
-				string? line;
-				var lineNum = 1;
-				while ((line = await reader.ReadLineAsync()) != null)
+				for (int idx = 0; idx < rows.Count; idx++)
 				{
-					lineNum++;
-					if (string.IsNullOrWhiteSpace(line)) continue;
-
+					var lineNum = idx + 2;
 					try
 					{
-						var cols = ParseCsvLine(line);
-						var itemNo = GetValue(cols, "Item No.", "Item No", "SN", "S.N");
-						var itemDescription = GetValue(cols, "Item Description", "Name", "Product Name");
-						var series = GetValue(cols, "Series", "Category");
-						var size = GetValue(cols, "Size");
-						var boxSqrMtr = GetValue(cols, "Box Sqr. Mtr", "Box Sqr Mtr", "BoxCoverage", "Box Coverage");
-						var kgPerBox = GetValue(cols, "KG Per Box", "Kg Per Box");
-						var code = GetValue(cols, "Double Name/Item Code", "Item Code", "Code");
-						var remarks = GetValue(cols, "Remarks", "Description");
-						var newSeries = GetValue(cols, "New Series", "New", "Is New");
+						var d = rows[idx];
+						var itemNo = GetVal(d, "Item No.", "Item No", "SN", "S.N");
+						var itemDescription = GetVal(d, "Item Description", "Name", "Product Name");
+						var quality = GetVal(d, "Quality", "QUALITY");
+						var series = GetVal(d, "Series", "Category", "Seried", "Example Series", "Series Name");
+						var size = GetVal(d, "Size");
+						var wt = GetVal(d, "WT", "Weight");
+						var boxSqrMtr = GetVal(d, "Box Sqr. Mtr", "Box Sqr Mtr", "BoxCoverage", "Box Coverage");
+						var kgPerBox = GetVal(d, "KG Per Box", "Kg Per Box");					var ratePerSqm = GetVal(d, "Rate Per SQM", "Rate Per Sqm", "RatePerSqm", "Rate/SQM");						var code = GetVal(d, "Double Name/Item Code", "Item Code", "Code");
+						var remarks = GetVal(d, "Remarks", "Description");
+						var newSeries = GetVal(d, "New Series", "New", "Is New");
 
 						if (string.IsNullOrWhiteSpace(itemDescription))
 						{
@@ -269,15 +347,24 @@ namespace SfaApi.Controllers
 						decimal? parsedKgPerBox = null;
 						if (decimal.TryParse(kgPerBox, out var kg)) parsedKgPerBox = kg;
 
+						decimal? parsedRatePerSqm = null;
+						if (decimal.TryParse(ratePerSqm, out var rate)) parsedRatePerSqm = rate;
+
+						decimal? parsedWt = null;
+						if (decimal.TryParse(wt, out var w)) parsedWt = w;
+
 						var product = new Product
 						{
 							Name = itemDescription.Trim(),
 							Code = string.IsNullOrWhiteSpace(code) ? null : code.Trim(),
 							ItemNo = string.IsNullOrWhiteSpace(itemNo) ? null : itemNo.Trim(),
+							Quality = string.IsNullOrWhiteSpace(quality) ? null : quality.Trim(),
 							Category = string.IsNullOrWhiteSpace(series) ? "Tiles" : series.Trim(),
 							Size = string.IsNullOrWhiteSpace(size) ? null : size.Trim(),
+							Weight = parsedWt,
 							BoxCoverage = parsedCoverage,
 							KgPerBox = parsedKgPerBox,
+							RatePerSqm = parsedRatePerSqm,
 							Remarks = string.IsNullOrWhiteSpace(remarks) ? null : remarks.Trim(),
 							Description = null,
 							Price = 0,
@@ -361,6 +448,19 @@ namespace SfaApi.Controllers
 			await _db.SaveChangesAsync();
 
 			return Ok(new { imageUrl = product.ImageUrl });
+		}
+
+		private static List<string> ValidateRequiredFields(Product p)
+		{
+			var errors = new List<string>();
+			if (string.IsNullOrWhiteSpace(p.ItemNo)) errors.Add("Item No. is required");
+			if (string.IsNullOrWhiteSpace(p.Name)) errors.Add("Item Description is required");
+			if (string.IsNullOrWhiteSpace(p.Category)) errors.Add("Series is required");
+			if (string.IsNullOrWhiteSpace(p.Size)) errors.Add("Size is required");
+			if (!(p.BoxCoverage > 0)) errors.Add("Box Sqr. Mtr must be greater than 0");
+			if (!(p.KgPerBox > 0)) errors.Add("KG Per Box must be greater than 0");
+			if (!(p.RatePerSqm > 0)) errors.Add("Rate Per SQM must be greater than 0");
+			return errors;
 		}
 
 		private static bool ParseYesNo(string? value)

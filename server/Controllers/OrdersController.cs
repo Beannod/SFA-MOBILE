@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
 using SfaApi.Models;
+using System.Text;
 
 namespace SfaApi.Controllers
 {
@@ -133,7 +134,9 @@ namespace SfaApi.Controllers
                     i.Quantity,
                     i.UnitPrice,
                     i.DiscountPercent,
-                    i.LineTotal
+                    i.LineTotal,
+                    i.InBoxSqMtr,
+                    i.KgPerBox
                 }),
                 statusLogs = order.StatusLogs?.Select(l => new
                 {
@@ -155,6 +158,20 @@ namespace SfaApi.Controllers
         {
             if (dto.Items == null || dto.Items.Count == 0)
                 return BadRequest(new { message = "Order must have at least one item." });
+
+            // Validate customer is active and approved
+            var customer = await _db.Customers.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == dto.CustomerId);
+            if (customer == null)
+                return BadRequest(new { message = "Customer not found." });
+            if (!customer.IsActive)
+                return BadRequest(new { message = "Cannot create order for inactive customer." });
+            if (customer.ApprovalStatus != "Approved")
+                return BadRequest(new { message = $"Cannot create order for customer with status '{customer.ApprovalStatus}'. Only approved customers are allowed." });
+
+            var lkValidationErrors = await ValidateLkastRequiredFields(dto);
+            if (lkValidationErrors.Count > 0)
+                return BadRequest(new { message = "LKAST required fields are missing.", errors = lkValidationErrors });
 
             var order = new Order
             {
@@ -187,7 +204,9 @@ namespace SfaApi.Controllers
                     Quantity = lineDto.Quantity,
                     UnitPrice = lineDto.UnitPrice,
                     DiscountPercent = lineDto.DiscountPercent,
-                    LineTotal = Math.Round(lineTotal, 2)
+                    LineTotal = Math.Round(lineTotal, 2),
+                    InBoxSqMtr = lineDto.InBoxSqMtr,
+                    KgPerBox = lineDto.KgPerBox
                 });
                 subTotal += Math.Round(lineTotal, 2);
             }
@@ -247,6 +266,13 @@ namespace SfaApi.Controllers
             if (order == null) return NotFound();
             if (order.Status != "Pending")
                 return BadRequest(new { message = $"Cannot edit order in '{order.Status}' status." });
+
+            if (dto.Items == null || dto.Items.Count == 0)
+                return BadRequest(new { message = "Order must have at least one item." });
+
+            var lkValidationErrors = await ValidateLkastRequiredFields(dto);
+            if (lkValidationErrors.Count > 0)
+                return BadRequest(new { message = "LKAST required fields are missing.", errors = lkValidationErrors });
 
             order.CustomerId = dto.CustomerId;
             order.DiscountPercent = dto.DiscountPercent;
@@ -453,6 +479,189 @@ namespace SfaApi.Controllers
 
             return Ok(new { total, pending, todayOrders });
         }
+
+        // ── GET /api/orders/lkast-export ─────────────────────────────────────
+        // Exports order line data in LKAST CSV format.
+        [HttpGet("lkast-export")]
+        public async Task<IActionResult> ExportLkast(
+            [FromQuery] int? orderId,
+            [FromQuery] int? customerId,
+            [FromQuery] int? createdByUserId,
+            [FromQuery] int? managerId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate)
+        {
+            var q = _db.Orders
+                .Include(o => o.Customer)
+                .Include(o => o.CreatedByUser)
+                .Include(o => o.Items!)
+                    .ThenInclude(i => i.Product)
+                .AsQueryable();
+
+            if (orderId.HasValue) q = q.Where(o => o.Id == orderId.Value);
+            if (customerId.HasValue) q = q.Where(o => o.CustomerId == customerId.Value);
+
+            if (managerId.HasValue)
+            {
+                var subtree = await UsersController.GetSubtreeIds(_db, managerId.Value);
+                q = q.Where(o => subtree.Contains(o.CreatedByUserId));
+            }
+            else if (createdByUserId.HasValue)
+            {
+                q = q.Where(o => o.CreatedByUserId == createdByUserId.Value);
+            }
+
+            if (fromDate.HasValue)
+            {
+                var from = fromDate.Value.Date;
+                q = q.Where(o => o.OrderDate >= from);
+            }
+
+            if (toDate.HasValue)
+            {
+                var to = toDate.Value.Date.AddDays(1);
+                q = q.Where(o => o.OrderDate < to);
+            }
+
+            var orders = await q
+                .OrderByDescending(o => o.OrderDate)
+                .ToListAsync();
+
+            var sb = new StringBuilder();
+            sb.AppendLine("Item No.,Item Description,Quality,Series,Size,IN BOX SQ MTR,WEIGHT,Rate,Final Discounted,TAX CODE,LOCATIONS,DEPARTMENT");
+
+            foreach (var order in orders)
+            {
+                if (order.Items == null || order.Items.Count == 0) continue;
+
+                var location = BuildLocation(order.Customer);
+                var department = order.CreatedByUser?.Department ?? string.Empty;
+
+                foreach (var item in order.Items)
+                {
+                    var product = item.Product;
+                    var qty = item.Quantity;
+                    var inBoxSqMtr = product?.BoxCoverage ?? 0m;
+                    var premiumBox = IsBoxUnit(item.Unit) ? qty : 0m;
+                    var weight = product?.KgPerBox != null ? premiumBox * product.KgPerBox.Value : 0m;
+
+                    var row = new[]
+                    {
+                        product?.ItemNo ?? product?.Code ?? string.Empty,
+                        item.ProductName ?? product?.Name ?? string.Empty,
+                        qty.ToString("0.##"),
+                        product?.Category ?? item.Type ?? string.Empty,
+                        item.Size ?? product?.Size ?? string.Empty,
+                        inBoxSqMtr.ToString("0.##"),
+                        weight.ToString("0.##"),
+                        item.UnitPrice.ToString("0.##"),
+                        item.DiscountPercent.ToString("0.##"),
+                        string.Empty, // TAX CODE (not stored in current schema)
+                        location,
+                        department
+                    };
+
+                    sb.AppendLine(string.Join(",", row.Select(EscapeCsv)));
+                }
+            }
+
+            var fileName = orderId.HasValue
+                ? $"lkast-order-{orderId.Value}.csv"
+                : $"lkast-orders-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+
+            var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+            return File(bytes, "text/csv", fileName);
+        }
+
+        private static bool IsBoxUnit(string? unit)
+        {
+            if (string.IsNullOrWhiteSpace(unit)) return true;
+            return unit.Trim().Equals("box", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private async Task<List<string>> ValidateLkastRequiredFields(CreateOrderDto dto)
+        {
+            var errors = new List<string>();
+
+            // LKAST export requires location and department columns to be available.
+            var customer = await _db.Customers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == dto.CustomerId);
+
+            if (customer == null)
+            {
+                errors.Add($"Customer {dto.CustomerId} does not exist.");
+            }
+            else
+            {
+                var hasLocation = !string.IsNullOrWhiteSpace(customer.City)
+                    || !string.IsNullOrWhiteSpace(customer.State)
+                    || !string.IsNullOrWhiteSpace(customer.Territory);
+                if (!hasLocation)
+                    errors.Add("Customer location is required (City, State, or Territory).");
+            }
+
+            var creatorDepartment = await _db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == dto.CreatedByUserId)
+                .Select(u => u.Department)
+                .FirstOrDefaultAsync();
+
+            if (string.IsNullOrWhiteSpace(creatorDepartment))
+                errors.Add("CreatedBy user must have Department.");
+
+            if (dto.Items == null) return errors;
+
+            for (var i = 0; i < dto.Items.Count; i++)
+            {
+                var line = dto.Items[i];
+                var lineNo = i + 1;
+
+                if (line.Quantity <= 0)
+                    errors.Add($"Line {lineNo}: Order in Unit (BOX) must be greater than 0.");
+
+                Product? product = null;
+                if (line.ProductId.HasValue)
+                {
+                    product = await _db.Products
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(p => p.Id == line.ProductId.Value);
+
+                    if (product == null)
+                    {
+                        errors.Add($"Line {lineNo}: Product {line.ProductId.Value} not found in Product Master.");
+                        continue;
+                    }
+                }
+                else
+                {
+                    errors.Add($"Line {lineNo}: ProductId is required.");
+                    continue;
+                }
+            }
+
+            return errors;
+        }
+
+        private static string BuildLocation(Customer? customer)
+        {
+            if (customer == null) return string.Empty;
+
+            var parts = new[] { customer.City, customer.State, customer.Territory }
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x!.Trim());
+
+            return string.Join(" / ", parts);
+        }
+
+        private static string EscapeCsv(string? value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            if (!value.Contains(',') && !value.Contains('"') && !value.Contains('\n') && !value.Contains('\r'))
+                return value;
+
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        }
     }
 
     // ── DTOs ─────────────────────────────────────────────────────────────────
@@ -476,6 +685,8 @@ namespace SfaApi.Controllers
         public decimal Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal DiscountPercent { get; set; }
+        public decimal? InBoxSqMtr { get; set; }
+        public decimal? KgPerBox { get; set; }
     }
 
     public class UpdateStatusDto

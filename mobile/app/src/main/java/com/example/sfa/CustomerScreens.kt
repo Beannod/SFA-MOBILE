@@ -561,6 +561,7 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
     // Fields
     val name = remember { mutableStateOf("") }
     val customerType = remember { mutableStateOf("Dealer") }
+    val customerCode = remember { mutableStateOf("") }
     val contactPerson = remember { mutableStateOf("") }
     val phone = remember { mutableStateOf("") }
     val email = remember { mutableStateOf("") }
@@ -568,7 +569,9 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
     val city = remember { mutableStateOf("") }
     val state = remember { mutableStateOf("") }
     val pincode = remember { mutableStateOf("") }
+    val territory = remember { mutableStateOf(user.territory) }
     val creditLimit = remember { mutableStateOf("") }
+    val outstandingBalance = remember { mutableStateOf("") }
 
     val typeOptions = listOf("Dealer", "Retailer", "Project")
     val typeExpanded = remember { mutableStateOf(false) }
@@ -617,6 +620,7 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
             Spacer(modifier = Modifier.height(12.dp))
             SectionLabel("Shop / Firm Details")
             FormField("Shop / Firm Name *", name)
+            FormField("Customer Code", customerCode)
             FormField("Contact Person", contactPerson)
             FormField("Phone", phone, keyboardType = KeyboardType.Phone)
             FormField("Email", email, keyboardType = KeyboardType.Email)
@@ -637,10 +641,12 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
             FormField("City", city)
             FormField("Province", state)
             FormField("Postal Code", pincode, keyboardType = KeyboardType.Number)
+            FormField("Territory", territory)
 
             Spacer(modifier = Modifier.height(12.dp))
             SectionLabel("Financial")
             FormField("Credit Limit (Rs.)", creditLimit, keyboardType = KeyboardType.Decimal)
+            FormField("Outstanding Balance (Rs.)", outstandingBalance, keyboardType = KeyboardType.Decimal)
 
             errorMsg.value?.let { msg ->
                 Spacer(modifier = Modifier.height(8.dp))
@@ -660,6 +666,7 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
                         val saved = createCustomer(
                             name = name.value.trim(),
                             customerType = customerType.value,
+                            code = customerCode.value.trim(),
                             contactPerson = contactPerson.value.trim(),
                             phone = phone.value.trim(),
                             email = email.value.trim(),
@@ -668,9 +675,10 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
                             state = state.value.trim(),
                             pincode = pincode.value.trim(),
                             creditLimit = creditLimit.value.toDoubleOrNull() ?: 0.0,
+                            outstandingBalance = outstandingBalance.value.toDoubleOrNull() ?: 0.0,
                             assignedUserId = user.id,
                             createdByUserId = user.id,
-                            territory = user.territory
+                            territory = territory.value.trim()
                         )
                         isLoading.value = false
                         if (saved != null) onSaved() else errorMsg.value = "Failed to save customer"
@@ -1346,9 +1354,9 @@ suspend fun fetchCustomerVisits(baseUrl: String, customerId: Int): List<Map<Stri
 }
 
 suspend fun createCustomer(
-    name: String, customerType: String, contactPerson: String,
+    name: String, customerType: String, code: String, contactPerson: String,
     phone: String, email: String, address: String, city: String,
-    state: String, pincode: String, creditLimit: Double,
+    state: String, pincode: String, creditLimit: Double, outstandingBalance: Double,
     assignedUserId: Int, createdByUserId: Int, territory: String
 ): Customer? {
     return withContext(Dispatchers.IO) {
@@ -1365,6 +1373,7 @@ suspend fun createCustomer(
             val json = JSONObject()
             json.put("name", name)
             json.put("customerType", customerType)
+            if (code.isNotBlank()) json.put("code", code)
             json.put("contactPerson", contactPerson)
             json.put("phone", phone)
             json.put("email", email)
@@ -1373,6 +1382,7 @@ suspend fun createCustomer(
             json.put("state", state)
             json.put("pincode", pincode)
             json.put("creditLimit", creditLimit)
+            json.put("outstandingBalance", outstandingBalance)
             json.put("assignedUserId", assignedUserId)
             json.put("createdByUserId", createdByUserId)
             json.put("territory", territory)

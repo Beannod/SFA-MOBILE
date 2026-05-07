@@ -20,6 +20,13 @@ namespace SfaApi.Services
         /// </summary>
         public static bool VerifyPassword(string plainPassword, string hash)
         {
+            if (string.IsNullOrWhiteSpace(plainPassword) || string.IsNullOrWhiteSpace(hash))
+                return false;
+
+            // Backward compatibility for local/dev seed data that may still store plaintext passwords.
+            if (!hash.StartsWith("$2"))
+                return plainPassword == hash;
+
             try
             {
                 return BCrypt.Net.BCrypt.Verify(plainPassword, hash);

@@ -66,8 +66,11 @@ fun ProductListScreen(user: LoggedInUser, onProductClick: (Int) -> Unit) {
     val selectedCategory = remember { mutableStateOf("All") }
     val selectedFilter = remember { mutableStateOf("All") } // All, New Arrivals, Discontinued
     val scope = rememberCoroutineScope()
+    val productConfig = remember { mutableStateOf(ProductConfig.Default) }
 
-    val categories = listOf("All", "Tiles", "Marble", "Granite", "Sanitaryware", "Other")
+    val categories = remember(productConfig.value) {
+        listOf("All") + productConfig.value.category
+    }
     val filters = listOf("All", "New Arrivals", "Discontinued")
 
     fun loadProducts() {
@@ -89,6 +92,10 @@ fun ProductListScreen(user: LoggedInUser, onProductClick: (Int) -> Unit) {
         }
     }
 
+    LaunchedEffect(Unit) {
+        val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
+        productConfig.value = fetchProductConfig(base)
+    }
     LaunchedEffect(selectedCategory.value, selectedFilter.value) { loadProducts() }
 
     val pullRefreshState = rememberPullRefreshState(
@@ -198,6 +205,8 @@ fun ProductListScreen(user: LoggedInUser, onProductClick: (Int) -> Unit) {
 
 @Composable
 fun ProductCatalogCard(product: Product, onClick: () -> Unit) {
+    val labelColor = Color(0xFF757575)
+    val valueColor = Color(0xFF212121)
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onClick() },
         elevation = 3.dp,
@@ -211,12 +220,9 @@ fun ProductCatalogCard(product: Product, onClick: () -> Unit) {
                         product.name,
                         style = MaterialTheme.typography.subtitle1,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (product.code.isNotBlank()) {
-                        Text(product.code, style = MaterialTheme.typography.caption, color = Color.Gray)
-                    }
                 }
                 if (product.isNewArrival) {
                     Surface(color = Color(0xFF4CAF50), shape = RoundedCornerShape(10.dp)) {
@@ -231,60 +237,55 @@ fun ProductCatalogCard(product: Product, onClick: () -> Unit) {
                             fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
+                if (!product.isActive) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Surface(color = Color(0xFF9E9E9E), shape = RoundedCornerShape(10.dp)) {
+                        Text("INACTIVE", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Divider(color = Color(0xFFEEEEEE))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Info grid matching web columns
+            // Row 1: Item No | Quality | Series | Size
+            Row(modifier = Modifier.fillMaxWidth()) {
+                InfoCell("Item No.", product.itemNo.ifBlank { "-" }, Modifier.weight(1f), labelColor, valueColor)
+                InfoCell("Quality", product.quality.ifBlank { "-" }, Modifier.weight(1f), labelColor, valueColor)
+                InfoCell("Series", product.category, Modifier.weight(1f), labelColor, valueColor)
+                InfoCell("Size", product.size.ifBlank { "-" }, Modifier.weight(1f), labelColor, valueColor)
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Details row: category, size, finish, type
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (product.category.isNotBlank()) {
-                    SmallChip(product.category, Color(0xFF1976D2))
-                }
-                if (product.type.isNotBlank()) {
-                    SmallChip(product.type, Color(0xFF7B1FA2))
-                }
-                if (product.size.isNotBlank()) {
-                    SmallChip(product.size, Color(0xFF00796B))
-                }
-                if (product.finish.isNotBlank()) {
-                    SmallChip(product.finish, Color(0xFFF57C00))
-                }
+            // Row 2: WT | Box Sqr.Mtr | KG/Box | Rate/SQM
+            Row(modifier = Modifier.fillMaxWidth()) {
+                InfoCell("WT", product.weight?.let { String.format("%.2f", it) } ?: "-", Modifier.weight(1f), labelColor, valueColor)
+                InfoCell("Box Sqr.Mtr", product.boxCoverage?.let { String.format("%.2f", it) } ?: "-", Modifier.weight(1f), labelColor, valueColor)
+                InfoCell("KG/Box", product.kgPerBox?.let { String.format("%.2f", it) } ?: "-", Modifier.weight(1f), labelColor, valueColor)
+                InfoCell("Rate/SQM", product.ratePerSqm?.let { String.format("%.2f", it) } ?: "-", Modifier.weight(1f), labelColor, valueColor)
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Price row
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "MRP: Rs. ${String.format("%,.2f", product.price)}",
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1976D2),
-                    fontSize = 15.sp
-                )
-                if (product.dealerPrice != null && product.dealerPrice > 0) {
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        "Dealer: Rs. ${String.format("%,.2f", product.dealerPrice)}",
-                        color = Color(0xFF388E3C),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+            // Row 3: Code | Remarks
+            Row(modifier = Modifier.fillMaxWidth()) {
+                InfoCell("Code", product.code.ifBlank { "-" }, Modifier.weight(1f), labelColor, valueColor)
+                InfoCell("Remarks", product.remarks.ifBlank { "-" }, Modifier.weight(2f), labelColor, valueColor)
                 Spacer(modifier = Modifier.weight(1f))
-                Text("/${product.unit}", color = Color.Gray, fontSize = 12.sp)
-            }
-
-            // Coverage info
-            if (product.boxCoverage != null && product.boxCoverage > 0) {
-                Text(
-                    "Box Coverage: ${product.boxCoverage} sq.ft" +
-                            if (product.piecesPerBox != null) " (${product.piecesPerBox} pcs/box)" else "",
-                    style = MaterialTheme.typography.caption,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
             }
         }
+    }
+}
+
+@Composable
+fun InfoCell(label: String, value: String, modifier: Modifier, labelColor: Color, valueColor: Color) {
+    Column(modifier = modifier.padding(end = 4.dp)) {
+        Text(label, fontSize = 10.sp, color = labelColor, maxLines = 1)
+        Text(value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = valueColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -308,11 +309,14 @@ fun SmallChip(text: String, color: Color) {
 // Product Detail Screen
 // ═══════════════════════════════════════════════════════════════════════════════
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
     val product = remember { mutableStateOf<Product?>(null) }
     val stockItems = remember { mutableStateListOf<StockInfo>() }
     val isLoading = remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
 
     LaunchedEffect(productId) {
         val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
@@ -321,14 +325,24 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
         isLoading.value = false
     }
 
+    ModalBottomSheetLayout(
+        sheetState = sheetState,
+        sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        sheetContent = {
+            ChangeHistorySheetContent("Product", productId, sheetState.isVisible)
+        }
+    ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Back button header
         Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colors.primary).padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
-            Text("Product Detail", style = MaterialTheme.typography.h6, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back", tint = Color.White) }
+            Text("Product Detail", style = MaterialTheme.typography.h6, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f))
+            IconButton(onClick = { scope.launch { sheetState.show() } }) {
+                Icon(Icons.Default.Info, contentDescription = "Change History", tint = Color.White)
+            }
         }
 
         if (isLoading.value) {
@@ -396,15 +410,21 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 val specs = listOf(
+                                    "Item No." to p.itemNo,
+                                    "Quality" to p.quality,
                                     "Category" to p.category,
                                     "Type" to p.type,
                                     "Size" to p.size,
+                                    "Weight" to (p.weight?.let { String.format("%.2f", it) } ?: ""),
+                                    "Box Sqr.Mtr" to (p.boxCoverage?.let { String.format("%.2f", it) } ?: ""),
+                                    "KG/Box" to (p.kgPerBox?.let { String.format("%.2f", it) } ?: ""),
+                                    "Rate/SQM" to (p.ratePerSqm?.let { String.format("%.2f", it) } ?: ""),
                                     "Thickness" to p.thickness,
                                     "Finish" to p.finish,
                                     "Shade" to p.shade,
-                                    "Box Coverage" to if (p.boxCoverage != null) "${p.boxCoverage} sq.ft" else "",
                                     "Pieces/Box" to (p.piecesPerBox?.toString() ?: ""),
-                                    "Unit" to p.unit
+                                    "Unit" to p.unit,
+                                    "Remarks" to p.remarks
                                 ).filter { it.second.isNotBlank() }
 
                                 specs.forEachIndexed { index, (label, value) ->
@@ -477,6 +497,7 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
             }
         }
     }
+    } // ModalBottomSheetLayout
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -516,6 +537,33 @@ suspend fun fetchProducts(urlString: String): List<Product> {
         } catch (e: Exception) {
             Log.e("SFA", "fetchProducts error", e)
             emptyList()
+        }
+    }
+}
+
+suspend fun fetchProductConfig(baseUrl: String): ProductConfig {
+    return withContext(Dispatchers.IO) {
+        try {
+            val conn = URL("$baseUrl/api/product-config").openConnection() as HttpURLConnection
+            conn.connectTimeout = 6000; conn.readTimeout = 6000
+            if (conn.responseCode !in 200..299) return@withContext ProductConfig.Default
+            val body = conn.inputStream.bufferedReader().readText()
+            conn.disconnect()
+            val obj = JSONObject(body)
+            fun arr(key: String) = (0 until (obj.optJSONArray(key)?.length() ?: 0))
+                .map { obj.getJSONArray(key).getString(it) }
+                .filter { it.isNotBlank() }
+            val cat = arr("category").ifEmpty { ProductConfig.Default.category }
+            val sz  = arr("size").ifEmpty  { ProductConfig.Default.size }
+            val qty = arr("quality").ifEmpty{ ProductConfig.Default.quality }
+            val typ = arr("type").ifEmpty  { ProductConfig.Default.type }
+            val fin = arr("finish").ifEmpty{ ProductConfig.Default.finish }
+            val shd = arr("shade").ifEmpty { ProductConfig.Default.shade }
+            val unt = arr("unit").ifEmpty  { ProductConfig.Default.unit }
+            ProductConfig(cat, sz, qty, typ, fin, shd, unt)
+        } catch (e: Exception) {
+            Log.e("SFA", "fetchProductConfig error", e)
+            ProductConfig.Default
         }
     }
 }
@@ -572,15 +620,21 @@ fun parseProduct(obj: JSONObject): Product {
         id = obj.optInt("id", 0),
         name = obj.optString("name", ""),
         description = obj.optString("description", ""),
+        itemNo = obj.optString("itemNo", ""),
+        quality = obj.optString("quality", ""),
         code = obj.optString("code", ""),
+        remarks = obj.optString("remarks", ""),
         imageUrl = obj.optString("imageUrl", ""),
         category = obj.optString("category", "Tiles"),
         size = obj.optString("size", ""),
+        weight = if (obj.isNull("weight")) null else obj.optDouble("weight"),
         thickness = obj.optString("thickness", ""),
         finish = obj.optString("finish", ""),
         shade = obj.optString("shade", ""),
         type = obj.optString("type", ""),
         boxCoverage = if (obj.isNull("boxCoverage")) null else obj.optDouble("boxCoverage"),
+        kgPerBox = if (obj.isNull("kgPerBox")) null else obj.optDouble("kgPerBox"),
+        ratePerSqm = if (obj.isNull("ratePerSqm")) null else obj.optDouble("ratePerSqm"),
         piecesPerBox = if (obj.isNull("piecesPerBox")) null else obj.optInt("piecesPerBox"),
         price = obj.optDouble("price", 0.0),
         dealerPrice = if (obj.isNull("dealerPrice")) null else obj.optDouble("dealerPrice"),

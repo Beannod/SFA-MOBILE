@@ -19,6 +19,8 @@ namespace SfaApi.Models
         // ── Quantity ──
         public string Unit { get; set; } = "Box";               // Box, SqFt, Pcs
         public decimal Quantity { get; set; }
+        public decimal? InBoxSqMtr { get; set; }                 // Box Sqr.Mtr (snapshot)
+        public decimal? KgPerBox { get; set; }                   // KG per box (snapshot)
 
         // ── Pricing ──
         public decimal UnitPrice { get; set; }                   // price per unit
