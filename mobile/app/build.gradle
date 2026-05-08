@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.kapt'
 }
 
 // Allow overriding the API base URL via project property `SFA_API_BASE_URL`.
@@ -22,8 +23,8 @@ android {
         applicationId "com.example.sfa"
         minSdk 24
         targetSdk 34
-        versionCode 34
-        versionName "1.33"
+        versionCode 37
+        versionName "1.36"
     }
 
     buildTypes {
@@ -62,7 +63,16 @@ dependencies {
     
     // Coroutines for background work
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
-    
+
+    // Room (local SQLite cache for offline support)
+    def room_version = "2.6.1"
+    implementation "androidx.room:room-runtime:$room_version"
+    implementation "androidx.room:room-ktx:$room_version"
+    kapt "androidx.room:room-compiler:$room_version"
+
+    // WorkManager (background sync when connectivity restored)
+    implementation "androidx.work:work-runtime-ktx:2.9.0"
+
     // Debugging tools
     debugImplementation 'androidx.compose.ui:ui-tooling'
 }

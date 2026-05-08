@@ -7,7 +7,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -18,7 +21,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,31 +40,63 @@ import java.net.URLEncoder
 // Product Catalog Screen
 // ═══════════════════════════════════════════════════════════════════════════════
 
-enum class ProductView { LIST, DETAIL }
+enum class ProductView { LIST, DETAIL, ADD, EDIT }
 
 @Composable
 fun ProductCatalogScreen(user: LoggedInUser) {
     val view = remember { mutableStateOf(ProductView.LIST) }
     val selectedProductId = remember { mutableStateOf(0) }
+    val editProductId = remember { mutableStateOf(0) }
+    val refreshTrigger = remember { mutableStateOf(0) }
 
     when (view.value) {
         ProductView.LIST -> ProductListScreen(
             user = user,
+            refreshTrigger = refreshTrigger.value,
             onProductClick = { id ->
                 selectedProductId.value = id
                 view.value = ProductView.DETAIL
+            },
+            onAddProduct = {
+                view.value = ProductView.ADD
             }
         )
         ProductView.DETAIL -> ProductDetailScreen(
             productId = selectedProductId.value,
-            onBack = { view.value = ProductView.LIST }
+            user = user,
+            onBack = { view.value = ProductView.LIST },
+            onEdit = { id ->
+                editProductId.value = id
+                view.value = ProductView.EDIT
+            },
+            onDeleted = {
+                refreshTrigger.value++
+                view.value = ProductView.LIST
+            }
+        )
+        ProductView.ADD -> AddEditProductScreen(
+            user = user,
+            onBack = { view.value = ProductView.LIST },
+            onSaved = {
+                refreshTrigger.value++
+                view.value = ProductView.LIST
+            }
+        )
+        ProductView.EDIT -> AddEditProductScreen(
+            user = user,
+            editProductId = editProductId.value,
+            onBack = { view.value = ProductView.DETAIL },
+            onSaved = {
+                refreshTrigger.value++
+                view.value = ProductView.DETAIL
+            }
         )
     }
 }
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun ProductListScreen(user: LoggedInUser, onProductClick: (Int) -> Unit) {
+fun ProductListScreen(user: LoggedInUser, refreshTrigger: Int = 0, onProductClick: (Int) -> Unit, onAddProduct: () -> Unit = {}) {
     val products = remember { mutableStateListOf<Product>() }
     val isLoading = remember { mutableStateOf(true) }
     val searchText = remember { mutableStateOf("") }
@@ -73,6 +110,8 @@ fun ProductListScreen(user: LoggedInUser, onProductClick: (Int) -> Unit) {
     }
     val filters = listOf("All", "New Arrivals", "Discontinued")
 
+    val context = LocalContext.current
+    val repo = remember { OfflineRepository(context) }
     fun loadProducts() {
         scope.launch {
             isLoading.value = true
@@ -84,8 +123,8 @@ fun ProductListScreen(user: LoggedInUser, onProductClick: (Int) -> Unit) {
             else params.add("discontinued=false") // hide discontinued by default
             if (searchText.value.isNotBlank()) params.add("search=${URLEncoder.encode(searchText.value.trim(), "UTF-8")}")
 
-            val url = "${base}/api/products" + if (params.isNotEmpty()) "?${params.joinToString("&")}" else ""
-            val fetched = fetchProducts(url)
+            val queryString = params.joinToString("&")
+            val fetched = repo.getProducts(base, queryString)
             products.clear()
             products.addAll(fetched)
             isLoading.value = false
@@ -96,7 +135,7 @@ fun ProductListScreen(user: LoggedInUser, onProductClick: (Int) -> Unit) {
         val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
         productConfig.value = fetchProductConfig(base)
     }
-    LaunchedEffect(selectedCategory.value, selectedFilter.value) { loadProducts() }
+    LaunchedEffect(selectedCategory.value, selectedFilter.value, refreshTrigger) { loadProducts() }
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isLoading.value,
@@ -105,6 +144,27 @@ fun ProductListScreen(user: LoggedInUser, onProductClick: (Int) -> Unit) {
 
     Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
     Column(modifier = Modifier.fillMaxSize()) {
+        // Header with optional Add Product button for admin
+        val isAdmin = user.role.equals("Admin", ignoreCase = true)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Products", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.weight(1f))
+            // Sync button — manually pull fresh data from server
+            IconButton(onClick = { loadProducts() }) {
+                Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = MaterialTheme.colors.primary)
+            }
+            if (isAdmin) {
+                FloatingActionButton(
+                    onClick = onAddProduct,
+                    modifier = Modifier.size(48.dp),
+                    backgroundColor = MaterialTheme.colors.primary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Product", tint = Color.White)
+                }
+            }
+        }
         // Search bar
         OutlinedTextField(
             value = searchText.value,
@@ -311,12 +371,20 @@ fun SmallChip(text: String, color: Color) {
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
+fun ProductDetailScreen(
+    productId: Int,
+    user: LoggedInUser,
+    onBack: () -> Unit,
+    onEdit: (Int) -> Unit = {},
+    onDeleted: () -> Unit = {}
+) {
     val product = remember { mutableStateOf<Product?>(null) }
     val stockItems = remember { mutableStateListOf<StockInfo>() }
     val isLoading = remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
+    val showDeleteDialog = remember { mutableStateOf(false) }
+    val isDeleting = remember { mutableStateOf(false) }
 
     LaunchedEffect(productId) {
         val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
@@ -493,11 +561,77 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                     }
 
                     item { Spacer(modifier = Modifier.height(20.dp)) }
+
+                    // Admin: Edit / Delete actions
+                    val isAdmin = user.role.equals("Admin", ignoreCase = true)
+                    if (isAdmin) {
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { onEdit(productId) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF1565C0))
+                                ) {
+                                    Icon(Icons.Default.Edit, contentDescription = null,
+                                        tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Edit Product", color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                                OutlinedButton(
+                                    onClick = { showDeleteDialog.value = true },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB71C1C))
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = null,
+                                        tint = Color(0xFFB71C1C), modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Delete", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                        item { Spacer(modifier = Modifier.height(20.dp)) }
+                    }
                 }
             }
         }
     }
     } // ModalBottomSheetLayout
+
+    // Delete confirmation dialog
+    if (showDeleteDialog.value) {
+        AlertDialog(
+            onDismissRequest = { if (!isDeleting.value) showDeleteDialog.value = false },
+            title = { Text("Delete Product?", fontWeight = FontWeight.Bold) },
+            text = { Text("This will permanently delete the product. This cannot be undone.", color = Color.DarkGray) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            isDeleting.value = true
+                            val ok = deleteProduct(productId)
+                            isDeleting.value = false
+                            showDeleteDialog.value = false
+                            if (ok) onDeleted()
+                        }
+                    },
+                    enabled = !isDeleting.value,
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFB71C1C))
+                ) {
+                    if (isDeleting.value)
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp))
+                    else Text("Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { if (!isDeleting.value) showDeleteDialog.value = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -514,6 +648,274 @@ data class StockInfo(
     val maxStockLevel: Double?,
     val isLowStock: Boolean
 )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Add / Edit Product Screen (Admin only)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun AddEditProductScreen(
+    user: LoggedInUser,
+    editProductId: Int? = null,
+    onBack: () -> Unit,
+    onSaved: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val isLoading = remember { mutableStateOf(editProductId != null) }
+    val isSaving = remember { mutableStateOf(false) }
+    val errorMsg = remember { mutableStateOf<String?>(null) }
+    val productConfig = remember { mutableStateOf(ProductConfig.Default) }
+
+    val name = remember { mutableStateOf("") }
+    val itemNo = remember { mutableStateOf("") }
+    val code = remember { mutableStateOf("") }
+    val quality = remember { mutableStateOf("") }
+    val category = remember { mutableStateOf("Tiles") }
+    val size = remember { mutableStateOf("") }
+    val finish = remember { mutableStateOf("") }
+    val shade = remember { mutableStateOf("") }
+    val type = remember { mutableStateOf("Floor") }
+    val unit = remember { mutableStateOf("Box") }
+    val price = remember { mutableStateOf("") }
+    val dealerPrice = remember { mutableStateOf("") }
+    val ratePerSqm = remember { mutableStateOf("") }
+    val boxCoverage = remember { mutableStateOf("") }
+    val kgPerBox = remember { mutableStateOf("") }
+    val piecesPerBox = remember { mutableStateOf("") }
+    val thickness = remember { mutableStateOf("") }
+    val description = remember { mutableStateOf("") }
+    val remarks = remember { mutableStateOf("") }
+    val isNewArrival = remember { mutableStateOf(false) }
+    val isDiscontinued = remember { mutableStateOf(false) }
+    val isActive = remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
+        productConfig.value = fetchProductConfig(base)
+        if (editProductId != null) {
+            val p = fetchProductDetail("${base}/api/products/$editProductId")
+            if (p != null) {
+                name.value = p.name
+                itemNo.value = p.itemNo
+                code.value = p.code
+                quality.value = p.quality
+                category.value = p.category
+                size.value = p.size
+                finish.value = p.finish
+                shade.value = p.shade
+                type.value = p.type
+                unit.value = p.unit
+                price.value = if (p.price > 0) p.price.toString() else ""
+                dealerPrice.value = p.dealerPrice?.toString() ?: ""
+                ratePerSqm.value = p.ratePerSqm?.toString() ?: ""
+                boxCoverage.value = p.boxCoverage?.toString() ?: ""
+                kgPerBox.value = p.kgPerBox?.toString() ?: ""
+                piecesPerBox.value = p.piecesPerBox?.toString() ?: ""
+                thickness.value = p.thickness
+                description.value = p.description
+                remarks.value = p.remarks
+                isNewArrival.value = p.isNewArrival
+                isDiscontinued.value = p.isDiscontinued
+                isActive.value = p.isActive
+            }
+        }
+        isLoading.value = false
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colors.primary).padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+            }
+            Text(
+                if (editProductId != null) "Edit Product" else "Add Product",
+                color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        if (isLoading.value) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally).padding(20.dp))
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Required fields section
+                Text("Basic Info", fontWeight = FontWeight.Bold, color = MaterialTheme.colors.primary)
+
+                OutlinedTextField(value = name.value, onValueChange = { name.value = it },
+                    label = { Text("Product Name *") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = itemNo.value, onValueChange = { itemNo.value = it },
+                        label = { Text("Item No.") }, modifier = Modifier.weight(1f), singleLine = true)
+                    OutlinedTextField(value = code.value, onValueChange = { code.value = it },
+                        label = { Text("Code") }, modifier = Modifier.weight(1f), singleLine = true)
+                }
+
+                // Category / Type dropdowns
+                Text("Category", style = MaterialTheme.typography.caption, color = Color.Gray)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(productConfig.value.category) { cat ->
+                        Surface(
+                            color = if (category.value == cat) MaterialTheme.colors.primary.copy(alpha = 0.15f)
+                                    else Color.LightGray.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.clickable { category.value = cat }
+                        ) {
+                            Text(cat, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.caption,
+                                fontWeight = if (category.value == cat) FontWeight.Bold else FontWeight.Normal,
+                                color = if (category.value == cat) MaterialTheme.colors.primary else Color.Gray)
+                        }
+                    }
+                }
+
+                OutlinedTextField(value = size.value, onValueChange = { size.value = it },
+                    label = { Text("Size (e.g. 600x600)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(value = quality.value, onValueChange = { quality.value = it },
+                    label = { Text("Quality") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = finish.value, onValueChange = { finish.value = it },
+                        label = { Text("Finish") }, modifier = Modifier.weight(1f), singleLine = true)
+                    OutlinedTextField(value = shade.value, onValueChange = { shade.value = it },
+                        label = { Text("Shade") }, modifier = Modifier.weight(1f), singleLine = true)
+                }
+
+                // Pricing section
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Pricing & Dimensions", fontWeight = FontWeight.Bold, color = MaterialTheme.colors.primary)
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = price.value, onValueChange = { price.value = it },
+                        label = { Text("MRP (Price) *") }, modifier = Modifier.weight(1f), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                    OutlinedTextField(value = dealerPrice.value, onValueChange = { dealerPrice.value = it },
+                        label = { Text("Dealer Price") }, modifier = Modifier.weight(1f), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                }
+                OutlinedTextField(value = ratePerSqm.value, onValueChange = { ratePerSqm.value = it },
+                    label = { Text("Rate/SQM") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = boxCoverage.value, onValueChange = { boxCoverage.value = it },
+                        label = { Text("Box Sqr.Mtr") }, modifier = Modifier.weight(1f), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                    OutlinedTextField(value = kgPerBox.value, onValueChange = { kgPerBox.value = it },
+                        label = { Text("KG/Box") }, modifier = Modifier.weight(1f), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = piecesPerBox.value, onValueChange = { piecesPerBox.value = it },
+                        label = { Text("Pieces/Box") }, modifier = Modifier.weight(1f), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                    OutlinedTextField(value = thickness.value, onValueChange = { thickness.value = it },
+                        label = { Text("Thickness") }, modifier = Modifier.weight(1f), singleLine = true)
+                }
+
+                // Misc
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Additional Info", fontWeight = FontWeight.Bold, color = MaterialTheme.colors.primary)
+
+                OutlinedTextField(value = description.value, onValueChange = { description.value = it },
+                    label = { Text("Description") }, modifier = Modifier.fillMaxWidth(), maxLines = 3)
+                OutlinedTextField(value = remarks.value, onValueChange = { remarks.value = it },
+                    label = { Text("Remarks") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+
+                // Toggles
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Checkbox(checked = isNewArrival.value, onCheckedChange = { isNewArrival.value = it })
+                        Text("New Arrival", style = MaterialTheme.typography.body2)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Checkbox(checked = isDiscontinued.value, onCheckedChange = { isDiscontinued.value = it })
+                        Text("Discontinued", style = MaterialTheme.typography.body2)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Checkbox(checked = isActive.value, onCheckedChange = { isActive.value = it })
+                        Text("Active", style = MaterialTheme.typography.body2)
+                    }
+                }
+
+                errorMsg.value?.let { msg ->
+                    Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()) {
+                        Text(msg, modifier = Modifier.padding(12.dp),
+                            color = MaterialTheme.colors.error, style = MaterialTheme.typography.body2)
+                    }
+                }
+
+                Button(
+                    onClick = {
+                        if (name.value.isBlank()) { errorMsg.value = "Product name is required"; return@Button }
+                        val priceVal = price.value.toDoubleOrNull()
+                        if (priceVal == null || priceVal < 0) { errorMsg.value = "Enter a valid price"; return@Button }
+                        scope.launch {
+                            isSaving.value = true
+                            errorMsg.value = null
+                            val ok = saveProduct(
+                                editProductId = editProductId,
+                                name = name.value.trim(),
+                                itemNo = itemNo.value.trim(),
+                                code = code.value.trim(),
+                                quality = quality.value.trim(),
+                                category = category.value,
+                                size = size.value.trim(),
+                                finish = finish.value.trim(),
+                                shade = shade.value.trim(),
+                                type = type.value,
+                                unit = unit.value,
+                                price = priceVal,
+                                dealerPrice = dealerPrice.value.toDoubleOrNull(),
+                                ratePerSqm = ratePerSqm.value.toDoubleOrNull(),
+                                boxCoverage = boxCoverage.value.toDoubleOrNull(),
+                                kgPerBox = kgPerBox.value.toDoubleOrNull(),
+                                piecesPerBox = piecesPerBox.value.toIntOrNull(),
+                                thickness = thickness.value.trim(),
+                                description = description.value.trim(),
+                                remarks = remarks.value.trim(),
+                                isNewArrival = isNewArrival.value,
+                                isDiscontinued = isDiscontinued.value,
+                                isActive = isActive.value,
+                                userId = user.id
+                            )
+                            isSaving.value = false
+                            if (ok) onSaved() else errorMsg.value = "Failed to save product. Please try again."
+                        }
+                    },
+                    enabled = !isSaving.value,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    if (isSaving.value) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Saving…", color = Color.White, fontWeight = FontWeight.Bold)
+                    } else {
+                        Icon(Icons.Default.Check, contentDescription = null,
+                            tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            if (editProductId != null) "Save Changes" else "Add Product",
+                            color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Network Functions
@@ -641,6 +1043,100 @@ fun parseProduct(obj: JSONObject): Product {
         unit = obj.optString("unit", "Box"),
         isNewArrival = obj.optBoolean("isNewArrival", false),
         isDiscontinued = obj.optBoolean("isDiscontinued", false),
-        isActive = obj.optBoolean("isActive", true)
+        isActive = obj.optBoolean("isActive", true),
+        isArchived = obj.optBoolean("isArchived", false)
     )
+}
+
+suspend fun saveProduct(
+    editProductId: Int?,
+    name: String,
+    itemNo: String,
+    code: String,
+    quality: String,
+    category: String,
+    size: String,
+    finish: String,
+    shade: String,
+    type: String,
+    unit: String,
+    price: Double,
+    dealerPrice: Double?,
+    ratePerSqm: Double?,
+    boxCoverage: Double?,
+    kgPerBox: Double?,
+    piecesPerBox: Int?,
+    thickness: String,
+    description: String,
+    remarks: String,
+    isNewArrival: Boolean,
+    isDiscontinued: Boolean,
+    isActive: Boolean,
+    userId: Int
+): Boolean {
+    return withContext(Dispatchers.IO) {
+        try {
+            val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
+            val url = if (editProductId != null) "${base}/api/products/$editProductId"
+                      else "${base}/api/products"
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.requestMethod = if (editProductId != null) "PUT" else "POST"
+            conn.doOutput = true
+            conn.connectTimeout = 8000; conn.readTimeout = 8000
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            conn.setRequestProperty("X-User-Id", userId.toString())
+            conn.setRequestProperty("X-Source", "MobileApp")
+
+            val json = JSONObject()
+            json.put("name", name)
+            json.put("itemNo", itemNo)
+            json.put("code", code)
+            json.put("quality", quality)
+            json.put("category", category)
+            json.put("size", size)
+            json.put("finish", finish)
+            json.put("shade", shade)
+            json.put("type", type)
+            json.put("unit", unit)
+            json.put("price", price)
+            if (dealerPrice != null) json.put("dealerPrice", dealerPrice)
+            if (ratePerSqm != null) json.put("ratePerSqm", ratePerSqm)
+            if (boxCoverage != null) json.put("boxCoverage", boxCoverage)
+            if (kgPerBox != null) json.put("kgPerBox", kgPerBox)
+            if (piecesPerBox != null) json.put("piecesPerBox", piecesPerBox)
+            json.put("thickness", thickness)
+            json.put("description", description)
+            json.put("remarks", remarks)
+            json.put("isNewArrival", isNewArrival)
+            json.put("isDiscontinued", isDiscontinued)
+            json.put("isActive", isActive)
+
+            conn.outputStream.use { it.write(json.toString().toByteArray(Charsets.UTF_8)) }
+            val code2 = conn.responseCode
+            Log.d("SFA", "Save product HTTP $code2")
+            conn.disconnect()
+            code2 in 200..299
+        } catch (e: Exception) {
+            Log.e("SFA", "Save product error", e)
+            false
+        }
+    }
+}
+
+suspend fun deleteProduct(productId: Int): Boolean {
+    return withContext(Dispatchers.IO) {
+        try {
+            val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
+            val conn = URL("${base}/api/products/$productId").openConnection() as HttpURLConnection
+            conn.requestMethod = "DELETE"
+            conn.connectTimeout = 8000; conn.readTimeout = 8000
+            val code = conn.responseCode
+            Log.d("SFA", "Delete product HTTP $code")
+            conn.disconnect()
+            code in 200..299
+        } catch (e: Exception) {
+            Log.e("SFA", "Delete product error", e)
+            false
+        }
+    }
 }

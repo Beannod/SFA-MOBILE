@@ -30,6 +30,9 @@
 - [x] Contact person, phone, location (GPS)
 - [x] Credit limit & outstanding balance
 - [x] Customer visit history
+- [x] **Edit customer** — full profile edit from mobile app
+- [x] **Delete customer (mobile, admin only)** — DELETE /api/customers/{id} with confirmation dialog
+- [x] **Soft-delete (archive) — customers** — DELETE sets IsArchived=true; record stays in DB; excluded from all GET queries by default
 
 ## Section 3 — Order Management ✅
 - [x] Add order (tiles/marble — size, type, finish)
@@ -37,52 +40,166 @@
 - [x] Price & discount
 - [x] Order summary & confirmation
 - [x] Edit / cancel order before approval
+- [x] **Order items include SqMtr and KgPerBox** — calculated fields stored on each order item
+- [x] **Manager hierarchy filter** — GET /api/orders?managerId=X returns all orders from the manager's full downline
+- [x] **Order number auto-generation** — format ORD-YYYYMMDD-NNN
+- [x] **Edit order (mobile)** — Pending orders can be edited by the owner or admin; form reopens pre-filled (PUT /api/orders/{id})
+- [x] **Delete order (mobile, admin only)** — DELETE /api/orders/{id} with confirmation dialog
+- [x] **Soft-delete (archive) — orders** — DELETE sets IsArchived=true + Status=Cancelled; record stays in DB; excluded from GET queries
 
-## Section 4 — Product Catalog ⬜
-- [ ] Product images (tiles & marble visuals)
-- [ ] Size, thickness, finish, shade
-- [ ] Box coverage (sq.ft per box)
-- [ ] Price list
-- [ ] New arrival / discontinued tag
+## Section 4 — Product Catalog ✅
+- [x] Product list with full detail (name, code, item no., category, size, thickness, finish, shade, type)
+- [x] Quality field (e.g. First, Export, Economy)
+- [x] Box coverage (sq.mtr per box) and KG per box
+- [x] Rate per SQM pricing field
+- [x] MRP and dealer price
+- [x] Unit: Box / SqFt / Pcs
+- [x] New arrival / discontinued tag
+- [x] Active/inactive flag
+- [x] Product image URL
+- [x] Filter by category, type, finish, new arrivals, discontinued, search text
+- [x] **Product Config** — admin-managed lookup lists for category, size, quality, type, finish, shade, unit (GET/POST /api/product-config)
+- [x] **LKAST CSV import** — bulk product import from LKAST-format CSV
+- [x] **Excel export** — GET /api/products/export downloads product list as .xlsx
+- [x] **Add product (mobile, admin only)** — full product form with all fields (POST /api/products)
+- [x] **Edit product (mobile, admin only)** — edit any field from product detail page (PUT /api/products/{id})
+- [x] **Delete product (mobile, admin only)** — DELETE /api/products/{id} with confirmation dialog
+- [x] **Soft-delete (archive) — products** — DELETE sets IsArchived=true; record stays in DB; excluded from GET queries
+- [x] **Manual sync button (mobile)** — Refresh icon in Customer and Product list headers triggers fresh fetch from server
+- [x] **Pull-to-refresh (mobile)** — Swipe down on Customer / Product / Order list to force refetch from server
 
-## Section 5 — Stock & Availability ⬜
-- [ ] Real-time stock (warehouse-wise)
-- [ ] Low stock alert
-- [ ] Alternative product suggestion
+## Section 5 — Stock & Availability ✅
+- [x] Warehouse-wise stock tracking (quantity available, unit, min/max stock levels)
+- [x] Low stock flag — automatically computed when quantity ≤ min stock level
+- [x] Filter stock by warehouse, product, or low-stock flag
+- [x] GET /api/stock/product/{id} — all warehouse stock for a single product
+- [x] Stock create / update / delete via API
+- [ ] Alternative product suggestion on out-of-stock
 
-## Section 6 — Visit / Attendance Tracking ⬜
-- [ ] Daily check-in / check-out
-- [ ] GPS location capture
-- [ ] Route plan
-- [ ] Visit remarks
+## Section 6 — Visit / Attendance Tracking ✅
+- [x] Daily check-in / check-out with timestamp
+- [x] GPS coordinates captured at check-in and check-out (lat, lng, address)
+- [x] Working hours auto-calculated from check-in/out times
+- [x] Planned route and actual route fields
+- [x] Visit remarks and attendance status
+- [x] Filter by user, date, or month
+- [ ] Route plan visualization on map
 
-## Section 7 — Expense & Travel ⬜
+## Section 7 — Location Tracking ✅
+- [x] Real-time GPS ping logging (POST /api/location) — mobile posts every minute
+- [x] Batch location flush for offline scenarios (POST /api/location/batch)
+- [x] Speed, accuracy, battery level, address per ping
+- [x] Moving / Stationary status auto-detected from speed
+- [x] GET /api/location/latest — most recent ping per user (live map feed)
+- [x] GET /api/location/trail — full GPS trail for a user over a date range
+- [x] Live map view in admin web UI
+
+## Section 8 — Notifications ✅
+- [x] In-app notification storage per user (title, message, entity type/id)
+- [x] Mark single notification as read (PATCH /api/notifications/{id}/read)
+- [x] Mark all notifications as read (PATCH /api/notifications/read-all?userId=X)
+- [x] Filter unread notifications
+- [ ] Push notifications (FCM/APNs)
+
+## Section 9 — Activity / Audit Log ✅
+- [x] Full audit trail — every Create/Update/Delete on any entity is logged
+- [x] Stores entity type, entity id, entity name, action, changed-by user, details, source (MobileApp / WebApp)
+- [x] Filter by entity type, entity id, user, action, date range
+- [x] Paginated response
+- [x] GET /api/activity-logs/entity/{type}/{id} — complete history for a single record
+
+## Section 10 — Expense & Travel ⬜
 - [ ] Daily expense entry
 - [ ] Travel distance (auto/manual)
 - [ ] Bill upload (photo)
 
-## Section 8 — Scheme & Offers ⬜
+## Section 11 — Scheme & Offers ⬜
 - [ ] Current schemes for dealers
 - [ ] Slab discounts
 - [ ] Validity dates
 
-## Section 9 — Order Approval System ⬜
-- [ ] Manager approval
+## Section 12 — Order Approval System ⬜
+- [ ] Manager approval workflow
 - [ ] Discount approval
-- [ ] Status: Pending / Approved / Rejected
+- [ ] Status transitions: Pending → Approved / Rejected
 
-## Section 10 — Payment & Collection ⬜
+## Section 13 — Payment & Collection ⬜
 - [ ] Payment entry
-- [ ] Outstanding view
-- [ ] Due reminders
+- [ ] Outstanding balance view
+- [ ] Due date reminders
 
-## Section 11 — Sales Dashboard ⬜
-- [ ] Today / Month sales
+## Section 14 — Sales Dashboard ⬜
+- [ ] Today / Month sales summary
 - [ ] Target vs Achievement
 - [ ] Top customers
 
-## Section 12 — Reports ⬜
-- [ ] Order history
+## Section 15 — Reports ⬜
+- [ ] Order history report
 - [ ] Customer-wise sales
 - [ ] Product-wise sales
-- [ ] Visit report
+- [ ] Visit / attendance report
+
+---
+
+## 🗓️ Sprint Roadmap (Upcoming)
+
+### Sprint 1 — Order Approval & Mobile Polish *(~2 weeks)*
+**Goal:** Complete the order lifecycle with manager approval flow.
+- [ ] Order status transitions: Draft → Pending → Approved / Rejected
+- [ ] Manager receives notification when a new order is placed
+- [ ] Salesperson notified on approval/rejection
+- [ ] Discount threshold rule — orders above X% discount require approval
+- [ ] Mobile: order status badge and detail view update
+- [ ] Mobile: fix minor UI bugs from current release (themes, navigation)
+
+### Sprint 2 — Sales Dashboard *(~2 weeks)*
+**Goal:** Give salespersons and managers a real-time performance snapshot.
+- [ ] Today's orders count & value
+- [ ] Monthly orders vs last month comparison
+- [ ] Target vs Achievement (manual target entry per user per month)
+- [ ] Top 5 customers this month
+- [ ] Low stock alerts widget on dashboard
+- [ ] Manager dashboard shows team summary (subordinates' totals)
+
+### Sprint 3 — Payment & Collection *(~2 weeks)*
+**Goal:** Track outstanding balances and record payments.
+- [ ] Payment model: amount, mode (Cash/Cheque/UPI), date, reference no.
+- [ ] Link payment to customer
+- [ ] Outstanding balance auto-calculated (credit limit − payments)
+- [ ] Due date on outstanding entries
+- [ ] GET /api/payments?customerId=X
+- [ ] Mobile: Payment entry screen under Customer detail
+
+### Sprint 4 — Expense & Travel *(~2 weeks)*
+**Goal:** Capture field staff expenses for reimbursement.
+- [ ] Expense model: date, category (Fuel/Food/Accommodation/Other), amount, remarks
+- [ ] Travel distance entry (km, manual or GPS-derived)
+- [ ] Bill image upload (photo → stored as file/URL)
+- [ ] Monthly expense summary per user
+- [ ] Manager expense approval
+- [ ] Mobile: Expense entry screen
+
+### Sprint 5 — Scheme & Offers *(~1 week)*
+**Goal:** Show active schemes to salespersons in the field.
+- [ ] Scheme model: name, description, product/category, slab discounts, valid from/to
+- [ ] Admin creates and activates schemes from web UI
+- [ ] Mobile: Schemes tab shows currently active offers
+- [ ] Discount suggestions auto-shown when adding order items
+
+### Sprint 6 — Reports *(~2 weeks)*
+**Goal:** Exportable reports for management review.
+- [ ] Order history report (filter by user, date range, status)
+- [ ] Customer-wise sales report
+- [ ] Product-wise sales report
+- [ ] Visit / attendance report
+- [ ] Expense report per user / team
+- [ ] Excel export for all reports
+- [ ] Web UI: Reports page with date pickers and export buttons
+
+### Sprint 7 — Push Notifications & Route Planning *(~2 weeks)*
+**Goal:** Proactive alerts and smarter field routing.
+- [ ] FCM integration for Android push notifications
+- [ ] Push on: order approved/rejected, new scheme, due payment reminder
+- [ ] Route plan entry — salesperson plans customer visits for the day
+- [ ] Route visualization on map (planned vs actual GPS trail)
+- [ ] Alternative product suggestion when stock is zero

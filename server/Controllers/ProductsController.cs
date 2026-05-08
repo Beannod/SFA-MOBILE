@@ -1,3 +1,4 @@
+﻿using SfaApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
@@ -51,7 +52,7 @@ namespace SfaApi.Controllers
 			[FromQuery] bool? discontinued,
 			[FromQuery] string? search)
 		{
-			var query = _db.Products.AsNoTracking().AsQueryable();
+			var query = _db.Products.AsNoTracking().Where(p => !p.IsArchived).AsQueryable();
 
 			if (!string.IsNullOrEmpty(category))
 				query = query.Where(p => p.Category == category);
@@ -93,7 +94,7 @@ namespace SfaApi.Controllers
 				return BadRequest(new { error = "Missing required fields", fields = valErrors });
 			if (string.IsNullOrWhiteSpace(product.ItemNo) && !string.IsNullOrWhiteSpace(product.Code))
 				product.ItemNo = product.Code;
-			product.CreatedAt = DateTime.UtcNow;
+			product.CreatedAt = NepalTime.Now;
 			_db.Products.Add(product);
 			await _db.SaveChangesAsync();
 		_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
@@ -105,7 +106,7 @@ namespace SfaApi.Controllers
 			ChangedByName   = await ResolveUserName(GetCallerId()),
 			Source     = GetSource(),
 			Details    = $"Code={product.Code}; Category={product.Category}; Price={product.Price}",
-			Timestamp  = DateTime.UtcNow
+			Timestamp  = NepalTime.Now
 		});
 		await _db.SaveChangesAsync();
 			return CreatedAtAction(nameof(Get), new { id = product.Id }, product);
@@ -144,7 +145,7 @@ namespace SfaApi.Controllers
 			existing.IsNewArrival = product.IsNewArrival;
 			existing.IsDiscontinued = product.IsDiscontinued;
 			existing.IsActive = product.IsActive;
-			existing.UpdatedAt = DateTime.UtcNow;
+			existing.UpdatedAt = NepalTime.Now;
 
 			await _db.SaveChangesAsync();
 
@@ -157,7 +158,7 @@ namespace SfaApi.Controllers
 			ChangedByName   = await ResolveUserName(GetCallerId()),
 			Source     = GetSource(),
 			Details    = $"Code={existing.Code}; Category={existing.Category}; Price={existing.Price}; IsActive={existing.IsActive}",
-			Timestamp  = DateTime.UtcNow
+			Timestamp  = NepalTime.Now
 		});
 		await _db.SaveChangesAsync();
 
@@ -169,16 +170,23 @@ namespace SfaApi.Controllers
 		public async Task<IActionResult> Delete(int id)
 		{
 			var existing = await _db.Products.FindAsync(id);
-			if (existing == null) return NotFound();		_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
-		{
-			EntityType = "Product", EntityId = id,
-			EntityName = existing.Name,
-			Action     = "Deleted",
-			ChangedByUserId = GetCallerId(),
-			ChangedByName   = await ResolveUserName(GetCallerId()),
-			Source     = GetSource(),
-			Timestamp  = DateTime.UtcNow
-		});			_db.Products.Remove(existing);
+			if (existing == null) return NotFound();
+
+			existing.IsArchived = true;
+			existing.UpdatedAt = NepalTime.Now;
+
+			_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
+			{
+				EntityType = "Product", EntityId = id,
+				EntityName = existing.Name,
+				Action     = "Archived",
+				ChangedByUserId = GetCallerId(),
+				ChangedByName   = await ResolveUserName(GetCallerId()),
+				Source     = GetSource(),
+				Details    = "Product archived (soft-deleted)",
+				Timestamp  = NepalTime.Now
+			});
+
 			await _db.SaveChangesAsync();
 			return NoContent();
 		}
@@ -228,6 +236,57 @@ namespace SfaApi.Controllers
 			workbook.SaveAs(ms);
 			ms.Position = 0;
 			return File(ms, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "products-template.xlsx");
+		}
+
+		// GET /api/products/export — export all current products to XLSX
+		[HttpGet("export")]
+		public async Task<IActionResult> Export()
+		{
+			var products = await _db.Products.AsNoTracking().OrderBy(p => p.Name).ToListAsync();
+
+			using var workbook = new XLWorkbook();
+			var ws = workbook.Worksheets.Add("Products");
+
+			var headers = new[] { "Id", "Item No.", "Item Description", "Quality", "Category", "Size", "Finish", "Shade", "Type", "Box Sqr. Mtr", "KG Per Box", "Rate Per SQM", "Price", "Dealer Price", "Unit", "Active", "New Arrival", "Discontinued" };
+			for (int i = 0; i < headers.Length; i++)
+			{
+				var cell = ws.Cell(1, i + 1);
+				cell.Value = headers[i];
+				cell.Style.Font.Bold = true;
+				cell.Style.Fill.BackgroundColor = XLColor.LightSteelBlue;
+				cell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
+			}
+
+			int row = 2;
+			foreach (var p in products)
+			{
+				ws.Cell(row, 1).Value = p.Id;
+				ws.Cell(row, 2).Value = p.ItemNo ?? "";
+				ws.Cell(row, 3).Value = p.Name;
+				ws.Cell(row, 4).Value = p.Quality ?? "";
+				ws.Cell(row, 5).Value = p.Category;
+				ws.Cell(row, 6).Value = p.Size ?? "";
+				ws.Cell(row, 7).Value = p.Finish ?? "";
+				ws.Cell(row, 8).Value = p.Shade ?? "";
+				ws.Cell(row, 9).Value = p.Type ?? "";
+				ws.Cell(row, 10).Value = p.BoxCoverage.HasValue ? (double)p.BoxCoverage.Value : 0;
+				ws.Cell(row, 11).Value = p.KgPerBox.HasValue ? (double)p.KgPerBox.Value : 0;
+				ws.Cell(row, 12).Value = p.RatePerSqm.HasValue ? (double)p.RatePerSqm.Value : 0;
+				ws.Cell(row, 13).Value = (double)p.Price;
+				ws.Cell(row, 14).Value = p.DealerPrice.HasValue ? (double)p.DealerPrice.Value : 0;
+				ws.Cell(row, 15).Value = p.Unit;
+				ws.Cell(row, 16).Value = p.IsActive ? "Yes" : "No";
+				ws.Cell(row, 17).Value = p.IsNewArrival ? "Yes" : "No";
+				ws.Cell(row, 18).Value = p.IsDiscontinued ? "Yes" : "No";
+				row++;
+			}
+
+			ws.Columns().AdjustToContents();
+
+			var ms = new MemoryStream();
+			workbook.SaveAs(ms);
+			ms.Position = 0;
+			return File(ms, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"products-export-{NepalTime.Now:yyyyMMdd}.xlsx");
 		}
 
 		// POST /api/products/import
@@ -372,7 +431,7 @@ namespace SfaApi.Controllers
 							IsNewArrival = ParseYesNo(newSeries),
 							IsDiscontinued = false,
 							IsActive = true,
-							CreatedAt = DateTime.UtcNow
+							CreatedAt = NepalTime.Now
 						};
 
 						_db.Products.Add(product);
@@ -397,7 +456,7 @@ namespace SfaApi.Controllers
 					ChangedByName = await ResolveUserName(GetCallerId()),
 					Source = GetSource(),
 					Details = $"Imported {successCount} products, {failCount} failed",
-					Timestamp = DateTime.UtcNow
+					Timestamp = NepalTime.Now
 				});
 				await _db.SaveChangesAsync();
 
@@ -444,7 +503,7 @@ namespace SfaApi.Controllers
 				await file.CopyToAsync(stream);
 
 			product.ImageUrl = $"/product-images/{fileName}";
-			product.UpdatedAt = DateTime.UtcNow;
+			product.UpdatedAt = NepalTime.Now;
 			await _db.SaveChangesAsync();
 
 			return Ok(new { imageUrl = product.ImageUrl });

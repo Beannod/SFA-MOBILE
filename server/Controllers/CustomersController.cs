@@ -1,3 +1,4 @@
+﻿using SfaApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
@@ -56,9 +57,8 @@ namespace SfaApi.Controllers
 			var query = _db.Customers
 				.Include(c => c.AssignedUser)
 				.Include(c => c.CreatedByUser)
+				.Where(c => !c.IsArchived)
 				.AsQueryable();
-
-			// Hierarchy filter — shows all customers assigned to or created by anyone in the manager's subtree
 			if (managerId.HasValue)
 			{
 				var subtree = await UsersController.GetSubtreeIds(_db, managerId.Value);
@@ -165,7 +165,7 @@ namespace SfaApi.Controllers
 		[HttpPost]
 		public async Task<IActionResult> Create(Customer customer)
 		{
-			customer.CreatedAt = DateTime.UtcNow;
+			customer.CreatedAt = NepalTime.Now;
 			customer.ApprovalStatus = "Pending"; // New customers always start as Pending
 			// Fill CreatedByUserId from X-User-Id header if not provided in body
 			var callerId = GetCallerId();
@@ -184,7 +184,7 @@ namespace SfaApi.Controllers
 			ChangedByName   = actorName,
 			Source     = GetSource(),
 			Details    = $"Type={customer.CustomerType}; City={customer.City}; ApprovalStatus=Pending",
-			Timestamp  = DateTime.UtcNow
+			Timestamp  = NepalTime.Now
 		});
 
 		// Notify supervisor (ReportsTo) of creator
@@ -201,7 +201,7 @@ namespace SfaApi.Controllers
 					Message    = $"{creator.FullName} added customer \"{customer.Name}\" — pending approval",
 					EntityType = "Customer",
 					EntityId   = customer.Id,
-					CreatedAt  = DateTime.UtcNow
+					CreatedAt  = NepalTime.Now
 				});
 			}
 		}
@@ -237,7 +237,7 @@ namespace SfaApi.Controllers
 			customer.IsActive = updated.IsActive;
 			if (!string.IsNullOrEmpty(updated.ApprovalStatus))
 				customer.ApprovalStatus = updated.ApprovalStatus;
-			customer.UpdatedAt = DateTime.UtcNow;
+			customer.UpdatedAt = NepalTime.Now;
 		await _db.SaveChangesAsync();
 
 		_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
@@ -249,7 +249,7 @@ namespace SfaApi.Controllers
 			ChangedByName   = await ResolveUserName(GetCallerId() ?? updated.CreatedByUserId),
 			Source     = GetSource(),
 			Details    = $"Name={updated.Name}; City={updated.City}; IsActive={updated.IsActive}",
-			Timestamp  = DateTime.UtcNow
+			Timestamp  = NepalTime.Now
 		});
 		await _db.SaveChangesAsync();
 
@@ -266,7 +266,7 @@ namespace SfaApi.Controllers
 			if (status != "Approved" && status != "Rejected")
 				return BadRequest("ApprovalStatus must be 'Approved' or 'Rejected'");
 			customer.ApprovalStatus = status;
-			customer.UpdatedAt = DateTime.UtcNow;
+			customer.UpdatedAt = NepalTime.Now;
 			await _db.SaveChangesAsync();
 		_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
 		{
@@ -277,7 +277,7 @@ namespace SfaApi.Controllers
 			ChangedByName   = await ResolveUserName(GetCallerId()),
 			Source     = GetSource(),
 			Details    = $"ApprovalStatus changed to {status}",
-			Timestamp  = DateTime.UtcNow
+			Timestamp  = NepalTime.Now
 		});
 		await _db.SaveChangesAsync();
 			return Ok(new { customer.Id, customer.Name, customer.ApprovalStatus });
@@ -288,13 +288,24 @@ namespace SfaApi.Controllers
 		public async Task<IActionResult> Delete(int id)
 		{
 			var customer = await _db.Customers.FindAsync(id);
-			if (customer == null) return NotFound();		_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
-		{
-			EntityType = "Customer", EntityId = id,
-			EntityName = customer.Name,
-			Action     = "Deleted",
-			Timestamp  = DateTime.UtcNow
-		});			_db.Customers.Remove(customer);
+			if (customer == null) return NotFound();
+
+			customer.IsArchived = true;
+			customer.UpdatedAt = NepalTime.Now;
+
+			var callerId = GetCallerId();
+			_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
+			{
+				EntityType = "Customer", EntityId = id,
+				EntityName = customer.Name,
+				Action     = "Archived",
+				ChangedByUserId = callerId,
+				ChangedByName   = await ResolveUserName(callerId),
+				Source     = GetSource(),
+				Details    = "Customer archived (soft-deleted)",
+				Timestamp  = NepalTime.Now
+			});
+
 			await _db.SaveChangesAsync();
 			return NoContent();
 		}
@@ -307,8 +318,8 @@ namespace SfaApi.Controllers
 			if (customer == null) return NotFound();
 
 			visit.CustomerId = id;
-			visit.CreatedAt = DateTime.UtcNow;
-			if (visit.VisitDate == default) visit.VisitDate = DateTime.UtcNow;
+			visit.CreatedAt = NepalTime.Now;
+			if (visit.VisitDate == default) visit.VisitDate = NepalTime.Now;
 
 			_db.CustomerVisits.Add(visit);
 			await _db.SaveChangesAsync();
@@ -452,7 +463,7 @@ namespace SfaApi.Controllers
 								CreditLimit = 0, // Default; user should update manually
 								OutstandingBalance = 0,
 								IsActive = isActive,
-								CreatedAt = DateTime.UtcNow
+								CreatedAt = NepalTime.Now
 							};
 
 							// Lookup Sales Person by name/username/employee code
@@ -506,7 +517,7 @@ namespace SfaApi.Controllers
 					ChangedByName = await ResolveUserName(GetCallerId()),
 					Source = GetSource(),
 					Details = $"Imported {successCount} customers, {failCount} failed",
-					Timestamp = DateTime.UtcNow
+					Timestamp = NepalTime.Now
 				});
 				await _db.SaveChangesAsync();
 

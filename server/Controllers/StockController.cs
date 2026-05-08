@@ -1,3 +1,4 @@
+﻿using SfaApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
@@ -88,7 +89,7 @@ namespace SfaApi.Controllers
             if (existing != null)
                 return BadRequest("Stock entry already exists for this product in this warehouse. Use PUT to update.");
 
-            stock.LastUpdated = DateTime.UtcNow;
+            stock.LastUpdated = NepalTime.Now;
             _db.Stocks.Add(stock);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(GetAll), new { id = stock.Id }, stock);
@@ -105,7 +106,7 @@ namespace SfaApi.Controllers
             existing.Unit = stock.Unit;
             existing.MinStockLevel = stock.MinStockLevel;
             existing.MaxStockLevel = stock.MaxStockLevel;
-            existing.LastUpdated = DateTime.UtcNow;
+            existing.LastUpdated = NepalTime.Now;
 
             await _db.SaveChangesAsync();
             return Ok(existing);

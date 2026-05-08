@@ -35,6 +35,7 @@ namespace SfaApi.Models
 
         // ── Status ──
         public bool IsActive { get; set; } = true;
+        public bool IsArchived { get; set; } = false;   // soft-delete flag
         public string ApprovalStatus { get; set; } = "Pending"; // Pending, Approved, Rejected
 
         // ── Timestamps ──

@@ -25,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -42,7 +43,7 @@ import java.net.URL
 // Order sub-navigation
 // ═══════════════════════════════════════════════════════════════════════════════
 
-enum class OrderView { LIST, CREATE, REVIEW, DETAIL }
+enum class OrderView { LIST, CREATE, REVIEW, DETAIL, EDIT, EDIT_REVIEW }
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -55,6 +56,7 @@ fun OrdersScreen(
 ) {
     val currentView = remember { mutableStateOf(OrderView.LIST) }
     val selectedOrderId = remember { mutableStateOf(0) }
+    val editingOrderId = remember { mutableStateOf(0) }
     val refreshTrigger = remember { mutableStateOf(0) }
     val reviewSnapshot = remember { mutableStateOf<OrderReviewData?>(null) }
     // Customer pre-selected from Customers screen
@@ -104,6 +106,28 @@ fun OrdersScreen(
                         scope.launch { sheetState.hide() }
                     }
                 )
+                OrderView.EDIT -> CreateOrderScreen(
+                    user = user,
+                    editOrderId = editingOrderId.value,
+                    onBack = {
+                        currentView.value = OrderView.DETAIL
+                        scope.launch { sheetState.hide() }
+                    },
+                    onReview = { snapshot ->
+                        reviewSnapshot.value = snapshot
+                        currentView.value = OrderView.EDIT_REVIEW
+                    }
+                )
+                OrderView.EDIT_REVIEW -> if (reviewSnapshot.value != null) OrderReviewScreen(
+                    user = user,
+                    data = reviewSnapshot.value!!,
+                    onBack = { currentView.value = OrderView.EDIT },
+                    onSaved = {
+                        refreshTrigger.value++
+                        currentView.value = OrderView.DETAIL
+                        scope.launch { sheetState.hide() }
+                    }
+                )
                 else -> Box(Modifier.height(1.dp))
             }
         }
@@ -122,10 +146,19 @@ fun OrdersScreen(
                     currentView.value = OrderView.DETAIL
                 }
             )
-            OrderView.DETAIL -> OrderDetailScreen(
+            OrderView.DETAIL, OrderView.EDIT, OrderView.EDIT_REVIEW -> OrderDetailScreen(
                 orderId = selectedOrderId.value,
                 user = user,
                 onBack = {
+                    refreshTrigger.value++
+                    currentView.value = OrderView.LIST
+                },
+                onEdit = { ordId ->
+                    editingOrderId.value = ordId
+                    currentView.value = OrderView.EDIT
+                    scope.launch { sheetState.show() }
+                },
+                onDeleted = {
                     refreshTrigger.value++
                     currentView.value = OrderView.LIST
                 }
@@ -159,21 +192,19 @@ fun OrderListScreen(
     val showTeamView = remember { mutableStateOf(canViewTeam) }
     val canApprove = "approveOrders" in user.allowedFeatures
 
+    val context = LocalContext.current
+    val repo = remember { OfflineRepository(context) }
     fun reload() {
         scope.launch {
             isLoading.value = true
             loadFailed.value = false
             val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
             val fetched = if (showTeamView.value)
-                fetchOrders(base, managerId = user.id)
+                repo.getOrders(base, managerId = user.id)
             else
-                fetchOrders(base, createdByUserId = user.id)
-            if (fetched == null) {
-                loadFailed.value = true
-            } else {
-                orders.clear()
-                orders.addAll(fetched)
-            }
+                repo.getOrders(base, createdByUserId = user.id)
+            orders.clear()
+            orders.addAll(fetched)
             isLoading.value = false
         }
     }
@@ -474,7 +505,13 @@ data class OrderLineState(
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack: () -> Unit, onReview: (OrderReviewData) -> Unit) {
+fun CreateOrderScreen(
+    user: LoggedInUser,
+    preselectedCustomerId: Int = 0,
+    editOrderId: Int? = null,
+    onBack: () -> Unit,
+    onReview: (OrderReviewData) -> Unit
+) {
     val errorMsg = remember { mutableStateOf<String?>(null) }
 
     // Customer picker
@@ -497,7 +534,9 @@ fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack
     // Order items
     val lines = remember { mutableStateListOf(OrderLineState()) }
 
-    // Load customers, products, and product config
+    val isEditMode = editOrderId != null
+
+    // Load customers, products, product config, and (if editing) existing order data
     LaunchedEffect(Unit) {
         val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
         val isAdmin = user.role.equals("Admin", ignoreCase = true)
@@ -518,6 +557,37 @@ fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack
         val fetchedProducts = fetchProducts("${base}/api/products?discontinued=false")
         products.addAll(fetchedProducts)
         productConfig.value = fetchProductConfig(base)
+
+        // If editing, load existing order data
+        if (editOrderId != null) {
+            val existing = fetchOrderDetail(base, editOrderId)
+            if (existing != null) {
+                selectedCustomerId.value = existing.optInt("customerId")
+                discountPercent.value = existing.optDouble("discountPercent").toString()
+                remarks.value = existing.optString("remarks", "")
+                val itemsArr = existing.optJSONArray("items")
+                if (itemsArr != null && itemsArr.length() > 0) {
+                    lines.clear()
+                    for (i in 0 until itemsArr.length()) {
+                        val item = itemsArr.getJSONObject(i)
+                        lines.add(OrderLineState(
+                            productId = if (item.isNull("productId")) null else item.optInt("productId"),
+                            productName = item.optString("productName", ""),
+                            itemNo = item.optString("itemNo", ""),
+                            size = item.optString("size", ""),
+                            type = item.optString("type", ""),
+                            finish = item.optString("finish", ""),
+                            unit = item.optString("unit", "Box"),
+                            quality = item.optString("quality", ""),
+                            inBoxSqMtr = if (item.isNull("inBoxSqMtr")) 0.0 else item.optDouble("inBoxSqMtr"),
+                            kgPerBox = if (item.isNull("kgPerBox")) 0.0 else item.optDouble("kgPerBox"),
+                            quantity = item.optDouble("quantity").toString(),
+                            unitPrice = item.optDouble("unitPrice").toString()
+                        ))
+                    }
+                }
+            }
+        }
     }
 
     Column(modifier = Modifier.fillMaxHeight(0.94f)) {
@@ -540,8 +610,11 @@ fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back",
                     tint = MaterialTheme.colors.primary)
             }
-            Text("New Order", fontWeight = FontWeight.Bold, fontSize = 18.sp,
-                modifier = Modifier.weight(1f))
+            Text(
+                if (isEditMode) "Edit Order" else "New Order",
+                fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                modifier = Modifier.weight(1f)
+            )
         }
         Divider()
 
@@ -878,7 +951,8 @@ fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack
                             remarks = remarks.value,
                             subTotal = subTotal,
                             discountAmount = discAmt,
-                            total = total
+                            total = total,
+                            editOrderId = editOrderId
                         )
                     )
                 },
@@ -887,7 +961,7 @@ fun CreateOrderScreen(user: LoggedInUser, preselectedCustomerId: Int = 0, onBack
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null,
                     tint = Color.White, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Review Order", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(if (isEditMode) "Review Changes" else "Review Order", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -906,7 +980,8 @@ data class OrderReviewData(
     val remarks: String,
     val subTotal: Double,
     val discountAmount: Double,
-    val total: Double
+    val total: Double,
+    val editOrderId: Int? = null
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -945,9 +1020,15 @@ fun OrderReviewScreen(
                     tint = MaterialTheme.colors.primary)
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text("Review Order", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text("Confirm details before placing",
-                    style = MaterialTheme.typography.caption, color = Color.Gray)
+                Text(
+                    if (data.editOrderId != null) "Review Changes" else "Review Order",
+                    fontWeight = FontWeight.Bold, fontSize = 18.sp
+                )
+                Text(
+                    if (data.editOrderId != null) "Confirm changes before saving"
+                    else "Confirm details before placing",
+                    style = MaterialTheme.typography.caption, color = Color.Gray
+                )
             }
         }
         Divider()
@@ -1118,15 +1199,29 @@ fun OrderReviewScreen(
                         scope.launch {
                             isLoading.value = true
                             errorMsg.value = null
-                            val ok = submitOrder(
-                                customerId = data.customer.id,
-                                createdByUserId = user.id,
-                                discountPercent = data.discountPercent,
-                                remarks = data.remarks,
-                                items = data.lines
-                            )
+                            val ok = if (data.editOrderId != null) {
+                                updateOrder(
+                                    orderId = data.editOrderId,
+                                    customerId = data.customer.id,
+                                    createdByUserId = user.id,
+                                    discountPercent = data.discountPercent,
+                                    remarks = data.remarks,
+                                    items = data.lines
+                                )
+                            } else {
+                                submitOrder(
+                                    customerId = data.customer.id,
+                                    createdByUserId = user.id,
+                                    discountPercent = data.discountPercent,
+                                    remarks = data.remarks,
+                                    items = data.lines
+                                )
+                            }
                             isLoading.value = false
-                            if (ok) onSaved() else errorMsg.value = "Failed to place order. Please try again."
+                            if (ok) onSaved() else errorMsg.value = if (data.editOrderId != null)
+                                "Failed to update order. Please try again."
+                            else
+                                "Failed to place order. Please try again."
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -1137,14 +1232,18 @@ fun OrderReviewScreen(
                         CircularProgressIndicator(color = Color.White,
                             modifier = Modifier.size(22.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Placing Order…", color = Color.White, fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold)
+                        Text(
+                            if (data.editOrderId != null) "Saving Changes…" else "Placing Order…",
+                            color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold
+                        )
                     } else {
                         Icon(Icons.Default.Check, contentDescription = null,
                             tint = Color.White, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Confirm & Place Order", color = Color.White, fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold)
+                        Text(
+                            if (data.editOrderId != null) "Save Changes" else "Confirm & Place Order",
+                            color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold
+                        )
                     }
                 }
                 OutlinedButton(
@@ -1795,11 +1894,19 @@ fun OrderItemForm(
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun OrderDetailScreen(orderId: Int, user: LoggedInUser, onBack: () -> Unit) {
+fun OrderDetailScreen(
+    orderId: Int,
+    user: LoggedInUser,
+    onBack: () -> Unit,
+    onEdit: (Int) -> Unit = {},
+    onDeleted: () -> Unit = {}
+) {
     val orderJson = remember { mutableStateOf<JSONObject?>(null) }
     val isLoading = remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
+    val showDeleteDialog = remember { mutableStateOf(false) }
+    val isDeleting = remember { mutableStateOf(false) }
 
     LaunchedEffect(orderId) {
         isLoading.value = true
@@ -1985,6 +2092,44 @@ fun OrderDetailScreen(orderId: Int, user: LoggedInUser, onBack: () -> Unit) {
                                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD32F2F))
                                     ) { Text("Cancel Order", fontWeight = FontWeight.Bold) }
                                 }
+                            }
+                        }
+                    }
+
+                    // ── Edit Order button (owner, Pending only) ─────────────────────────
+                    val status2 = o.optString("status", "Pending")
+                    val ordId2  = o.optInt("id")
+                    val isOwner2 = user.id == o.optInt("createdByUserId")
+                    val isAdmin = user.role.equals("Admin", ignoreCase = true)
+                    if (status2 == "Pending" && isOwner2) {
+                        item {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Button(
+                                onClick = { onEdit(ordId2) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF1565C0))
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null,
+                                    tint = Color.White, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Edit Order", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    // ── Delete Order button (admin only) ────────────────────────────────
+                    if (isAdmin) {
+                        item {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            OutlinedButton(
+                                onClick = { showDeleteDialog.value = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB71C1C))
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null,
+                                    tint = Color(0xFFB71C1C), modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Delete Order", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -2196,6 +2341,44 @@ fun OrderDetailScreen(orderId: Int, user: LoggedInUser, onBack: () -> Unit) {
         }
     }
     } // ModalBottomSheetLayout
+
+    // Delete confirmation dialog
+    if (showDeleteDialog.value) {
+        AlertDialog(
+            onDismissRequest = { if (!isDeleting.value) showDeleteDialog.value = false },
+            title = { Text("Delete Order?", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "This will permanently delete the order and all its items. This cannot be undone.",
+                    color = Color.DarkGray
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            isDeleting.value = true
+                            val ok = deleteOrder(orderId)
+                            isDeleting.value = false
+                            showDeleteDialog.value = false
+                            if (ok) onDeleted()
+                        }
+                    },
+                    enabled = !isDeleting.value,
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFB71C1C))
+                ) {
+                    if (isDeleting.value)
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp))
+                    else Text("Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { if (!isDeleting.value) showDeleteDialog.value = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -2390,6 +2573,81 @@ suspend fun updateOrderStatus(
             code in 200..299
         } catch (e: Exception) {
             Log.e("SFA", "Update order status error", e)
+            false
+        }
+    }
+}
+
+suspend fun updateOrder(
+    orderId: Int,
+    customerId: Int,
+    createdByUserId: Int,
+    discountPercent: Double,
+    remarks: String,
+    items: List<OrderLineState>
+): Boolean {
+    return withContext(Dispatchers.IO) {
+        try {
+            val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
+            val conn = URL("${base}/api/orders/$orderId").openConnection() as HttpURLConnection
+            conn.requestMethod = "PUT"
+            conn.doOutput = true
+            conn.connectTimeout = 8000; conn.readTimeout = 8000
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            conn.setRequestProperty("X-User-Id", createdByUserId.toString())
+            conn.setRequestProperty("X-Source", "MobileApp")
+
+            val json = JSONObject()
+            json.put("customerId", customerId)
+            json.put("createdByUserId", createdByUserId)
+            json.put("discountPercent", discountPercent)
+            json.put("remarks", remarks)
+
+            val itemsArr = JSONArray()
+            items.forEach { line ->
+                val lineJson = JSONObject()
+                line.productId?.let { lineJson.put("productId", it) }
+                lineJson.put("productName", line.productName)
+                lineJson.put("itemNo", line.itemNo)
+                lineJson.put("size", line.size)
+                lineJson.put("type", line.type)
+                lineJson.put("finish", line.finish)
+                lineJson.put("unit", line.unit)
+                lineJson.put("quality", line.quality)
+                lineJson.put("inBoxSqMtr", line.inBoxSqMtr)
+                lineJson.put("kgPerBox", line.kgPerBox)
+                lineJson.put("quantity", line.quantity.toDoubleOrNull() ?: 0.0)
+                lineJson.put("unitPrice", line.unitPrice.toDoubleOrNull() ?: 0.0)
+                lineJson.put("discountPercent", 0.0)
+                itemsArr.put(lineJson)
+            }
+            json.put("items", itemsArr)
+
+            conn.outputStream.use { it.write(json.toString().toByteArray(Charsets.UTF_8)) }
+            val code = conn.responseCode
+            Log.d("SFA", "Update order HTTP $code")
+            conn.disconnect()
+            code in 200..299
+        } catch (e: Exception) {
+            Log.e("SFA", "Update order error", e)
+            false
+        }
+    }
+}
+
+suspend fun deleteOrder(orderId: Int): Boolean {
+    return withContext(Dispatchers.IO) {
+        try {
+            val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
+            val conn = URL("${base}/api/orders/$orderId").openConnection() as HttpURLConnection
+            conn.requestMethod = "DELETE"
+            conn.connectTimeout = 8000; conn.readTimeout = 8000
+            val code = conn.responseCode
+            Log.d("SFA", "Delete order HTTP $code")
+            conn.disconnect()
+            code in 200..299
+        } catch (e: Exception) {
+            Log.e("SFA", "Delete order error", e)
             false
         }
     }

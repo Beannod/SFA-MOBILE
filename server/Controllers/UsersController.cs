@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
 using SfaApi.Models;
@@ -107,7 +107,7 @@ namespace SfaApi.Controllers
 				.Distinct(StringComparer.OrdinalIgnoreCase)
 				.ToList();
 
-			var now = DateTime.UtcNow;
+			var now = NepalTime.Now;
 			if (web)
 			{
 				if (user.WebPermissions == null)
@@ -230,7 +230,7 @@ namespace SfaApi.Controllers
 		[HttpPost]
 		public async Task<IActionResult> Create(User user)
 		{
-			user.CreatedAt = DateTime.UtcNow;
+			user.CreatedAt = NepalTime.Now;
 			user.DesignationLevel = Models.DesignationLevel.For(user.Designation);
 
 			// Hash the password before storing
@@ -258,7 +258,7 @@ namespace SfaApi.Controllers
 				ChangedByName   = await ResolveUserName(GetCallerId()),
 				Source     = GetSource(),
 				Details    = $"Role={user.Role}, Designation={user.Designation}, Territory={user.Territory}",
-				Timestamp  = DateTime.UtcNow
+				Timestamp  = NepalTime.Now
 			});
 			await _db.SaveChangesAsync();
 
@@ -313,7 +313,7 @@ namespace SfaApi.Controllers
 				user.ReportsToId = null;
 			}
 
-		user.UpdatedAt = DateTime.UtcNow;
+		user.UpdatedAt = NepalTime.Now;
 			await _db.SaveChangesAsync();
 
 			_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
@@ -325,7 +325,7 @@ namespace SfaApi.Controllers
 				ChangedByName   = await ResolveUserName(GetCallerId()),
 				Source     = GetSource(),
 				Details    = BuildUserChangeSummary(dto),
-				Timestamp  = DateTime.UtcNow
+				Timestamp  = NepalTime.Now
 			});
 			await _db.SaveChangesAsync();
 
@@ -347,7 +347,7 @@ namespace SfaApi.Controllers
 				ChangedByUserId = GetCallerId(),
 				ChangedByName   = await ResolveUserName(GetCallerId()),
 				Source     = GetSource(),
-				Timestamp  = DateTime.UtcNow
+				Timestamp  = NepalTime.Now
 			});
 			_db.Users.Remove(user);
 			await _db.SaveChangesAsync();

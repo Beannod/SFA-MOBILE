@@ -25,7 +25,8 @@ data class Product(
     val unit: String = "Box",
     val isNewArrival: Boolean = false,
     val isDiscontinued: Boolean = false,
-    val isActive: Boolean = true
+    val isActive: Boolean = true,
+    val isArchived: Boolean = false           // soft-deleted on server
 )
 
 /** Mirrors /api/product-config response — all lists come from DB, fallback to built-in defaults. */

@@ -1,3 +1,4 @@
+﻿using SfaApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
@@ -101,7 +102,7 @@ namespace SfaApi.Controllers
         public async Task<IActionResult> CheckIn([FromBody] CheckInDto dto)
         {
             // Check if already checked in today
-            var today = DateTime.UtcNow.Date;
+            var today = NepalTime.Now.Date;
             var existing = await _db.Attendances
                 .FirstOrDefaultAsync(a => a.UserId == dto.UserId && a.AttendanceDate == today && a.Status == "CheckedIn");
 
@@ -111,7 +112,7 @@ namespace SfaApi.Controllers
             var attendance = new Attendance
             {
                 UserId = dto.UserId,
-                CheckInTime = DateTime.UtcNow,
+                CheckInTime = NepalTime.Now,
                 CheckInLatitude = dto.Latitude,
                 CheckInLongitude = dto.Longitude,
                 CheckInAddress = dto.Address,
@@ -119,7 +120,7 @@ namespace SfaApi.Controllers
                 Remarks = dto.Remarks,
                 Status = "CheckedIn",
                 AttendanceDate = today,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = NepalTime.Now
             };
 
             _db.Attendances.Add(attendance);
@@ -144,7 +145,7 @@ namespace SfaApi.Controllers
             if (attendance.Status == "CheckedOut")
                 return BadRequest("Already checked out.");
 
-            attendance.CheckOutTime = DateTime.UtcNow;
+            attendance.CheckOutTime = NepalTime.Now;
             attendance.CheckOutLatitude = dto.Latitude;
             attendance.CheckOutLongitude = dto.Longitude;
             attendance.CheckOutAddress = dto.Address;
@@ -180,7 +181,7 @@ namespace SfaApi.Controllers
         [HttpGet("today")]
         public async Task<IActionResult> Today([FromQuery] int? userId)
         {
-            var today = DateTime.UtcNow.Date;
+            var today = NepalTime.Now.Date;
             var query = _db.Attendances
                 .Include(a => a.User)
                 .Where(a => a.AttendanceDate == today)
@@ -216,7 +217,7 @@ namespace SfaApi.Controllers
         [HttpGet("count")]
         public async Task<IActionResult> Count([FromQuery] int? userId)
         {
-            var today = DateTime.UtcNow.Date;
+            var today = NepalTime.Now.Date;
             var query = _db.Attendances.AsQueryable();
             if (userId.HasValue)
                 query = query.Where(a => a.UserId == userId.Value);

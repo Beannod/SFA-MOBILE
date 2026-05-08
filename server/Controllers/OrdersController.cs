@@ -1,3 +1,4 @@
+﻿using SfaApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
@@ -16,7 +17,7 @@ namespace SfaApi.Controllers
         // ── Helpers ──────────────────────────────────────────────────────────
         private string GenerateOrderNumber()
         {
-            var today = DateTime.Now.ToString("yyyyMMdd");
+            var today = NepalTime.Now.ToString("yyyyMMdd");
             var todayCount = _db.Orders.Count(o => o.OrderDate.Date == DateTime.Today) + 1;
             return $"ORD-{today}-{todayCount:D3}";
         }
@@ -57,9 +58,8 @@ namespace SfaApi.Controllers
 			var q = _db.Orders
 				.Include(o => o.Customer)
 				.Include(o => o.Items)
+				.Where(o => !o.IsArchived)
 				.AsQueryable();
-
-			if (customerId.HasValue) q = q.Where(o => o.CustomerId == customerId.Value);
 
 			// Hierarchy filter — shows all orders created by anyone in the manager's subtree
 			if (managerId.HasValue)
@@ -181,8 +181,8 @@ namespace SfaApi.Controllers
                 Status = "Pending",
                 DiscountPercent = dto.DiscountPercent,
                 Remarks = dto.Remarks,
-                OrderDate = DateTime.Now,
-                CreatedAt = DateTime.Now
+                OrderDate = NepalTime.Now,
+                CreatedAt = NepalTime.Now
             };
 
             // Build items & compute totals
@@ -230,7 +230,7 @@ namespace SfaApi.Controllers
                 ChangedByName   = actorName,
                 Source     = GetSource(),
                 Details    = $"CustomerId={dto.CustomerId}; Total={order.TotalAmount}; Items={order.Items.Count}",
-                Timestamp  = DateTime.UtcNow
+                Timestamp  = NepalTime.Now
             });
 
             // Notify supervisor (ReportsTo) of creator
@@ -245,7 +245,7 @@ namespace SfaApi.Controllers
                     Message    = $"{creator.FullName} created order {order.OrderNumber} for Rs.{order.TotalAmount:N0}",
                     EntityType = "Order",
                     EntityId   = order.Id,
-                    CreatedAt  = DateTime.UtcNow
+                    CreatedAt  = NepalTime.Now
                 });
             }
 
@@ -277,7 +277,7 @@ namespace SfaApi.Controllers
             order.CustomerId = dto.CustomerId;
             order.DiscountPercent = dto.DiscountPercent;
             order.Remarks = dto.Remarks;
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = NepalTime.Now;
 
             // Remove old items
             _db.OrderItems.RemoveRange(order.Items!);
@@ -323,7 +323,7 @@ namespace SfaApi.Controllers
                 ChangedByName   = await ResolveUserName(GetCallerId() ?? dto.CreatedByUserId),
                 Source     = GetSource(),
                 Details    = $"Total={order.TotalAmount}; Items={newItems.Count}",
-                Timestamp  = DateTime.UtcNow
+                Timestamp  = NepalTime.Now
             });
             await _db.SaveChangesAsync();
 
@@ -356,7 +356,7 @@ namespace SfaApi.Controllers
                 ChangedByUserId = statusCallerId,
                 ChangedByName   = changerName,
                 Remarks         = dto.Remarks,
-                ChangedAt       = DateTime.Now
+                ChangedAt       = NepalTime.Now
             });
 
             _db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
@@ -368,11 +368,11 @@ namespace SfaApi.Controllers
                 ChangedByName   = changerName,
                 Source     = GetSource(),
                 Details    = $"{order.Status}→{dto.Status}" + (dto.Remarks != null ? $" ({dto.Remarks})" : ""),
-                Timestamp  = DateTime.UtcNow
+                Timestamp  = NepalTime.Now
             });
 
             order.Status    = dto.Status;
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = NepalTime.Now;
             await _db.SaveChangesAsync();
 
             return Ok(new { order.Id, order.OrderNumber, order.Status });
@@ -405,34 +405,35 @@ namespace SfaApi.Controllers
         }
 
         // ── DELETE /api/orders/{id} ──────────────────────────────────────────
-        // Cancel order (only if Pending)
+        // Archives (soft-deletes) a Pending order
         [HttpDelete("{id}")]
         public async Task<IActionResult> Cancel(int id)
         {
             var order = await _db.Orders.FindAsync(id);
             if (order == null) return NotFound();
             if (order.Status != "Pending")
-                return BadRequest(new { message = $"Cannot cancel order in '{order.Status}' status." });
+                return BadRequest(new { message = $"Cannot archive order in '{order.Status}' status." });
 
+            order.IsArchived = true;
             order.Status = "Cancelled";
-            order.UpdatedAt = DateTime.Now;
+            order.UpdatedAt = NepalTime.Now;
 
             var cancelCallerId = GetCallerId();
             _db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
             {
                 EntityType = "Order", EntityId = id,
                 EntityName = order.OrderNumber,
-                Action     = "Cancelled",
+                Action     = "Archived",
                 ChangedByUserId = cancelCallerId,
                 ChangedByName   = await ResolveUserName(cancelCallerId),
                 Source     = GetSource(),
-                Details    = "Order cancelled",
-                Timestamp  = DateTime.UtcNow
+                Details    = "Order archived (soft-deleted)",
+                Timestamp  = NepalTime.Now
             });
 
             await _db.SaveChangesAsync();
 
-            return Ok(new { message = "Order cancelled." });
+            return Ok(new { message = "Order archived." });
         }
 
         // ── GET /api/orders/{id}/items ─────────────────────────────────────
@@ -567,7 +568,7 @@ namespace SfaApi.Controllers
 
             var fileName = orderId.HasValue
                 ? $"lkast-order-{orderId.Value}.csv"
-                : $"lkast-orders-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+                : $"lkast-orders-{NepalTime.Now:yyyyMMdd-HHmmss}.csv";
 
             var bytes = Encoding.UTF8.GetBytes(sb.ToString());
             return File(bytes, "text/csv", fileName);

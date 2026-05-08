@@ -35,6 +35,7 @@ namespace SfaApi.Models
 		public bool IsNewArrival { get; set; }
 		public bool IsDiscontinued { get; set; }
 		public bool IsActive { get; set; } = true;
+        public bool IsArchived { get; set; } = false;   // soft-delete flag
 
 		// ── Timestamps ──
 		public DateTime CreatedAt { get; set; }

@@ -1,3 +1,4 @@
+﻿using SfaApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
@@ -34,7 +35,7 @@ namespace SfaApi.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(Warehouse wh)
         {
-            wh.CreatedAt = DateTime.UtcNow;
+            wh.CreatedAt = NepalTime.Now;
             _db.Warehouses.Add(wh);
             await _db.SaveChangesAsync();
             return CreatedAtAction(nameof(Get), new { id = wh.Id }, wh);

@@ -157,6 +157,8 @@ class MainActivity : ComponentActivity() {
         Log.d("SFA", "===== SFA Mobile starting =====")
         Log.d("SFA", "API Base URL: ${BuildConfig.SFA_API_BASE_URL}")
         createNotificationChannel()
+        // Schedule periodic background sync (flushes offline queue when online)
+        SyncWorker.schedulePeriodicSync(this)
         // Request POST_NOTIFICATIONS permission on Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {

@@ -22,5 +22,6 @@ data class Customer(
     val createdByUserName: String = "",
     val territory: String = "",
     val isActive: Boolean = true,
-    val approvalStatus: String = "Pending"  // Pending, Approved, Rejected
+    val approvalStatus: String = "Pending",  // Pending, Approved, Rejected
+    val isArchived: Boolean = false           // soft-deleted on server
 )

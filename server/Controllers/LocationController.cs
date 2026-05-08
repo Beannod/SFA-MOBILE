@@ -1,3 +1,4 @@
+﻿using SfaApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
@@ -31,8 +32,8 @@ namespace SfaApi.Controllers
                 BatteryLevel = dto.BatteryLevel,
                 Address      = dto.Address,
                 Status       = dto.Status ?? (dto.Speed > 0.5 ? "Moving" : "Stationary"),
-                RecordedAt   = dto.RecordedAt == default ? DateTime.UtcNow : dto.RecordedAt,
-                CreatedAt    = DateTime.UtcNow
+                RecordedAt   = dto.RecordedAt == default ? NepalTime.Now : dto.RecordedAt,
+                CreatedAt    = NepalTime.Now
             };
 
             _db.LocationLogs.Add(log);
@@ -59,8 +60,8 @@ namespace SfaApi.Controllers
                 BatteryLevel = dto.BatteryLevel,
                 Address      = dto.Address,
                 Status       = dto.Status ?? (dto.Speed > 0.5 ? "Moving" : "Stationary"),
-                RecordedAt   = dto.RecordedAt == default ? DateTime.UtcNow : dto.RecordedAt,
-                CreatedAt    = DateTime.UtcNow
+                RecordedAt   = dto.RecordedAt == default ? NepalTime.Now : dto.RecordedAt,
+                CreatedAt    = NepalTime.Now
             }).ToList();
 
             _db.LocationLogs.AddRange(logs);
@@ -105,7 +106,7 @@ namespace SfaApi.Controllers
                     l.Status,
                     l.Address,
                     l.RecordedAt,
-                    minutesAgo  = (int)Math.Round((DateTime.UtcNow - l.RecordedAt).TotalMinutes)
+                    minutesAgo  = (int)Math.Round((NepalTime.Now - l.RecordedAt).TotalMinutes)
                 });
             }
             return Ok(result);
@@ -124,7 +125,7 @@ namespace SfaApi.Controllers
         [HttpGet("user/{id}")]
         public async Task<IActionResult> GetUserTrail(int id, [FromQuery] DateTime? date)
         {
-            var day = (date ?? DateTime.UtcNow).Date;
+            var day = (date ?? NepalTime.Now).Date;
 
             var trail = await _db.LocationLogs
                 .AsNoTracking()
@@ -155,11 +156,11 @@ namespace SfaApi.Controllers
         [HttpGet("count")]
         public async Task<IActionResult> GetCount()
         {
-            var today      = DateTime.UtcNow.Date;
+            var today      = NepalTime.Now.Date;
             var total      = await _db.LocationLogs.CountAsync();
             var todayCount = await _db.LocationLogs.CountAsync(l => l.RecordedAt.Date == today);
             var activeUsers = await _db.LocationLogs
-                .Where(l => l.RecordedAt >= DateTime.UtcNow.AddMinutes(-10))
+                .Where(l => l.RecordedAt >= NepalTime.Now.AddMinutes(-10))
                 .Select(l => l.UserId)
                 .Distinct()
                 .CountAsync();
@@ -174,7 +175,7 @@ namespace SfaApi.Controllers
         [HttpDelete("cleanup")]
         public async Task<IActionResult> Cleanup([FromQuery] int days = 30)
         {
-            var cutoff = DateTime.UtcNow.AddDays(-days);
+            var cutoff = NepalTime.Now.AddDays(-days);
             var old = await _db.LocationLogs.Where(l => l.RecordedAt < cutoff).ToListAsync();
             _db.LocationLogs.RemoveRange(old);
             await _db.SaveChangesAsync();

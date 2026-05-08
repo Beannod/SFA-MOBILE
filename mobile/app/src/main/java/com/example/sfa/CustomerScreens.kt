@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -70,7 +71,11 @@ fun CustomersScreen(user: LoggedInUser, onPlaceOrder: (customerId: Int) -> Unit 
             user = user,
             onBack = { currentView.value = CustomerView.LIST },
             onEdit = { currentView.value = CustomerView.EDIT },
-            onPlaceOrder = { onPlaceOrder(selectedCustomerId.value) }
+            onPlaceOrder = { onPlaceOrder(selectedCustomerId.value) },
+            onDeleted = {
+                refreshTrigger.value++
+                currentView.value = CustomerView.LIST
+            }
         )
         CustomerView.EDIT -> EditCustomerScreen(
             customerId = selectedCustomerId.value,
@@ -112,24 +117,22 @@ fun CustomerListScreen(
     val bulkActionMsg = remember { mutableStateOf<String?>(null) }
 
     // Reload function usable by LaunchedEffect and pull-to-refresh
+    val context = LocalContext.current
+    val repo = remember { OfflineRepository(context) }
     val scope = rememberCoroutineScope()
     fun reload() {
         scope.launch {
             isLoading.value = true
             loadFailed.value = false
             val fetched = when {
-                isAdmin -> fetchCustomers(base)                           // Admin: all customers
-                showTeamView.value -> fetchCustomers(base, managerId = user.id) // Manager: subtree
-                else -> fetchCustomers(base, assignedUserId = user.id)   // SE: own only
+                isAdmin -> repo.getCustomers(base)
+                showTeamView.value -> repo.getCustomers(base, managerId = user.id)
+                else -> repo.getCustomers(base, assignedUserId = user.id)
             }
-            if (fetched == null) {
-                loadFailed.value = true
-            } else {
-                customers.clear()
-                customers.addAll(fetched)
-                val validIds = fetched.map { it.id }.toSet()
-                selectedCustomerIds.removeAll { it !in validIds }
-            }
+            customers.clear()
+            customers.addAll(fetched)
+            val validIds = fetched.map { it.id }.toSet()
+            selectedCustomerIds.removeAll { it !in validIds }
             isLoading.value = false
         }
     }
@@ -184,6 +187,10 @@ fun CustomerListScreen(
                 Text(if (isMultiSelectMode.value) "Done" else "Select")
             }
             Spacer(modifier = Modifier.width(8.dp))
+            // Sync button — manually pull fresh data from server
+            IconButton(onClick = { reload() }) {
+                Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = MaterialTheme.colors.primary)
+            }
             FloatingActionButton(
                 onClick = onAdd,
                 modifier = Modifier.size(48.dp),
@@ -827,7 +834,7 @@ fun FormField(
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit, onEdit: () -> Unit = {}, onPlaceOrder: () -> Unit = {}) {
+fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit, onEdit: () -> Unit = {}, onPlaceOrder: () -> Unit = {}, onDeleted: () -> Unit = {}) {
     val customer = remember { mutableStateOf<Customer?>(null) }
     val visits = remember { mutableStateListOf<Map<String, String>>() }
     val isLoading = remember { mutableStateOf(true) }
@@ -838,6 +845,8 @@ fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit
     val sheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
     val base = remember { BuildConfig.SFA_API_BASE_URL.trimEnd('/') }
     val approvalMsg = remember { mutableStateOf<String?>(null) }
+    val showDeleteDialog = remember { mutableStateOf(false) }
+    val isDeleting = remember { mutableStateOf(false) }
 
     LaunchedEffect(customerId) {
         isLoading.value = true
@@ -1015,6 +1024,24 @@ fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit
                         }
                     }
 
+                    // Delete Customer (admin only)
+                    val isAdmin2 = user.role.equals("Admin", ignoreCase = true)
+                    if (isAdmin2) {
+                        item {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            OutlinedButton(
+                                onClick = { showDeleteDialog.value = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB71C1C))
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null,
+                                    tint = Color(0xFFB71C1C), modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Delete Customer", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
                     // Visit History header
                     item {
                         Spacer(modifier = Modifier.height(16.dp))
@@ -1094,6 +1121,39 @@ fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit
         }
     }
     } // ModalBottomSheetLayout
+
+    // Delete confirmation dialog
+    if (showDeleteDialog.value) {
+        AlertDialog(
+            onDismissRequest = { if (!isDeleting.value) showDeleteDialog.value = false },
+            title = { Text("Delete Customer?", fontWeight = FontWeight.Bold) },
+            text = { Text("This will permanently delete the customer. This cannot be undone.", color = Color.DarkGray) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            isDeleting.value = true
+                            val ok = deleteCustomer(base, customerId)
+                            isDeleting.value = false
+                            showDeleteDialog.value = false
+                            if (ok) onDeleted()
+                        }
+                    },
+                    enabled = !isDeleting.value,
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFB71C1C))
+                ) {
+                    if (isDeleting.value)
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp))
+                    else Text("Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { if (!isDeleting.value) showDeleteDialog.value = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -1526,6 +1586,24 @@ fun parseCustomer(obj: JSONObject): Customer {
         createdByUserName = obj.optString("createdByUserName", ""),
         territory = obj.optString("territory", ""),
         isActive = obj.optBoolean("isActive", true),
-        approvalStatus = obj.optString("approvalStatus", "Pending")
+        approvalStatus = obj.optString("approvalStatus", "Pending"),
+        isArchived = obj.optBoolean("isArchived", false)
     )
+}
+
+suspend fun deleteCustomer(baseUrl: String, customerId: Int): Boolean {
+    return withContext(Dispatchers.IO) {
+        try {
+            val conn = URL("${baseUrl}/api/customers/$customerId").openConnection() as HttpURLConnection
+            conn.requestMethod = "DELETE"
+            conn.connectTimeout = 8000; conn.readTimeout = 8000
+            val code = conn.responseCode
+            Log.d("SFA", "Delete customer HTTP $code")
+            conn.disconnect()
+            code in 200..299
+        } catch (e: Exception) {
+            Log.e("SFA", "Delete customer error", e)
+            false
+        }
+    }
 }

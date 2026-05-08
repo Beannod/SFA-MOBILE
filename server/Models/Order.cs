@@ -23,6 +23,9 @@ namespace SfaApi.Models
         // ── Remarks ──
         public string? Remarks { get; set; }
 
+        // ── Archive ──
+        public bool IsArchived { get; set; } = false;   // soft-delete flag
+
         // ── Timestamps ──
         public DateTime OrderDate { get; set; }
         public DateTime CreatedAt { get; set; }
