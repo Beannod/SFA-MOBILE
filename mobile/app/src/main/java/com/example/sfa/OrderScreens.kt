@@ -8,6 +8,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -178,49 +181,47 @@ fun OrderListScreen(
     refreshTrigger: Int,
     initialStatusFilter: String = "All",
     onCreate: () -> Unit,
-    onSelect: (Int) -> Unit
+    onSelect: (Int) -> Unit,
+    vm: OrderViewModel = viewModel()
 ) {
-    val orders = remember { mutableStateListOf<Order>() }
-    val isLoading = remember { mutableStateOf(true) }
-    val loadFailed = remember { mutableStateOf(false) }
     val filterStatus = remember { mutableStateOf(initialStatusFilter) }
     val scope = rememberCoroutineScope()
-    // Team view: only users with subordinates (designationLevel < 6) can switch to team view
-    // SalesExecutives (level 6) are locked to their own orders only
-    val canViewTeam = user.designationLevel < 6   // has subordinates → can view team
-    // Managers default to team view; they may have no orders created by themselves
+    val canViewTeam = user.designationLevel < 6
     val showTeamView = remember { mutableStateOf(canViewTeam) }
     val canApprove = "approveOrders" in user.allowedFeatures
 
-    val context = LocalContext.current
-    val repo = remember { OfflineRepository(context) }
-    fun reload() {
-        scope.launch {
-            isLoading.value = true
-            loadFailed.value = false
-            val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
-            val fetched = if (showTeamView.value)
-                repo.getOrders(base, managerId = user.id)
-            else
-                repo.getOrders(base, createdByUserId = user.id)
-            orders.clear()
-            orders.addAll(fetched)
-            isLoading.value = false
-        }
+    LaunchedEffect(refreshTrigger, showTeamView.value) {
+        vm.configure(
+            userId    = user.id,
+            managerId = if (showTeamView.value) user.id else null
+        )
+        vm.refresh()
     }
 
-    LaunchedEffect(refreshTrigger, showTeamView.value) { reload() }
+    val allItems      by vm.filteredItems.collectAsStateWithLifecycle()
+    val isLoading     by vm.isLoading.collectAsStateWithLifecycle()
+    val isLoadingMore by vm.isLoadingMore.collectAsStateWithLifecycle()
+    val isOnline      by vm.isOnline.collectAsStateWithLifecycle()
+    val pendingCount  by vm.pendingSyncCount.collectAsStateWithLifecycle()
 
-    val filtered = if (filterStatus.value == "All") orders
-    else orders.filter { it.status == filterStatus.value }
+    // Status filter applied client-side on top of ViewModel list
+    val filtered = if (filterStatus.value == "All") allItems
+    else allItems.filter { it.status == filterStatus.value }
+    val orders = allItems
 
     val pullRefreshState = rememberPullRefreshState(
-        refreshing = isLoading.value,
-        onRefresh = { reload() }
+        refreshing = isLoading,
+        onRefresh = { vm.refresh() }
     )
+
+    val listState = rememberLazyListState()
+    InfiniteScrollEffect(listState = listState, loadMore = vm::loadMore)
 
     Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
     Column(modifier = Modifier.fillMaxSize()) {
+        // Offline / pending-sync indicator
+        OfflineBanner(isOnline = isOnline, pendingCount = pendingCount)
+
         // Header with Add button
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
@@ -287,7 +288,7 @@ fun OrderListScreen(
         }
 
         // Team banner
-        if (showTeamView.value && !isLoading.value) {
+        if (showTeamView.value && !isLoading) {
             Surface(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 6.dp),
                 color = Color(0xFF0288D1).copy(alpha = 0.08f),
@@ -339,26 +340,12 @@ fun OrderListScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (isLoading.value) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally).padding(20.dp))
-        } else if (loadFailed.value) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Gray,
-                    modifier = Modifier.size(48.dp))
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Couldn't load orders", color = Color.Gray, fontWeight = FontWeight.Medium)
-                Text("Check your connection and try again",
-                    style = MaterialTheme.typography.caption, color = Color.Gray)
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { reload() }) { Text("Retry") }
-            }
-        } else if (filtered.isEmpty()) {
+        if (isLoading && allItems.isEmpty()) {
+            SkeletonList()
+        } else if (!isLoading && filtered.isEmpty()) {
             Text("No orders found.", color = Color.Gray, modifier = Modifier.padding(20.dp).align(Alignment.CenterHorizontally))
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 items(filtered) { order ->
                     OrderCard(
                         order = order,
@@ -367,7 +354,7 @@ fun OrderListScreen(
                             {
                                 scope.launch {
                                     updateOrderStatus(order.id, "Approved", user.id)
-                                    reload()
+                                    vm.refresh()
                                 }
                             }
                         } else null,
@@ -375,17 +362,25 @@ fun OrderListScreen(
                             {
                                 scope.launch {
                                     updateOrderStatus(order.id, "Rejected", user.id)
-                                    reload()
+                                    vm.refresh()
                                 }
                             }
                         } else null
                     )
                 }
-            }
+                if (isLoadingMore) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
+            } // end LazyColumn
         }
     } // end Column
     PullRefreshIndicator(
-        refreshing = isLoading.value,
+        refreshing = isLoading,
         state = pullRefreshState,
         modifier = Modifier.align(Alignment.TopCenter)
     )
@@ -536,25 +531,27 @@ fun CreateOrderScreen(
 
     val isEditMode = editOrderId != null
 
+    val context = LocalContext.current
+
     // Load customers, products, product config, and (if editing) existing order data
     LaunchedEffect(Unit) {
         val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
+        val repo = OfflineRepository(context)
         val isAdmin = user.role.equals("Admin", ignoreCase = true)
         val canViewTeam = isAdmin || user.designationLevel < 6
+        // Use OfflineRepository — falls back to Room cache when offline
         val fetched = when {
-            isAdmin -> fetchCustomers(base)
-            canViewTeam -> fetchCustomers(base, managerId = user.id)
-            else -> fetchCustomers(base, assignedUserId = user.id)
+            isAdmin -> repo.getCustomers(base)
+            canViewTeam -> repo.getCustomers(base, managerId = user.id)
+            else -> repo.getCustomers(base, assignedUserId = user.id)
         }
         customers.clear()
-        if (fetched != null) {
-            val eligible = fetched.filter { it.isActive && it.approvalStatus.equals("Approved", ignoreCase = true) }
-            customers.addAll(eligible)
-            if (preselectedCustomerId != 0 && eligible.any { it.id == preselectedCustomerId }) {
-                selectedCustomerId.value = preselectedCustomerId
-            }
+        val eligible = fetched.filter { it.isActive && it.approvalStatus.equals("Approved", ignoreCase = true) }
+        customers.addAll(eligible)
+        if (preselectedCustomerId != 0 && eligible.any { it.id == preselectedCustomerId }) {
+            selectedCustomerId.value = preselectedCustomerId
         }
-        val fetchedProducts = fetchProducts("${base}/api/products?discontinued=false")
+        val fetchedProducts = repo.getProducts(base, "discontinued=false")
         products.addAll(fetchedProducts)
         productConfig.value = fetchProductConfig(base)
 

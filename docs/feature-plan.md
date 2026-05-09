@@ -143,6 +143,51 @@
 
 ## 🗓️ Sprint Roadmap (Upcoming)
 
+---
+
+## Roadmap — Offline & Scale (Phased)
+
+### Phase 1 — Mobile offline-first foundation ✅
+- [x] Enforce strict MVVM + Repository + DataSources separation (`AppViewModels.kt` — CustomerViewModel, ProductViewModel, OrderViewModel)
+- [x] Room DB for orders/customers/products/attendance (`LocalDatabase.kt` — version 2, all entities cached)
+- [x] Local cache for master data (OfflineRepository caches customers/products/orders to Room on every online fetch)
+- [x] `sync_queue` (outbox) with WorkManager background sync + retry/backoff (`SyncWorker.kt`, up to 5 retries per item)
+- [x] Offline indicator + sync status UI (`OfflineBanner` — red=offline, orange=pending sync; live badge from `countFlow()`)
+- [x] Skeleton loaders on list/detail screens (`SkeletonList` + animated shimmer on CustomerListScreen, ProductListScreen, OrderListScreen)
+- [x] Offline customer detail view (falls back to Room cache via `OfflineRepository.getCustomerDetail`)
+- [x] Offline order creation (customers + products loaded from Room cache; order queued to `sync_queue`)
+
+### Phase 2 — Core sync architecture
+- [ ] `POST /api/sync/batch` with batch upload + per-item result
+- [ ] DeviceId tracking and failure logging
+- [ ] Conflict policy (server wins) + reconciliation flow
+
+### Phase 3 — Backend performance
+- [ ] Pagination (page/pageSize) for all list APIs
+- [ ] Cursor pagination for GPS/logs
+- [ ] DB indexes: orders(customer_id,status), users(reportsToId), gps logs(user_id,created_at DESC), activity logs(entity_type,entity_id)
+- [ ] Caching for master data and batch APIs
+
+### Phase 4 — Security
+- [ ] JWT + refresh tokens
+- [ ] RBAC + feature-level permissions
+- [ ] Rate limiting
+- [ ] Input validation hardening
+- [ ] Audit coverage checks
+
+### Phase 5 — GPS & tracking
+- [ ] Movement-based tracking
+- [ ] Batch upload improvements
+- [ ] Server bulk insert
+- [ ] Table partitioning
+- [ ] Retention cleanup
+
+### Phase 6 — Ops readiness
+- [ ] Health checks
+- [ ] Monitoring/logging (Serilog)
+- [ ] Backup/retention scripts
+- [ ] Deployment checklist
+
 ### Sprint 1 — Order Approval & Mobile Polish *(~2 weeks)*
 **Goal:** Complete the order lifecycle with manager approval flow.
 - [ ] Order status transitions: Draft → Pending → Approved / Rejected

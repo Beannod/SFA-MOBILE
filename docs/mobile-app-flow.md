@@ -1,114 +1,217 @@
-# Mobile App — Software Flow
+# Mobile App — Architecture & Flow
 
-## Purpose
-Provide a clear, actionable software flow for the mobile application used in this workspace: app architecture, major components, user flows, data model and sync, security, CI/CD and testing guidance for further study or implementation.
-
-## Goals
-- Reliable offline-first data capture and sync
-- Simple discoverable instances (if app talks to local/dev servers)
-- Minimal latency for UI interactions
-- Secure authentication and data transport
-
-## Platforms
-- Android (primary) — the project includes a `mobile/app` Android app.
-- Potential iOS parity (design/flow applies across platforms).
-
-## High-level Architecture
-- Mobile UI (Views / Activities / Fragments)
-- Local persistence (SQLite / Room / Realm) for offline
-- Sync layer (HTTP/REST or gRPC) with queued background sync + conflict resolution
-- Network layer (retry, backoff, connectivity awareness)
-- Native modules for platform-specific features (location, camera, push)
-- Background worker (WorkManager/JobScheduler) for scheduled sync
-
-## Core Components
-- UI: screens for Login, Home/Dashboard, List, Detail/Edit, Sync status, Settings
-- Auth: secure token-based (OAuth2/JWT) with refresh tokens or Windows-auth where appropriate
-- Local DB: canonical models, change-tracking table for sync (created/updated/deleted)
-- Sync Engine: upload queue, incremental download, schema version handling
-- Networking: centralized API client with interceptors (auth, logging, retry)
-- Feature flags and remote config for toggling experiments
-
-## Primary User Flows (step-by-step)
-
-1) First-time launch / Onboarding
-  - Show welcome and permissions (storage, network, camera if needed)
-  - Offer login/guest; after login fetch basic profile & app config
-  - Initialize local DB and immediate background sync for seeds
-
-2) Login / Authentication
-  - UI collects credentials, posts to `/auth/token`
-  - Store tokens in secure storage (Android Keystore / EncryptedSharedPreferences)
-  - Start background sync and fetch user-specific data
-
-3) Data browsing and editing
-  - List screen loads from local DB; UI marks sync state (synced, pending)
-  - Create/Edit item writes to local DB and marks row state = `dirty`
-  - Enqueue change for background upload; optimistic UI update
-
-4) Offline flow and conflict handling
-  - App fully usable offline via local DB; queued changes persist across restarts
-  - Sync attempts apply change-by-change; server conflict returns version or merge strategy
-  - Conflict resolution: prefer server, prefer client, or present merge UI per entity
-
-5) Sync lifecycle
-  - Background worker runs periodically and on connectivity events
-  - Upload: batch pending changes (with limits), apply server responses (IDs/version)
-  - Download: fetch server changes since last sync token (cursor/timestamp)
-  - Robust error handling: exponential backoff, pause on auth errors, retry later
-
-6) Logout and data wipe
-  - Revoke token on server (if supported), clear local sensitive data, return to onboarding
-
-## Data Model & API Contracts (suggested)
-- Use stable JSON schemas or small protobufs
-- Include `id`, `createdAt`, `updatedAt`, `version` (optimistic concurrency), `deleted` flag
-- Sync endpoints:
-  - POST /sync/upload { items: [...] }
-  - GET /sync/changes?since=<cursor>
-  - POST /auth/token, POST /auth/refresh
-
-## Security
-- TLS all network traffic; pin certificates if needed for higher trust
-- Secure local storage for tokens and PII
-- Use least-privilege API tokens; rotate regularly
-- Protect debug/release builds differently (do not ship debug logs)
-
-## Reliability & Monitoring
-- Local logging with optional crash / analytics (Sentry, Firebase Crashlytics)
-- Track sync success/failure metrics, queue length, conflict rates
-- Health endpoint tests for back-end and synthetic mobile tests in CI
-
-## CI / Build / Release
-- Build pipelines: lint → unit tests → integration tests → artifact signing
-- Releases: staged rollout, monitor crash/error metrics and telemetry
-- Fastlane or equivalent for app store automation (if iOS included)
-
-## Testing Strategy
-- Unit tests: ViewModels, domain logic, sync engine logic
-- Integration tests: DB + network using in-memory DB and mocked APIs
-- End-to-end: automated UI tests (Espresso / UI Automator for Android)
-- Manual testing checklist for offline/online switching, conflict cases, and upgrades
-
-## Developer Tooling & Local Dev Server
-- Provide local API host config (app settings) for development
-- If using SQL Server locally, ensure `SQL Server Browser` is running and firewall allows UDP 1434 for discovery when needed
-- Document seed data loading and developer credentials
-
-## UX Considerations
-- Make sync state visible but unobtrusive (icon or small banner)
-- Allow users to retry failed syncs and show clear error states when manual action required
-- Avoid blocking UI on long syncs — run in background and notify when action required
-
-## Next Steps / Deliverables
-- Implement screen-by-screen wireframes for each flow above
-- Create a minimal API mock server to exercise the sync engine
-- Write the initial sync engine skeleton and local DB schema
+_Last updated: May 2026 — reflects Phase 1 offline-first implementation._
 
 ---
-File created for study and implementation. If you want, I can:
-- generate screen wireframes (Markdown + images)
-- scaffold the sync engine code template in the Android project
-- create a mock API server (Node/Express) for local development
 
-Tell me which next action you want and I will implement it.
+## Platform
+
+- **Android** — Jetpack Compose, single-Activity (`MainActivity`), min SDK 24, target SDK 34
+- **Language:** Kotlin 1.9.22, Compose compiler 1.5.8
+- **Backend:** ASP.NET Core 7 REST API (`server/`) — same repo
+
+---
+
+## High-level Architecture
+
+```
+UI Layer (Jetpack Compose screens)
+       │
+       ▼
+ViewModel Layer  (AppViewModels.kt)
+   CustomerViewModel / ProductViewModel / OrderViewModel
+       │  StateFlow / collectAsStateWithLifecycle()
+       ▼
+Repository Layer  (OfflineRepository.kt)
+   - Online  → HTTP fetch → cache to Room → return data
+   - Offline → serve from Room cache
+   - Writes  → HTTP POST/PUT if online; else enqueue to sync_queue
+       │
+  ┌────┴────────────────────┐
+  ▼                         ▼
+Room DB (LocalDatabase.kt)  HTTP (HttpURLConnection)
+  - customer_cache          - No Retrofit/OkHttp
+  - product_cache           - org.json for parsing
+  - order_cache             - BuildConfig.SFA_API_BASE_URL
+  - sync_queue (outbox)
+       │
+       ▼
+WorkManager (SyncWorker.kt)
+  - Fires on NETWORK_CONNECTED
+  - Flushes sync_queue to server
+  - Up to 5 retries per item; drops after 5
+```
+
+---
+
+## Key Source Files
+
+| File | Purpose |
+|---|---|
+| `MainActivity.kt` | Single activity; hosts all Compose navigation, session restore, WorkManager setup |
+| `AppViewModels.kt` | `CustomerViewModel`, `ProductViewModel`, `OrderViewModel` — paginated loads, offline detection, sync-count badge |
+| `OfflineRepository.kt` | All read/write operations; online→fetch+cache, offline→Room; sync_queue outbox |
+| `LocalDatabase.kt` | Room DB (v2); entities for Customer, Product, Order, SyncQueueItem; paginated DAOs |
+| `SyncWorker.kt` | WorkManager `CoroutineWorker` — flushes outbox when connectivity returns |
+| `UiComponents.kt` | `OfflineBanner`, `SkeletonList` (shimmer), `InfiniteScrollEffect` |
+| `CustomerScreens.kt` | Customer list, detail, add, edit screens |
+| `OrderScreens.kt` | Order list, detail, create/edit (ModalBottomSheet) |
+| `ProductScreens.kt` | Product list, detail, add/edit |
+| `LoggedInUser.kt` | Session data class — restored from SharedPreferences on relaunch |
+
+---
+
+## Room Database (v2)
+
+### Tables
+
+| Entity | Room table | Key fields |
+|---|---|---|
+| `CustomerEntity` | `customer_cache` | id, name, phone, city, assignedUserId, approvalStatus |
+| `ProductEntity` | `product_cache` | id, name, category, size, finish, discontinued |
+| `OrderEntity` | `order_cache` | id, customerId, status, createdByUserId, totalAmount |
+| `SyncQueueItem` | `sync_queue` | endpoint, method, body, retryCount |
+
+### Paginated queries (all 3 entity DAOs)
+
+```kotlin
+getPaged(limit: Int, offset: Int): List<...>
+getPagedByUser(userId: Int, limit: Int, offset: Int): List<...>
+count(): Int
+```
+
+`SyncQueueDao` also exposes `countFlow(): Flow<Int>` — drives the live badge in `OfflineBanner`.
+
+---
+
+## Offline-First Read Flow
+
+```
+OfflineRepository.getCustomers() / getProducts() / getOrders()
+        │
+        ├─ isOnline? YES ──→ HTTP fetch ──→ insert to Room ──→ return server data
+        │
+        └─ isOnline? NO ───→ Room query ──→ return cached data
+```
+
+`CustomerDetailScreen` and `CreateOrderScreen` both route through `OfflineRepository` so the cache is used when offline:
+- Detail screen: `OfflineRepository.getCustomerDetail(base, id)` — Room fallback if network unavailable
+- Create order: `OfflineRepository.getCustomers()` and `OfflineRepository.getProducts()` — customer picker and product list populated from cache
+
+---
+
+## Offline-First Write Flow
+
+```
+User submits form (order, customer, attendance, check-in/out)
+        │
+        ├─ isOnline? YES ──→ HTTP POST/PUT ──→ server saves ──→ return true
+        │
+        └─ isOnline? NO ───→ insert to sync_queue ──→ return true (optimistic)
+                                       │
+                              WorkManager picks up
+                              on next connectivity event
+                                       │
+                              flushSyncQueue() iterates items
+                              POST/PUT each to server
+                              delete on success; increment retryCount on failure
+                              drop after 5 retries
+```
+
+---
+
+## ViewModel Architecture (Phase 1)
+
+Each list screen has a dedicated `AndroidViewModel`:
+
+```
+CustomerViewModel
+  ├─ items: StateFlow<List<Customer>>        (paginated, search-filtered)
+  ├─ isLoading: StateFlow<Boolean>           (first page load)
+  ├─ isLoadingMore: StateFlow<Boolean>       (subsequent pages)
+  ├─ hasMore: StateFlow<Boolean>
+  ├─ isOnline: StateFlow<Boolean>            (ConnectivityManager.NetworkCallback via callbackFlow)
+  ├─ pendingSyncCount: StateFlow<Int>        (Room sync_queue countFlow)
+  ├─ searchQuery: StateFlow<String>
+  ├─ configure(userId, managerId?, assignedUserId?)
+  ├─ refresh()                               (page 0 — always fetches from server if online)
+  ├─ loadMore()                              (page N — serves from Room LIMIT/OFFSET)
+  └─ setSearch(q)
+```
+
+`PAGE_SIZE = 20` — first page fetched from server and cached; subsequent pages served from Room.
+
+---
+
+## UI Components
+
+### OfflineBanner
+```
+isOnline=false  → Red banner   "Offline — showing cached data"
+pendingCount>0  → Orange banner "X items pending sync"
+both online + 0 → hidden
+```
+
+### SkeletonList / SkeletonListCard
+- Animated `Brush.linearGradient` shimmer effect
+- Shown when `isLoading && items.isEmpty()` (replaces CircularProgressIndicator)
+- Replaced by real content once first page loads
+
+### InfiniteScrollEffect
+- `derivedStateOf` watches `LazyListState.lastVisibleItemIndex`
+- Calls `loadMore()` when within 4 items of the end
+- Footer `CircularProgressIndicator` shown while `isLoadingMore`
+
+---
+
+## Session Persistence
+
+- `LoggedInUser` is serialised to JSON and stored in `SharedPreferences("sfa_prefs")`
+- On app relaunch `MainActivity` restores the session from prefs — no re-login required
+- On logout the prefs entry is cleared
+
+---
+
+## Connectivity Detection
+
+`connectivityFlow(context): Flow<Boolean>` (in `AppViewModels.kt`):
+- Uses `ConnectivityManager.registerNetworkCallback` wrapped in `callbackFlow`
+- Emits `true`/`false` on every network gain/loss
+- ViewModels `stateIn(SharingStarted.WhileSubscribed(5000))` — survives brief recompositions
+
+---
+
+## In-App Update
+
+- `GET /api/update/version` — server returns `{ versionCode, versionName }` from `server/wwwroot/apk/version.json`
+- App compares `BuildConfig.VERSION_CODE`; if server is higher, shows update dialog
+- `GET /api/update/apk` — streams the APK for download + install
+- Current version: **1.37 (code 38)**
+- Deploy: `scripts/deploy-apk.ps1` — builds debug APK, copies to `server/wwwroot/apk/`, updates `version.json`
+
+---
+
+## API Base URL
+
+Configured via `mobile/gradle.properties`:
+
+```properties
+SFA_API_BASE_URL=http://192.168.1.x:5000
+```
+
+Default (emulator): `http://10.0.2.2:5000`
+
+Injected at build time as `BuildConfig.SFA_API_BASE_URL`.
+
+---
+
+## Build & Release
+
+```powershell
+# Build and deploy update
+cd mobile
+.\gradlew.bat assembleDebug
+
+# Or use the deploy script from repo root (builds + copies APK + updates version.json)
+.\scripts\deploy-apk.ps1
+```

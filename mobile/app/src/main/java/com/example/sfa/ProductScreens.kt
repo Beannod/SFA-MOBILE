@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -96,54 +99,61 @@ fun ProductCatalogScreen(user: LoggedInUser) {
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun ProductListScreen(user: LoggedInUser, refreshTrigger: Int = 0, onProductClick: (Int) -> Unit, onAddProduct: () -> Unit = {}) {
-    val products = remember { mutableStateListOf<Product>() }
-    val isLoading = remember { mutableStateOf(true) }
-    val searchText = remember { mutableStateOf("") }
+fun ProductListScreen(
+    user: LoggedInUser,
+    refreshTrigger: Int = 0,
+    onProductClick: (Int) -> Unit,
+    onAddProduct: () -> Unit = {},
+    vm: ProductViewModel = viewModel()
+) {
     val selectedCategory = remember { mutableStateOf("All") }
-    val selectedFilter = remember { mutableStateOf("All") } // All, New Arrivals, Discontinued
-    val scope = rememberCoroutineScope()
-    val productConfig = remember { mutableStateOf(ProductConfig.Default) }
+    val selectedFilter   = remember { mutableStateOf("All") } // All, New Arrivals, Discontinued
+    val productConfig    = remember { mutableStateOf(ProductConfig.Default) }
 
-    val categories = remember(productConfig.value) {
-        listOf("All") + productConfig.value.category
-    }
-    val filters = listOf("All", "New Arrivals", "Discontinued")
+    val categories = remember(productConfig.value) { listOf("All") + productConfig.value.category }
+    val filters    = listOf("All", "New Arrivals", "Discontinued")
 
-    val context = LocalContext.current
-    val repo = remember { OfflineRepository(context) }
-    fun loadProducts() {
-        scope.launch {
-            isLoading.value = true
-            val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
-            val params = mutableListOf<String>()
-            if (selectedCategory.value != "All") params.add("category=${URLEncoder.encode(selectedCategory.value, "UTF-8")}")
-            if (selectedFilter.value == "New Arrivals") params.add("newArrivals=true")
-            if (selectedFilter.value == "Discontinued") params.add("discontinued=true")
-            else params.add("discontinued=false") // hide discontinued by default
-            if (searchText.value.isNotBlank()) params.add("search=${URLEncoder.encode(searchText.value.trim(), "UTF-8")}")
-
-            val queryString = params.joinToString("&")
-            val fetched = repo.getProducts(base, queryString)
-            products.clear()
-            products.addAll(fetched)
-            isLoading.value = false
+    fun buildQuery(): String {
+        val params = mutableListOf<String>()
+        if (selectedCategory.value != "All") params.add("category=${URLEncoder.encode(selectedCategory.value, "UTF-8")}")
+        when (selectedFilter.value) {
+            "New Arrivals" -> params.add("newArrivals=true")
+            "Discontinued" -> params.add("discontinued=true")
+            else           -> params.add("discontinued=false")
         }
+        val q = vm.searchQuery.value
+        if (q.isNotBlank()) params.add("search=${URLEncoder.encode(q.trim(), "UTF-8")}")
+        return params.joinToString("&")
     }
 
     LaunchedEffect(Unit) {
         val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
         productConfig.value = fetchProductConfig(base)
     }
-    LaunchedEffect(selectedCategory.value, selectedFilter.value, refreshTrigger) { loadProducts() }
+    LaunchedEffect(selectedCategory.value, selectedFilter.value, refreshTrigger) {
+        vm.refresh(buildQuery())
+    }
+
+    val products      by vm.items.collectAsStateWithLifecycle()
+    val isLoading     by vm.isLoading.collectAsStateWithLifecycle()
+    val isLoadingMore by vm.isLoadingMore.collectAsStateWithLifecycle()
+    val isOnline      by vm.isOnline.collectAsStateWithLifecycle()
+    val pendingCount  by vm.pendingSyncCount.collectAsStateWithLifecycle()
+    val searchText    by vm.searchQuery.collectAsStateWithLifecycle()
+
+    val listState = rememberLazyListState()
+    InfiniteScrollEffect(listState = listState, loadMore = vm::loadMore)
 
     val pullRefreshState = rememberPullRefreshState(
-        refreshing = isLoading.value,
-        onRefresh = { loadProducts() }
+        refreshing = isLoading,
+        onRefresh = { vm.refresh(buildQuery()) }
     )
 
     Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
     Column(modifier = Modifier.fillMaxSize()) {
+        // Offline / pending-sync indicator
+        OfflineBanner(isOnline = isOnline, pendingCount = pendingCount)
+
         // Header with optional Add Product button for admin
         val isAdmin = user.role.equals("Admin", ignoreCase = true)
         Row(
@@ -151,8 +161,7 @@ fun ProductListScreen(user: LoggedInUser, refreshTrigger: Int = 0, onProductClic
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Products", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.weight(1f))
-            // Sync button — manually pull fresh data from server
-            IconButton(onClick = { loadProducts() }) {
+            IconButton(onClick = { vm.refresh(buildQuery()) }) {
                 Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = MaterialTheme.colors.primary)
             }
             if (isAdmin) {
@@ -167,18 +176,18 @@ fun ProductListScreen(user: LoggedInUser, refreshTrigger: Int = 0, onProductClic
         }
         // Search bar
         OutlinedTextField(
-            value = searchText.value,
-            onValueChange = { searchText.value = it },
+            value = searchText,
+            onValueChange = { vm.setSearch(it) },
             placeholder = { Text("Search products...") },
             modifier = Modifier.fillMaxWidth().padding(12.dp, 12.dp, 12.dp, 4.dp),
             singleLine = true,
             trailingIcon = {
-                if (searchText.value.isNotEmpty()) {
-                    IconButton(onClick = { searchText.value = ""; loadProducts() }) {
+                if (searchText.isNotEmpty()) {
+                    IconButton(onClick = { vm.setSearch(""); vm.refresh(buildQuery()) }) {
                         Icon(Icons.Default.Clear, "Clear")
                     }
                 } else {
-                    IconButton(onClick = { loadProducts() }) {
+                    IconButton(onClick = { vm.refresh(buildQuery()) }) {
                         Icon(Icons.Default.Search, "Search")
                     }
                 }
@@ -235,9 +244,9 @@ fun ProductListScreen(user: LoggedInUser, refreshTrigger: Int = 0, onProductClic
             color = Color.Gray
         )
 
-        if (isLoading.value) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally).padding(20.dp))
-        } else if (products.isEmpty()) {
+        if (isLoading && products.isEmpty()) {
+            SkeletonList()
+        } else if (!isLoading && products.isEmpty()) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(32.dp),
                 verticalArrangement = Arrangement.Center,
@@ -248,15 +257,23 @@ fun ProductListScreen(user: LoggedInUser, refreshTrigger: Int = 0, onProductClic
                 Text("No products found", color = Color.Gray)
             }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
                 items(products) { product ->
                     ProductCatalogCard(product = product, onClick = { onProductClick(product.id) })
+                }
+                if (isLoadingMore) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
                 }
             }
         }
     } // end Column
     PullRefreshIndicator(
-        refreshing = isLoading.value,
+        refreshing = isLoading,
         state = pullRefreshState,
         modifier = Modifier.align(Alignment.TopCenter)
     )

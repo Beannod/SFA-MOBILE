@@ -107,6 +107,51 @@ sfa-mobile/
 
 ---
 
+## 🧭 Planned Roadmap (Phased)
+
+### Phase 1 — Mobile offline-first foundation ✅
+- ✅ Strict MVVM + Repository + DataSources separation (`AppViewModels.kt`)
+- ✅ Room DB for orders/customers/products/attendance (`LocalDatabase.kt` v2)
+- ✅ Local cache for master data (OfflineRepository caches on every online fetch)
+- ✅ `sync_queue` (outbox) with WorkManager background sync + retry/backoff
+- ✅ Offline indicator + sync status UI (`OfflineBanner` with live pending count)
+- ✅ Skeleton loaders on list screens (animated shimmer)
+- ✅ Offline customer detail (Room cache fallback)
+- ✅ Offline order creation (customers/products from cache; order queued to sync_queue)
+
+### Phase 2 — Core sync architecture
+- `POST /api/sync/batch` with batch upload + per-item result
+- DeviceId tracking and failure logging
+- Conflict policy (server wins) + reconciliation flow
+
+### Phase 3 — Backend performance
+- Pagination (page/pageSize) for all list APIs
+- Cursor pagination for GPS/logs
+- DB indexes: orders(customer_id,status), users(reportsToId), gps logs(user_id,created_at DESC), activity logs(entity_type,entity_id)
+- Caching for master data and batch APIs
+
+### Phase 4 — Security
+- JWT + refresh tokens
+- RBAC + feature-level permissions
+- Rate limiting
+- Input validation hardening
+- Audit coverage checks
+
+### Phase 5 — GPS & tracking
+- Movement-based tracking
+- Batch upload improvements
+- Server bulk insert
+- Table partitioning
+- Retention cleanup
+
+### Phase 6 — Ops readiness
+- Health checks
+- Monitoring/logging (Serilog)
+- Backup/retention scripts
+- Deployment checklist
+
+---
+
 ## Prerequisites
 
 | Tool | Version |

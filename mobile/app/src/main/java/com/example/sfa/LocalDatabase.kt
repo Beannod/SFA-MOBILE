@@ -3,6 +3,7 @@ package com.example.sfa
 import android.content.Context
 import androidx.room.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -153,11 +154,20 @@ interface CustomerDao {
     @Query("SELECT * FROM customers ORDER BY name ASC")
     suspend fun getAll(): List<CustomerEntity>
 
+    @Query("SELECT * FROM customers ORDER BY name ASC LIMIT :limit OFFSET :offset")
+    suspend fun getPaged(limit: Int, offset: Int): List<CustomerEntity>
+
+    @Query("SELECT * FROM customers WHERE assignedUserId = :userId ORDER BY name ASC LIMIT :limit OFFSET :offset")
+    suspend fun getPagedByUser(userId: Int, limit: Int, offset: Int): List<CustomerEntity>
+
     @Query("SELECT * FROM customers WHERE assignedUserId = :userId ORDER BY name ASC")
     suspend fun getByAssignedUser(userId: Int): List<CustomerEntity>
 
     @Query("SELECT * FROM customers WHERE id = :id")
     suspend fun getById(id: Int): CustomerEntity?
+
+    @Query("SELECT COUNT(*) FROM customers")
+    suspend fun count(): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<CustomerEntity>)
@@ -174,8 +184,17 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE isActive = 1 ORDER BY name ASC")
     suspend fun getAll(): List<ProductEntity>
 
+    @Query("SELECT * FROM products WHERE isActive = 1 ORDER BY name ASC LIMIT :limit OFFSET :offset")
+    suspend fun getPaged(limit: Int, offset: Int): List<ProductEntity>
+
+    @Query("SELECT * FROM products WHERE isActive = 1 AND (name LIKE '%' || :q || '%' OR category LIKE '%' || :q || '%') ORDER BY name ASC LIMIT :limit OFFSET :offset")
+    suspend fun searchPaged(q: String, limit: Int, offset: Int): List<ProductEntity>
+
     @Query("SELECT * FROM products WHERE id = :id")
     suspend fun getById(id: Int): ProductEntity?
+
+    @Query("SELECT COUNT(*) FROM products WHERE isActive = 1")
+    suspend fun count(): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<ProductEntity>)
@@ -195,8 +214,17 @@ interface OrderDao {
     @Query("SELECT * FROM orders ORDER BY id DESC")
     suspend fun getAll(): List<OrderEntity>
 
+    @Query("SELECT * FROM orders ORDER BY id DESC LIMIT :limit OFFSET :offset")
+    suspend fun getPaged(limit: Int, offset: Int): List<OrderEntity>
+
+    @Query("SELECT * FROM orders WHERE createdByUserId = :userId ORDER BY id DESC LIMIT :limit OFFSET :offset")
+    suspend fun getPagedByUser(userId: Int, limit: Int, offset: Int): List<OrderEntity>
+
     @Query("SELECT * FROM orders WHERE id = :id")
     suspend fun getById(id: Int): OrderEntity?
+
+    @Query("SELECT COUNT(*) FROM orders")
+    suspend fun count(): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<OrderEntity>)
@@ -224,6 +252,10 @@ interface SyncQueueDao {
 
     @Query("SELECT COUNT(*) FROM sync_queue")
     suspend fun count(): Int
+
+    // Live count — observed by ViewModel to drive the offline badge
+    @Query("SELECT COUNT(*) FROM sync_queue")
+    fun countFlow(): Flow<Int>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

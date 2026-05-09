@@ -6,6 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -99,68 +102,65 @@ fun CustomerListScreen(
     user: LoggedInUser,
     refreshTrigger: Int,
     onAdd: () -> Unit,
-    onSelect: (Int) -> Unit
+    onSelect: (Int) -> Unit,
+    vm: CustomerViewModel = viewModel()
 ) {
-    val customers = remember { mutableStateListOf<Customer>() }
-    val isLoading = remember { mutableStateOf(true) }
-    val loadFailed = remember { mutableStateOf(false) }
-    val searchQuery = remember { mutableStateOf("") }
-    val base = remember { BuildConfig.SFA_API_BASE_URL.trimEnd('/') }
-    // Admin sees ALL customers; managers/supervisors can see team view; SE sees only own
+    // — ViewModel-driven state ————————————————————————————————————————
     val isAdmin = user.role.equals("Admin", ignoreCase = true)
     val canViewTeam = isAdmin || user.designationLevel < 6
-    val canApprove = isAdmin || user.designationLevel < 6
+    val canApprove  = isAdmin || user.designationLevel < 6
     val showTeamView = remember { mutableStateOf(canViewTeam) }
-    val isMultiSelectMode = remember { mutableStateOf(false) }
+
+    // Configure and load on first composition or when team-view toggle changes
+    LaunchedEffect(refreshTrigger, showTeamView.value) {
+        vm.configure(
+            userId         = user.id,
+            managerId      = if (showTeamView.value && !isAdmin) user.id else null,
+            assignedUserId = if (!showTeamView.value && !isAdmin) user.id else null
+        )
+        vm.refresh()
+    }
+
+    val items         by vm.filteredItems.collectAsStateWithLifecycle()
+    val isLoading     by vm.isLoading.collectAsStateWithLifecycle()
+    val isLoadingMore by vm.isLoadingMore.collectAsStateWithLifecycle()
+    val isOnline      by vm.isOnline.collectAsStateWithLifecycle()
+    val pendingCount  by vm.pendingSyncCount.collectAsStateWithLifecycle()
+    val searchQuery   by vm.searchQuery.collectAsStateWithLifecycle()
+
+    // Legacy multi-select (kept as local state — pure UI concern)
+    val isMultiSelectMode   = remember { mutableStateOf(false) }
     val selectedCustomerIds = remember { mutableStateListOf<Int>() }
-    val isBulkApplying = remember { mutableStateOf(false) }
-    val bulkActionMsg = remember { mutableStateOf<String?>(null) }
+    val isBulkApplying      = remember { mutableStateOf(false) }
+    val bulkActionMsg       = remember { mutableStateOf<String?>(null) }
+    val scope               = rememberCoroutineScope()
+    val base                = remember { BuildConfig.SFA_API_BASE_URL.trimEnd('/') }
 
-    // Reload function usable by LaunchedEffect and pull-to-refresh
-    val context = LocalContext.current
-    val repo = remember { OfflineRepository(context) }
-    val scope = rememberCoroutineScope()
-    fun reload() {
-        scope.launch {
-            isLoading.value = true
-            loadFailed.value = false
-            val fetched = when {
-                isAdmin -> repo.getCustomers(base)
-                showTeamView.value -> repo.getCustomers(base, managerId = user.id)
-                else -> repo.getCustomers(base, assignedUserId = user.id)
-            }
-            customers.clear()
-            customers.addAll(fetched)
-            val validIds = fetched.map { it.id }.toSet()
-            selectedCustomerIds.removeAll { it !in validIds }
-            isLoading.value = false
-        }
-    }
+    // Alias filtered list to "customers" / "filtered" to keep all code below unchanged
+    val customers = items
+    val filtered  = items   // search is applied inside ViewModel
 
-    LaunchedEffect(refreshTrigger, showTeamView.value) { reload() }
-
-    val filtered = customers.filter {
-        searchQuery.value.isBlank() ||
-        it.name.contains(searchQuery.value, ignoreCase = true) ||
-        it.contactPerson.contains(searchQuery.value, ignoreCase = true) ||
-        it.city.contains(searchQuery.value, ignoreCase = true)
-    }
+    val listState = rememberLazyListState()
+    InfiniteScrollEffect(listState = listState, loadMore = vm::loadMore)
 
     val pullRefreshState = rememberPullRefreshState(
-        refreshing = isLoading.value,
-        onRefresh = { reload() }
+        refreshing = isLoading,
+        onRefresh = { vm.refresh() }
     )
 
     Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
     Column(modifier = Modifier.fillMaxSize()) {
+        // Offline / pending-sync indicator
+        OfflineBanner(isOnline = isOnline, pendingCount = pendingCount)
+
         // Search + Add (Add hidden in team view — cannot create customer on behalf of others)
         Row(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
-                value = searchQuery.value,
-                onValueChange = { searchQuery.value = it },
+                value = searchQuery,
+                onValueChange = { vm.setSearch(it) },
                 label = { Text("Search customers...") },
                 singleLine = true,
                 modifier = Modifier.weight(1f)
@@ -188,7 +188,7 @@ fun CustomerListScreen(
             }
             Spacer(modifier = Modifier.width(8.dp))
             // Sync button — manually pull fresh data from server
-            IconButton(onClick = { reload() }) {
+            IconButton(onClick = { vm.refresh() }) {
                 Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = MaterialTheme.colors.primary)
             }
             FloatingActionButton(
@@ -259,7 +259,7 @@ fun CustomerListScreen(
                                 bulkActionMsg.value = "Approved $okCount / ${ids.size}"
                                 selectedCustomerIds.clear()
                                 isBulkApplying.value = false
-                                reload()
+                                vm.refresh()
                             }
                         },
                         enabled = !isBulkApplying.value,
@@ -280,7 +280,7 @@ fun CustomerListScreen(
                                 bulkActionMsg.value = "Rejected $okCount / ${ids.size}"
                                 selectedCustomerIds.clear()
                                 isBulkApplying.value = false
-                                reload()
+                                vm.refresh()
                             }
                         },
                         enabled = !isBulkApplying.value,
@@ -355,7 +355,7 @@ fun CustomerListScreen(
         }
 
         // Team banner
-        if (showTeamView.value && !isLoading.value) {
+        if (showTeamView.value && !isLoading) {
             Surface(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 6.dp),
                 color = Color(0xFF0288D1).copy(alpha = 0.08f),
@@ -393,26 +393,12 @@ fun CustomerListScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (isLoading.value) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally).padding(20.dp))
-        } else if (loadFailed.value) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Gray,
-                    modifier = Modifier.size(48.dp))
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Couldn't load customers", color = Color.Gray, fontWeight = FontWeight.Medium)
-                Text("Check your connection and try again",
-                    style = MaterialTheme.typography.caption, color = Color.Gray)
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { reload() }) { Text("Retry") }
-            }
-        } else if (filtered.isEmpty()) {
+        if (isLoading && items.isEmpty()) {
+            SkeletonList()
+        } else if (!isLoading && filtered.isEmpty()) {
             Text("No customers found.", color = Color.Gray, modifier = Modifier.padding(20.dp).align(Alignment.CenterHorizontally))
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 items(filtered) { customer ->
                     val isSelected = customer.id in selectedCustomerIds
                     CustomerCard(
@@ -429,11 +415,19 @@ fun CustomerListScreen(
                         }
                     )
                 }
-            }
+                if (isLoadingMore) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
+            } // end LazyColumn
         }
     } // end Column
     PullRefreshIndicator(
-        refreshing = isLoading.value,
+        refreshing = isLoading,
         state = pullRefreshState,
         modifier = Modifier.align(Alignment.TopCenter)
     )
@@ -844,13 +838,15 @@ fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
     val base = remember { BuildConfig.SFA_API_BASE_URL.trimEnd('/') }
+    val context = LocalContext.current
     val approvalMsg = remember { mutableStateOf<String?>(null) }
     val showDeleteDialog = remember { mutableStateOf(false) }
     val isDeleting = remember { mutableStateOf(false) }
 
     LaunchedEffect(customerId) {
         isLoading.value = true
-        customer.value = fetchCustomerDetail(base, customerId)
+        // Use OfflineRepository so Room cache is used when offline
+        customer.value = OfflineRepository(context).getCustomerDetail(base, customerId)
         val v = fetchCustomerVisits(base, customerId)
         visits.clear()
         visits.addAll(v)
