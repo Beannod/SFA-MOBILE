@@ -15,21 +15,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -97,7 +99,7 @@ fun ProductCatalogScreen(user: LoggedInUser) {
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ProductListScreen(
     user: LoggedInUser,
@@ -113,17 +115,15 @@ fun ProductListScreen(
     val categories = remember(productConfig.value) { listOf("All") + productConfig.value.category }
     val filters    = listOf("All", "New Arrivals", "Discontinued")
 
-    fun buildQuery(): String {
-        val params = mutableListOf<String>()
-        if (selectedCategory.value != "All") params.add("category=${URLEncoder.encode(selectedCategory.value, "UTF-8")}")
+    fun buildQueryParams(): Map<String, String> {
+        val params = mutableMapOf<String, String>()
+        if (selectedCategory.value != "All") params["category"] = selectedCategory.value
         when (selectedFilter.value) {
-            "New Arrivals" -> params.add("newArrivals=true")
-            "Discontinued" -> params.add("discontinued=true")
-            else           -> params.add("discontinued=false")
+            "New Arrivals" -> params["newArrivals"] = "true"
+            "Discontinued" -> params["discontinued"] = "true"
+            else           -> { /* All: no discontinued filter */ }
         }
-        val q = vm.searchQuery.value
-        if (q.isNotBlank()) params.add("search=${URLEncoder.encode(q.trim(), "UTF-8")}")
-        return params.joinToString("&")
+        return params
     }
 
     LaunchedEffect(Unit) {
@@ -131,25 +131,25 @@ fun ProductListScreen(
         productConfig.value = fetchProductConfig(base)
     }
     LaunchedEffect(selectedCategory.value, selectedFilter.value, refreshTrigger) {
-        vm.refresh(buildQuery())
+        vm.refresh(buildQueryParams())
     }
 
-    val products      by vm.items.collectAsStateWithLifecycle()
-    val isLoading     by vm.isLoading.collectAsStateWithLifecycle()
-    val isLoadingMore by vm.isLoadingMore.collectAsStateWithLifecycle()
+    val lazyProducts  = vm.pagedProducts.collectAsLazyPagingItems()
+    val isRefreshing  = lazyProducts.loadState.refresh is LoadState.Loading
+    val isLoadingMore = lazyProducts.loadState.append  is LoadState.Loading
+
     val isOnline      by vm.isOnline.collectAsStateWithLifecycle()
     val pendingCount  by vm.pendingSyncCount.collectAsStateWithLifecycle()
     val searchText    by vm.searchQuery.collectAsStateWithLifecycle()
+    val productCount  by vm.productCount.collectAsStateWithLifecycle()
 
     val listState = rememberLazyListState()
-    InfiniteScrollEffect(listState = listState, loadMore = vm::loadMore)
 
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isLoading,
-        onRefresh = { vm.refresh(buildQuery()) }
-    )
-
-    Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = { lazyProducts.refresh() },
+        modifier = Modifier.fillMaxSize()
+    ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Offline / pending-sync indicator
         OfflineBanner(isOnline = isOnline, pendingCount = pendingCount)
@@ -161,7 +161,7 @@ fun ProductListScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Products", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.weight(1f))
-            IconButton(onClick = { vm.refresh(buildQuery()) }) {
+            IconButton(onClick = { lazyProducts.refresh() }) {
                 Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = MaterialTheme.colors.primary)
             }
             if (isAdmin) {
@@ -183,11 +183,11 @@ fun ProductListScreen(
             singleLine = true,
             trailingIcon = {
                 if (searchText.isNotEmpty()) {
-                    IconButton(onClick = { vm.setSearch(""); vm.refresh(buildQuery()) }) {
+                    IconButton(onClick = { vm.setSearch("") }) {
                         Icon(Icons.Default.Clear, "Clear")
                     }
                 } else {
-                    IconButton(onClick = { vm.refresh(buildQuery()) }) {
+                    IconButton(onClick = { vm.refresh(buildQueryParams()) }) {
                         Icon(Icons.Default.Search, "Search")
                     }
                 }
@@ -238,15 +238,15 @@ fun ProductListScreen(
 
         // Stats
         Text(
-            "${products.size} products",
+            "$productCount products",
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             style = MaterialTheme.typography.caption,
             color = Color.Gray
         )
 
-        if (isLoading && products.isEmpty()) {
+        if (isRefreshing && lazyProducts.itemCount == 0) {
             SkeletonList()
-        } else if (!isLoading && products.isEmpty()) {
+        } else if (!isRefreshing && lazyProducts.itemCount == 0) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(32.dp),
                 verticalArrangement = Arrangement.Center,
@@ -258,7 +258,8 @@ fun ProductListScreen(
             }
         } else {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
-                items(products) { product ->
+                items(count = lazyProducts.itemCount) { index ->
+                    val product = lazyProducts[index] ?: return@items
                     ProductCatalogCard(product = product, onClick = { onProductClick(product.id) })
                 }
                 if (isLoadingMore) {
@@ -272,21 +273,21 @@ fun ProductListScreen(
             }
         }
     } // end Column
-    PullRefreshIndicator(
-        refreshing = isLoading,
-        state = pullRefreshState,
-        modifier = Modifier.align(Alignment.TopCenter)
-    )
-    } // end Box
+    }
 }
 
 @Composable
 fun ProductCatalogCard(product: Product, onClick: () -> Unit) {
     val labelColor = Color(0xFF757575)
     val valueColor = Color(0xFF212121)
+    val tonalCardColor = MaterialTheme.colors.primary
+        .copy(alpha = 0.06f)
+        .compositeOver(MaterialTheme.colors.surface)
+
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onClick() },
         elevation = 3.dp,
+        backgroundColor = tonalCardColor,
         shape = RoundedCornerShape(10.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
