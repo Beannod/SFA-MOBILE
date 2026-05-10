@@ -86,11 +86,36 @@ data class ProductEntity(
     val cachedAt: Long = System.currentTimeMillis()
 )
 
+// Gson bypasses Kotlin constructors and can leave non-nullable String fields as null
+// at runtime when the JSON value is null. The Elvis operators below guard against that.
+@Suppress("USELESS_ELVIS")
 fun Product.toEntity() = ProductEntity(
-    id, name, description, itemNo, quality, code, remarks, imageUrl,
-    category, size, weight, thickness, finish, shade, type,
-    boxCoverage, kgPerBox, ratePerSqm, piecesPerBox,
-    price, dealerPrice, unit, isNewArrival, isDiscontinued, isActive, isArchived
+    id      = id,
+    name    = name ?: "",
+    description = description ?: "",
+    itemNo  = itemNo ?: "",
+    quality = quality ?: "",
+    code    = code ?: "",
+    remarks = remarks ?: "",
+    imageUrl = imageUrl ?: "",
+    category = category ?: "Tiles",
+    size    = size ?: "",
+    weight  = weight,
+    thickness = thickness ?: "",
+    finish  = finish ?: "",
+    shade   = shade ?: "",
+    type    = type ?: "",
+    boxCoverage = boxCoverage,
+    kgPerBox = kgPerBox,
+    ratePerSqm = ratePerSqm,
+    piecesPerBox = piecesPerBox,
+    price   = price,
+    dealerPrice = dealerPrice,
+    unit    = unit ?: "Box",
+    isNewArrival = isNewArrival,
+    isDiscontinued = isDiscontinued,
+    isActive = isActive,
+    isArchived = isArchived
 )
 
 fun ProductEntity.toModel() = Product(
