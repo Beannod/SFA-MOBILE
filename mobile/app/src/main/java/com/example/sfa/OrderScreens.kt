@@ -21,19 +21,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -174,7 +176,7 @@ fun OrdersScreen(
 // Order List
 // ═══════════════════════════════════════════════════════════════════════════════
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun OrderListScreen(
     user: LoggedInUser,
@@ -184,40 +186,51 @@ fun OrderListScreen(
     onSelect: (Int) -> Unit,
     vm: OrderViewModel = viewModel()
 ) {
-    val filterStatus = remember { mutableStateOf(initialStatusFilter) }
     val scope = rememberCoroutineScope()
     val canViewTeam = user.designationLevel < 6
     val showTeamView = remember { mutableStateOf(canViewTeam) }
     val canApprove = "approveOrders" in user.allowedFeatures
+
+    // Init status filter from param, then delegate all filter state to ViewModel
+    LaunchedEffect(Unit) { vm.setStatusFilter(initialStatusFilter) }
 
     LaunchedEffect(refreshTrigger, showTeamView.value) {
         vm.configure(
             userId    = user.id,
             managerId = if (showTeamView.value) user.id else null
         )
-        vm.refresh()
     }
 
-    val allItems      by vm.filteredItems.collectAsStateWithLifecycle()
-    val isLoading     by vm.isLoading.collectAsStateWithLifecycle()
-    val isLoadingMore by vm.isLoadingMore.collectAsStateWithLifecycle()
-    val isOnline      by vm.isOnline.collectAsStateWithLifecycle()
-    val pendingCount  by vm.pendingSyncCount.collectAsStateWithLifecycle()
+    val lazyOrders    = vm.pagedOrders.collectAsLazyPagingItems()
+    val isRefreshing  = lazyOrders.loadState.refresh is LoadState.Loading
+    val isLoadingMore = lazyOrders.loadState.append  is LoadState.Loading
 
-    // Status filter applied client-side on top of ViewModel list
-    val filtered = if (filterStatus.value == "All") allItems
-    else allItems.filter { it.status == filterStatus.value }
-    val orders = allItems
+    val filterStatus      by vm.statusFilter.collectAsStateWithLifecycle()
+    val isOnline          by vm.isOnline.collectAsStateWithLifecycle()
+    val pendingCount      by vm.pendingSyncCount.collectAsStateWithLifecycle()
+    val totalOrderCount   by vm.totalOrderCount.collectAsStateWithLifecycle()
+    val pendingOrderCount by vm.pendingOrderCount.collectAsStateWithLifecycle()
+    val approvedCount     by vm.approvedOrderCount.collectAsStateWithLifecycle()
+    val dispatchedCount   by vm.dispatchedOrderCount.collectAsStateWithLifecycle()
+    val deliveredCount    by vm.deliveredOrderCount.collectAsStateWithLifecycle()
+    val cancelledCount    by vm.cancelledOrderCount.collectAsStateWithLifecycle()
 
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isLoading,
-        onRefresh = { vm.refresh() }
+    val statusCounts = mapOf(
+        "All"        to totalOrderCount,
+        "Pending"    to pendingOrderCount,
+        "Approved"   to approvedCount,
+        "Dispatched" to dispatchedCount,
+        "Delivered"  to deliveredCount,
+        "Cancelled"  to cancelledCount
     )
 
     val listState = rememberLazyListState()
-    InfiniteScrollEffect(listState = listState, loadMore = vm::loadMore)
 
-    Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = { lazyOrders.refresh() },
+        modifier = Modifier.fillMaxSize()
+    ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Offline / pending-sync indicator
         OfflineBanner(isOnline = isOnline, pendingCount = pendingCount)
@@ -239,16 +252,16 @@ fun OrderListScreen(
 
         // ── Team View Toggle (managers only) ────────────────────────────────
         if (canViewTeam) {
-            Row(
+            val myColor   = if (!showTeamView.value) MaterialTheme.colors.primary else Color.Gray
+            val teamColor = if (showTeamView.value)  Color(0xFF0288D1)             else Color.Gray
+            LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp)
                     .padding(bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val myColor   = if (!showTeamView.value) MaterialTheme.colors.primary else Color.Gray
-                val teamColor = if (showTeamView.value)  Color(0xFF0288D1)             else Color.Gray
+                item {
                 Surface(
                     color = if (!showTeamView.value) MaterialTheme.colors.primary.copy(alpha = 0.12f)
                             else Color.LightGray.copy(alpha = 0.3f),
@@ -263,6 +276,8 @@ fun OrderListScreen(
                         color = myColor
                     )
                 }
+                }
+                item {
                 Surface(
                     color = if (showTeamView.value) Color(0xFF0288D1).copy(alpha = 0.12f)
                             else Color.LightGray.copy(alpha = 0.3f),
@@ -284,11 +299,12 @@ fun OrderListScreen(
                         )
                     }
                 }
+                }
             }
         }
 
         // Team banner
-        if (showTeamView.value && !isLoading) {
+        if (showTeamView.value && !isRefreshing) {
             Surface(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 6.dp),
                 color = Color(0xFF0288D1).copy(alpha = 0.08f),
@@ -302,7 +318,7 @@ fun OrderListScreen(
                     Icon(Icons.Default.Person, contentDescription = null,
                         tint = Color(0xFF0288D1), modifier = Modifier.size(16.dp))
                     Text(
-                        "Showing team's orders (${orders.size} total)" +
+                        "Showing team's orders ($totalOrderCount total)" +
                             if (canApprove) " — tap Approve/Reject on pending" else "",
                         style = MaterialTheme.typography.caption,
                         color = Color(0xFF0288D1),
@@ -314,39 +330,41 @@ fun OrderListScreen(
 
         // Status filter chips
         val statuses = listOf("All", "Pending", "Approved", "Dispatched", "Delivered", "Cancelled")
-        Row(
+        LazyRow(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             statuses.forEach { status ->
-                val selected = filterStatus.value == status
-                val chipColor = statusColor(status)
-                Surface(
-                    color = if (selected) chipColor.copy(alpha = 0.2f) else Color.LightGray.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.clickable { filterStatus.value = status }
-                ) {
-                    Text(
-                        text = if (status == "All") "All (${orders.size})"
-                        else "$status (${orders.count { it.status == status }})",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        style = MaterialTheme.typography.caption,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (selected) chipColor else Color.Gray
-                    )
+                item {
+                    val selected = filterStatus == status
+                    val chipColor = statusColor(status)
+                    Surface(
+                        color = if (selected) chipColor.copy(alpha = 0.2f) else Color.LightGray.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.clickable { vm.setStatusFilter(status) }
+                    ) {
+                        Text(
+                            text = "$status (${statusCounts[status] ?: 0})",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            style = MaterialTheme.typography.caption,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selected) chipColor else Color.Gray
+                        )
+                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (isLoading && allItems.isEmpty()) {
+        if (isRefreshing && lazyOrders.itemCount == 0) {
             SkeletonList()
-        } else if (!isLoading && filtered.isEmpty()) {
+        } else if (!isRefreshing && lazyOrders.itemCount == 0) {
             Text("No orders found.", color = Color.Gray, modifier = Modifier.padding(20.dp).align(Alignment.CenterHorizontally))
         } else {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                items(filtered) { order ->
+                items(count = lazyOrders.itemCount) { index ->
+                    val order = lazyOrders[index] ?: return@items
                     OrderCard(
                         order = order,
                         onClick = { onSelect(order.id) },
@@ -379,12 +397,7 @@ fun OrderListScreen(
             } // end LazyColumn
         }
     } // end Column
-    PullRefreshIndicator(
-        refreshing = isLoading,
-        state = pullRefreshState,
-        modifier = Modifier.align(Alignment.TopCenter)
-    )
-    } // end Box
+    }
 }
 
 fun statusColor(status: String): Color {
@@ -406,12 +419,17 @@ fun OrderCard(
     onApprove: (() -> Unit)? = null,
     onReject: (() -> Unit)? = null
 ) {
+    val tonalCardColor = MaterialTheme.colors.primary
+        .copy(alpha = 0.06f)
+        .compositeOver(MaterialTheme.colors.surface)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
             .clickable { onClick() },
         elevation = 2.dp,
+        backgroundColor = tonalCardColor,
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -616,7 +634,7 @@ fun CreateOrderScreen(
         Divider()
 
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp).imePadding()
         ) {
             // ── Customer picker ──
             SectionLabel("Customer")
@@ -1788,39 +1806,14 @@ fun OrderItemForm(
             Spacer(modifier = Modifier.height(8.dp))
 
             // ── Quality dropdown (matches web form) ─────────────────────────
-            val qualityOptions = productConfig.quality
-            val qualityExpanded = remember { mutableStateOf(false) }
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = line.quality,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Quality") },
-                    placeholder = { Text("Select quality…", color = Color.LightGray) },
-                    modifier = Modifier.fillMaxWidth(),
-                    trailingIcon = {
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null,
-                            modifier = Modifier.size(18.dp))
-                    }
-                )
-                // Invisible overlay — readOnly TextField swallows clicks so we need this
-                Box(modifier = Modifier.matchParentSize().clickable { qualityExpanded.value = true })
-                DropdownMenu(
-                    expanded = qualityExpanded.value,
-                    onDismissRequest = { qualityExpanded.value = false }
-                ) {
-                    DropdownMenuItem(onClick = {
-                        onChanged(line.copy(quality = ""))
-                        qualityExpanded.value = false
-                    }) { Text("— None —", color = Color.Gray) }
-                    qualityOptions.forEach { opt ->
-                        DropdownMenuItem(onClick = {
-                            onChanged(line.copy(quality = opt))
-                            qualityExpanded.value = false
-                        }) { Text(opt) }
-                    }
-                }
-            }
+            SearchableDropdown(
+                label = "Quality",
+                options = productConfig.quality,
+                selected = line.quality,
+                onSelect = { onChanged(line.copy(quality = it)) },
+                placeholder = "Select quality\u2026",
+                allowNone = true
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 

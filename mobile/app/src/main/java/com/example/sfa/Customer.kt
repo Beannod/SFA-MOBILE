@@ -25,3 +25,10 @@ data class Customer(
     val approvalStatus: String = "Pending",  // Pending, Approved, Rejected
     val isArchived: Boolean = false           // soft-deleted on server
 )
+
+data class CustomerVisit(
+    val id: Int = 0,
+    val purpose: String = "",
+    val remarks: String = "",
+    val visitDate: String = ""
+)

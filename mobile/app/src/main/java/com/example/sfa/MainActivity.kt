@@ -24,14 +24,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
+import androidx.compose.material3.AlertDialog as M3AlertDialog
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -45,6 +53,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.example.sfa.network.RetrofitClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -170,7 +179,7 @@ class MainActivity : ComponentActivity() {
             pendingNavTarget.value = screenFromString(it)
         }
         setContent {
-            MaterialTheme {
+            SfaTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     SfaApp(
                         pendingNavTarget = pendingNavTarget,
@@ -240,6 +249,42 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun SfaTheme(content: @Composable () -> Unit) {
+    val darkTheme = isSystemInDarkTheme()
+    val colors = if (darkTheme) {
+        darkColors(
+            primary = Color(0xFF64B5F6),
+            primaryVariant = Color(0xFF1565C0),
+            secondary = Color(0xFF31C48D),
+            background = Color(0xFF101820),
+            surface = Color(0xFF17212B),
+            error = Color(0xFFEF5350),
+            onPrimary = Color(0xFF06131F),
+            onSecondary = Color(0xFF06130E),
+            onBackground = Color(0xFFE8EEF5),
+            onSurface = Color(0xFFE8EEF5),
+            onError = Color.White
+        )
+    } else {
+        lightColors(
+            primary = Color(0xFF1565C0),
+            primaryVariant = Color(0xFF0D47A1),
+            secondary = Color(0xFF00A676),
+            background = Color(0xFFF4F6F8),
+            surface = Color.White,
+            error = Color(0xFFB3261E),
+            onPrimary = Color.White,
+            onSecondary = Color.White,
+            onBackground = Color(0xFF17212B),
+            onSurface = Color(0xFF17212B),
+            onError = Color.White
+        )
+    }
+
+    MaterialTheme(colors = colors, content = content)
+}
+
+@Composable
 fun SfaApp(
     pendingNavTarget: MutableState<Screen?> = remember { mutableStateOf(null) },
     onUserLoggedIn: (Int) -> Unit = {},
@@ -279,6 +324,7 @@ fun SfaApp(
                     allowedFeatures = featuresList
                 )
                 loggedInUser.value = user
+                RetrofitClient.setUserId(user.id)
                 currentScreen.value = Screen.DASHBOARD
                 onUserLoggedIn(user.id)
                 Log.d("SFA", "Restored session for ${user.username}")
@@ -315,6 +361,7 @@ fun SfaApp(
                 }
                 prefs.edit().putString("saved_user_json", obj.toString()).apply()
                 loggedInUser.value = user
+                RetrofitClient.setUserId(user.id)
                 currentScreen.value = Screen.DASHBOARD
                 onUserLoggedIn(user.id)
             }
@@ -332,6 +379,7 @@ fun SfaApp(
                         // Clear persisted session
                         context.getSharedPreferences("sfa_prefs", android.content.Context.MODE_PRIVATE)
                             .edit().remove("saved_user_json").apply()
+                        RetrofitClient.clearUserId()
                         onUserLoggedOut()
                         loggedInUser.value = null
                         currentScreen.value = Screen.LOGIN
@@ -531,16 +579,14 @@ fun MainScaffold(
             label = "screen_transition"
         ) { screen ->
             when (screen) {
-                Screen.DASHBOARD -> DashboardScreen(
+                Screen.DASHBOARD -> HomeScreen(
                     user = user,
                     onNavigate = { currentScreen.value = it },
                     onNavigateToOrders = { filter ->
                         orderInitialFilter.value = filter
                         currentScreen.value = Screen.ORDERS
                     },
-                    onNewOrder = { orderOpenCreate.value = true; currentScreen.value = Screen.ORDERS },
-                    onTrackingStart = onTrackingStart,
-                    onTrackingStop = onTrackingStop
+                    onNewOrder = { orderOpenCreate.value = true; currentScreen.value = Screen.ORDERS }
                 )
                 Screen.PRODUCTS  -> ProductCatalogScreen(user)
                 Screen.CUSTOMERS -> CustomersScreen(
@@ -572,7 +618,7 @@ fun MainScaffold(
 
     // ── Notifications Panel ──────────────────────────────────────────────────
     if (showNotifications.value) {
-        AlertDialog(
+        M3AlertDialog(
             onDismissRequest = { showNotifications.value = false },
             title = {
                 Row(
@@ -869,24 +915,30 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(Color(0xFFF0F2F5)),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colors.background),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
+        contentPadding = PaddingValues(bottom = 20.dp)
     ) {
         // ── Logo header ──────────────────────────────────────────────────────
         item {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colors.primary)
-                    .padding(top = 56.dp, bottom = 36.dp),
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(MaterialTheme.colors.primary, MaterialTheme.colors.primaryVariant)
+                        )
+                    )
+                    .padding(top = 56.dp, bottom = 34.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    // App icon circle
                     Box(
                         modifier = Modifier
-                            .size(72.dp)
-                            .background(Color.White.copy(alpha = 0.2f), CircleShape),
+                            .size(76.dp)
+                            .background(Color.White.copy(alpha = 0.16f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -897,7 +949,18 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                         )
                     }
                     Spacer(Modifier.height(14.dp))
-                    Text("Sales Force Automation", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
+                    Text(
+                        "Sales Force Automation",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Field sales, orders, and customers",
+                        color = Color.White.copy(alpha = 0.76f),
+                        fontSize = 12.sp
+                    )
                 }
             }
         }
@@ -908,11 +971,11 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.White)
+                        .background(MaterialTheme.colors.background)
                         .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
                     Text("Saved Accounts", style = MaterialTheme.typography.caption,
-                        color = Color.Gray, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colors.onBackground.copy(alpha = 0.62f), fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 10.dp))
                     savedAccounts.value.forEach { cred ->
                         Card(
@@ -921,10 +984,11 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                                 .padding(bottom = 8.dp)
                                 .clickable { doLogin(cred.username, cred.password) },
                             elevation = 2.dp,
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            backgroundColor = MaterialTheme.colors.surface
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
@@ -950,7 +1014,8 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                                     )
                                     Text(
                                         "@${cred.username}  ·  ${cred.role}",
-                                        style = MaterialTheme.typography.caption, color = Color.Gray
+                                        style = MaterialTheme.typography.caption,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f)
                                     )
                                 }
                                 if (isLoading.value) {
@@ -972,7 +1037,7 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                                         ) {
                                             Icon(
                                                 Icons.Default.Close, "Remove account",
-                                                tint = Color.Gray,
+                                                tint = MaterialTheme.colors.onSurface.copy(alpha = 0.55f),
                                                 modifier = Modifier.size(18.dp)
                                             )
                                         }
@@ -991,8 +1056,9 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 16.dp),
-                elevation = 4.dp,
-                shape = RoundedCornerShape(14.dp)
+                elevation = 3.dp,
+                shape = RoundedCornerShape(14.dp),
+                backgroundColor = MaterialTheme.colors.surface
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text(
@@ -1005,7 +1071,7 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                         value = username.value,
                         onValueChange = { username.value = it; errorMessage.value = null },
                         label = { Text("Username") },
-                        leadingIcon = { Icon(Icons.Default.Person, null, tint = Color.Gray) },
+                        leadingIcon = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colors.primary) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
@@ -1016,7 +1082,7 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                         value = password.value,
                         onValueChange = { password.value = it; errorMessage.value = null },
                         label = { Text("Password") },
-                        leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color.Gray) },
+                        leadingIcon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colors.primary) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         visualTransformation = PasswordVisualTransformation(),
@@ -1046,213 +1112,6 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                             style = MaterialTheme.typography.body2)
                     }
                 }
-            }
-        }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Dashboard Screen — role-based
-// ═══════════════════════════════════════════════════════════════════════════════
-
-data class DashboardTile(val title: String, val value: String, val icon: ImageVector, val color: Color, val onClick: (() -> Unit)? = null)
-
-@Composable
-fun DashboardScreen(
-    user: LoggedInUser,
-    onNavigate: (Screen) -> Unit = {},
-    onNavigateToOrders: (String) -> Unit = {},
-    onNewOrder: () -> Unit = {},
-    onTrackingStart: (Int) -> Unit = {},
-    onTrackingStop: () -> Unit = {}
-) {
-    val stats = remember { mutableStateOf<Map<String, Any>>(emptyMap()) }
-    val isLoading = remember { mutableStateOf(true) }
-    val isManager = user.designationLevel < 6
-
-    LaunchedEffect(Unit) {
-        val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
-        stats.value = fetchDashboardStats(base, user)
-        isLoading.value = false
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(Color(0xFFF0F2F5)),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
-    ) {
-        // ── Header Card ──────────────────────────────────────────────────────
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
-                elevation = 6.dp,
-                backgroundColor = Color(0xFF1A73E8)
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
-                    val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-                    val greeting = when {
-                        hour < 12 -> "\u2600\uFE0F Good Morning"
-                        hour < 17 -> "\uD83C\uDF24\uFE0F Good Afternoon"
-                        else       -> "\uD83C\uDF19 Good Evening"
-                    }
-                    Text(greeting, color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        user.fullName.ifBlank { user.username },
-                        color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (user.designation.isNotBlank()) {
-                            Surface(shape = RoundedCornerShape(20.dp), color = Color.White.copy(alpha = 0.2f)) {
-                                Text("\uD83C\uDFF7 ${user.designation}", color = Color.White, fontSize = 12.sp,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
-                            }
-                        }
-                        if (user.territory.isNotBlank()) {
-                            Surface(shape = RoundedCornerShape(20.dp), color = Color.White.copy(alpha = 0.2f)) {
-                                Text("\uD83D\uDCCD ${user.territory}", color = Color.White, fontSize = 12.sp,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    val sdf = java.text.SimpleDateFormat("EEEE, dd MMM yyyy", java.util.Locale.getDefault())
-                    Text(sdf.format(java.util.Date()), color = Color.White.copy(alpha = 0.70f), fontSize = 12.sp)
-                }
-            }
-        }
-
-        // ── Quick Actions ─────────────────────────────────────────────────────
-        item {
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text("Quick Actions", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF444444))
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    if ("orders" in user.allowedFeatures) {
-                        DashboardQuickAction("New Order", Icons.Default.Add, Color(0xFFF57C00), Modifier.weight(1f)) { onNewOrder() }
-                    }
-                    if ("customers" in user.allowedFeatures) {
-                        DashboardQuickAction("Customers", Icons.Default.Person, Color(0xFF388E3C), Modifier.weight(1f)) { onNavigate(Screen.CUSTOMERS) }
-                    }
-                    if ("products" in user.allowedFeatures) {
-                        DashboardQuickAction("Products", Icons.Default.List, Color(0xFF1976D2), Modifier.weight(1f)) { onNavigate(Screen.PRODUCTS) }
-                    }
-                }
-            }
-        }
-
-        // ── Stats Header ──────────────────────────────────────────────────────
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    if (isManager) "Team Overview" else "My Overview",
-                    fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF444444)
-                )
-                Spacer(Modifier.weight(1f))
-                if (isLoading.value) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color(0xFF1A73E8))
-                }
-            }
-        }
-
-        // ── Stats Tiles ───────────────────────────────────────────────────────
-        if (!isLoading.value) {
-            val canCust  = "customers" in user.allowedFeatures
-            val canOrd   = "orders"    in user.allowedFeatures
-            val canProd  = "products"  in user.allowedFeatures
-            val tiles = if (isManager) listOf(
-                DashboardTile("Team Members",    stats.value["teamSize"]?.toString()       ?: "0", Icons.Default.AccountBox,   Color(0xFF1976D2)),
-                DashboardTile("Team Customers",  stats.value["customerCount"]?.toString()  ?: "0", Icons.Default.Person,        Color(0xFF388E3C), onClick = if (canCust) { { onNavigate(Screen.CUSTOMERS) } } else null),
-                DashboardTile("Orders Today",    stats.value["todayOrders"]?.toString()    ?: "0", Icons.Default.ShoppingCart,  Color(0xFFF57C00), onClick = if (canOrd)  { { onNavigateToOrders("All") } }     else null),
-                DashboardTile("Pending Approval",stats.value["pendingOrders"]?.toString()  ?: "0", Icons.Default.Warning,       Color(0xFFD32F2F), onClick = if (canOrd)  { { onNavigateToOrders("Pending") } }  else null),
-                DashboardTile("Approved",        stats.value["approvedOrders"]?.toString() ?: "0", Icons.Default.CheckCircle,   Color(0xFF1565C0), onClick = if (canOrd)  { { onNavigateToOrders("Approved") } } else null),
-                DashboardTile("Dispatched",      stats.value["dispatchedOrders"]?.toString()?: "0", Icons.Default.LocalShipping, Color(0xFF7B1FA2), onClick = if (canOrd)  { { onNavigateToOrders("Dispatched") } } else null),
-                DashboardTile("Delivered",       stats.value["deliveredOrders"]?.toString() ?: "0", Icons.Default.Done,          Color(0xFF388E3C), onClick = if (canOrd)  { { onNavigateToOrders("Delivered") } }  else null),
-                DashboardTile("Low Stock Items", stats.value["lowStockAlerts"]?.toString()  ?: "0", Icons.Default.Info,          Color(0xFFE65100)),
-                DashboardTile("Total Products",  stats.value["productCount"]?.toString()   ?: "0", Icons.Default.List,          Color(0xFF0288D1), onClick = if (canProd) { { onNavigate(Screen.PRODUCTS) } }    else null)
-            ) else listOf(
-                DashboardTile("My Customers",    stats.value["customerCount"]?.toString()  ?: "0", Icons.Default.Person,        Color(0xFF388E3C), onClick = if (canCust) { { onNavigate(Screen.CUSTOMERS) } }   else null),
-                DashboardTile("Orders Today",    stats.value["todayOrders"]?.toString()    ?: "0", Icons.Default.ShoppingCart,  Color(0xFFF57C00), onClick = if (canOrd)  { { onNavigateToOrders("All") } }      else null),
-                DashboardTile("Pending Orders",  stats.value["pendingOrders"]?.toString()  ?: "0", Icons.Default.Warning,       Color(0xFFD32F2F), onClick = if (canOrd)  { { onNavigateToOrders("Pending") } }  else null),
-                DashboardTile("Approved",        stats.value["approvedOrders"]?.toString() ?: "0", Icons.Default.CheckCircle,   Color(0xFF1565C0), onClick = if (canOrd)  { { onNavigateToOrders("Approved") } } else null),
-                DashboardTile("Dispatched",      stats.value["dispatchedOrders"]?.toString()?: "0", Icons.Default.LocalShipping, Color(0xFF7B1FA2), onClick = if (canOrd)  { { onNavigateToOrders("Dispatched") } } else null),
-                DashboardTile("Delivered",       stats.value["deliveredOrders"]?.toString() ?: "0", Icons.Default.Done,          Color(0xFF388E3C), onClick = if (canOrd)  { { onNavigateToOrders("Delivered") } }  else null),
-                DashboardTile("Total Products",  stats.value["productCount"]?.toString()   ?: "0", Icons.Default.List,          Color(0xFF1976D2), onClick = if (canProd) { { onNavigate(Screen.PRODUCTS) } }    else null),
-                DashboardTile("Low Stock Items", stats.value["lowStockAlerts"]?.toString()  ?: "0", Icons.Default.Info,          Color(0xFFE65100)),
-            )
-            val rows = tiles.chunked(2)
-            items(rows) { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    row.forEach { tile -> DashboardCard(tile = tile, modifier = Modifier.weight(1f)) }
-                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun DashboardQuickAction(
-    label: String,
-    icon: ImageVector,
-    color: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = modifier.clickable { onClick() },
-        elevation = 2.dp,
-        shape = RoundedCornerShape(12.dp),
-        backgroundColor = color.copy(alpha = 0.1f)
-    ) {
-        Column(
-            modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(26.dp))
-            Spacer(Modifier.height(4.dp))
-            Text(label, fontSize = 11.sp, color = color, fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-fun DashboardCard(tile: DashboardTile, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.height(90.dp).let { m ->
-            if (tile.onClick != null) m.clickable { tile.onClick.invoke() } else m
-        },
-        elevation = 3.dp,
-        shape = RoundedCornerShape(12.dp),
-        backgroundColor = Color.White
-    ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Colored accent bar on left
-            Box(
-                modifier = Modifier
-                    .width(5.dp)
-                    .fillMaxHeight()
-                    .background(tile.color, shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
-            )
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(tile.value, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = tile.color)
-                    Text(tile.title, fontSize = 11.sp, color = Color.Gray, maxLines = 2)
-                }
-                Icon(tile.icon, contentDescription = tile.title,
-                    tint = tile.color.copy(alpha = 0.25f), modifier = Modifier.size(32.dp))
             }
         }
     }
@@ -1356,108 +1215,6 @@ suspend fun loginUser(username: String, password: String): Pair<LoggedInUser?, S
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Network: Dashboard Stats (scoped to logged-in user's hierarchy)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-suspend fun fetchDashboardStats(baseUrl: String, user: LoggedInUser): Map<String, Any> {
-    return withContext(Dispatchers.IO) {
-        val result = mutableMapOf<String, Any>()
-        val isManager = user.designationLevel < 6
-
-        // Product count from health endpoint
-        try {
-            val conn = URL("${baseUrl}/api/health").openConnection() as HttpURLConnection
-            conn.connectTimeout = 5000; conn.readTimeout = 5000
-            if (conn.responseCode in 200..299) {
-                val obj = JSONObject(conn.inputStream.bufferedReader().readText())
-                result["productCount"] = obj.optInt("productCount", 0)
-            }
-            conn.disconnect()
-        } catch (e: Exception) { Log.e("SFA", "Product count error", e) }
-
-        // Customers — scoped to user's assignment/subtree
-        try {
-            val cUrl = if (isManager)
-                "${baseUrl}/api/customers?managerId=${user.id}"
-            else
-                "${baseUrl}/api/customers?assignedUserId=${user.id}"
-            val conn = URL(cUrl).openConnection() as HttpURLConnection
-            conn.connectTimeout = 8000; conn.readTimeout = 8000
-            if (conn.responseCode in 200..299) {
-                val arr = JSONArray(conn.inputStream.bufferedReader().readText())
-                result["customerCount"] = arr.length()
-            }
-            conn.disconnect()
-        } catch (e: Exception) { Log.e("SFA", "Customer count error", e) }
-
-        // Orders — scoped, count by status
-        try {
-            val oUrl = if (isManager)
-                "${baseUrl}/api/orders?managerId=${user.id}"
-            else
-                "${baseUrl}/api/orders?createdByUserId=${user.id}"
-            val conn = URL(oUrl).openConnection() as HttpURLConnection
-            conn.connectTimeout = 8000; conn.readTimeout = 8000
-            if (conn.responseCode in 200..299) {
-                val arr = JSONArray(conn.inputStream.bufferedReader().readText())
-                val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-                var todayCount = 0
-                val statusCounts = mutableMapOf("Pending" to 0, "Approved" to 0, "Dispatched" to 0, "Delivered" to 0, "Cancelled" to 0)
-                for (i in 0 until arr.length()) {
-                    val o = arr.getJSONObject(i)
-                    if (o.optString("orderDate", "").startsWith(today)) todayCount++
-                    val st = o.optString("status", "")
-                    if (st in statusCounts) statusCounts[st] = statusCounts[st]!! + 1
-                }
-                result["todayOrders"]     = todayCount
-                result["pendingOrders"]   = statusCounts["Pending"]!!
-                result["approvedOrders"]  = statusCounts["Approved"]!!
-                result["dispatchedOrders"]= statusCounts["Dispatched"]!!
-                result["deliveredOrders"] = statusCounts["Delivered"]!!
-                result["cancelledOrders"] = statusCounts["Cancelled"]!!
-            }
-            conn.disconnect()
-        } catch (e: Exception) { Log.e("SFA", "Order count error", e) }
-
-        // Low stock items (use ?lowStock=true filter)
-        try {
-            val conn = URL("${baseUrl}/api/stock?lowStock=true").openConnection() as HttpURLConnection
-            conn.connectTimeout = 5000; conn.readTimeout = 5000
-            if (conn.responseCode in 200..299) {
-                val arr = JSONArray(conn.inputStream.bufferedReader().readText())
-                result["lowStockAlerts"] = arr.length()
-            }
-            conn.disconnect()
-        } catch (e: Exception) { Log.e("SFA", "Stock count error", e) }
-
-        // Team size — managers only (exclude self)
-        if (isManager) {
-            try {
-                val conn = URL("${baseUrl}/api/users/${user.id}/subtree").openConnection() as HttpURLConnection
-                conn.connectTimeout = 5000; conn.readTimeout = 5000
-                if (conn.responseCode in 200..299) {
-                    val obj = JSONObject(conn.inputStream.bufferedReader().readText())
-                    result["teamSize"] = maxOf(0, obj.optInt("totalMembers", 1) - 1)
-                }
-                conn.disconnect()
-            } catch (e: Exception) { Log.e("SFA", "Team size error", e) }
-        }
-
-        result.putIfAbsent("productCount", 0)
-        result.putIfAbsent("customerCount", 0)
-        result.putIfAbsent("todayOrders", 0)
-        result.putIfAbsent("pendingOrders", 0)
-        result.putIfAbsent("approvedOrders", 0)
-        result.putIfAbsent("dispatchedOrders", 0)
-        result.putIfAbsent("deliveredOrders", 0)
-        result.putIfAbsent("cancelledOrders", 0)
-        result.putIfAbsent("lowStockAlerts", 0)
-        result.putIfAbsent("teamSize", 0)
-        result
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // Enhanced Bottom Navigation
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1470,101 +1227,84 @@ fun EnhancedBottomNavigation(
     onMoreClick: () -> Unit = {},
     onTabClick: (Screen) -> Unit = {}
 ) {
-    // Surface extends its white background behind the system navigation bar.
-    // The Row holds the actual nav icons at 56dp; a Spacer below it fills the
-    // system nav bar height so Scaffold correctly offsets the content above.
     Surface(
-        color = Color.White,
-        elevation = 8.dp,
+        color = MaterialTheme.colors.surface,
+        elevation = 0.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+            NavigationBar(
+                modifier = Modifier.fillMaxWidth().height(64.dp),
+                tonalElevation = 4.dp,
+                containerColor = MaterialTheme.colors.surface,
+                windowInsets = WindowInsets(0.dp)
+            ) {
             bottomTabs.forEach { tab ->
                 val isSelected = currentScreen.value == tab.screen
-                val tabColor by animateColorAsState(
-                    targetValue = if (isSelected) Color(0xFF2196F3) else Color.Gray,
-                    animationSpec = tween(200),
-                    label = "tab_${tab.label}_color"
-                )
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable {
-                            currentScreen.value = tab.screen
-                            onTabClick(tab.screen)
-                        },
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
+                NavigationBarItem(
+                    selected = isSelected,
+                    onClick = {
+                        currentScreen.value = tab.screen
+                        onTabClick(tab.screen)
+                    },
+                    icon = {
+                        Icon(
                         tab.icon,
                         contentDescription = tab.label,
-                        tint = tabColor,
                         modifier = Modifier.size(24.dp)
                     )
-                    Text(
-                        tab.label,
-                        fontSize = 10.sp,
-                        color = tabColor
+                    },
+                    label = { Text(tab.label, fontSize = 10.sp) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colors.primary,
+                        selectedTextColor = MaterialTheme.colors.primary,
+                        indicatorColor = MaterialTheme.colors.primary.copy(alpha = 0.12f),
+                        unselectedIconColor = Color.Gray,
+                        unselectedTextColor = Color.Gray
                     )
-                }
+                )
             }
-            // Notifications button
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clickable { onNotificationsClick() },
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(contentAlignment = Alignment.TopEnd) {
-                    Icon(Icons.Default.Notifications, contentDescription = "Notifications",
-                        tint = Color.Gray, modifier = Modifier.size(24.dp))
-                    if (unreadCount > 0) {
-                        Box(
-                            modifier = Modifier
-                                .size(16.dp)
-                                .background(Color.Red, shape = CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                if (unreadCount > 9) "9+" else unreadCount.toString(),
-                                fontSize = 8.sp,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
+            NavigationBarItem(
+                selected = false,
+                onClick = onNotificationsClick,
+                icon = {
+                    BadgedBox(
+                        badge = {
+                            if (unreadCount > 0) {
+                                Badge { Text(if (unreadCount > 9) "9+" else unreadCount.toString(), fontSize = 8.sp) }
+                            }
                         }
+                    ) {
+                        Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                     }
-                }
-                Text("Alerts", fontSize = 10.sp, color = Color.Gray)
+                },
+                label = { Text("Alerts", fontSize = 10.sp) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colors.primary,
+                    selectedTextColor = MaterialTheme.colors.primary,
+                    indicatorColor = MaterialTheme.colors.primary.copy(alpha = 0.12f),
+                    unselectedIconColor = Color.Gray,
+                    unselectedTextColor = Color.Gray
+                )
+            )
+            NavigationBarItem(
+                selected = false,
+                onClick = onMoreClick,
+                icon = { Icon(Icons.Default.MoreVert, contentDescription = "More") },
+                label = { Text("More", fontSize = 10.sp) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colors.primary,
+                    selectedTextColor = MaterialTheme.colors.primary,
+                    indicatorColor = MaterialTheme.colors.primary.copy(alpha = 0.12f),
+                    unselectedIconColor = Color.Gray,
+                    unselectedTextColor = Color.Gray
+                )
+            )
             }
-            // More menu button
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clickable { onMoreClick() },
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(Icons.Default.MoreVert, contentDescription = "More",
-                    tint = Color.Gray, modifier = Modifier.size(24.dp))
-                Text("More", fontSize = 10.sp, color = Color.Gray)
-            }
-            } // end Row
             // Spacer sized to the system navigation bar height — extends Surface background behind it
             Spacer(modifier = Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
-        } // end Column
-    } // end Surface
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1585,16 +1325,37 @@ fun EnhancedDrawerContent(
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight()
-            .background(Color.White)
+            .background(MaterialTheme.colors.surface)
     ) {
         // Header with user info
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF2196F3))
-                .padding(16.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(MaterialTheme.colors.primary, MaterialTheme.colors.primaryVariant)
+                    )
+                )
+                .padding(horizontal = 18.dp, vertical = 20.dp)
         ) {
-            Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(Color.White.copy(alpha = 0.18f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = user.fullName.split(" ").take(2)
+                            .joinToString("") { it.firstOrNull()?.uppercase() ?: "" }
+                            .ifBlank { user.username.take(2).uppercase() },
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
                 Text(
                     user.fullName.ifBlank { user.username },
                     fontSize = 18.sp,
@@ -1613,6 +1374,7 @@ fun EnhancedDrawerContent(
                         color = Color.White.copy(alpha = 0.7f)
                     )
                 }
+                }
             }
         }
 
@@ -1629,7 +1391,7 @@ fun EnhancedDrawerContent(
                             scope.launch { scaffoldState.drawerState.close() }
                         }
                         .background(
-                            if (currentScreen.value == item.screen) Color(0xFF2196F3).copy(alpha = 0.15f)
+                            if (currentScreen.value == item.screen) MaterialTheme.colors.primary.copy(alpha = 0.10f)
                             else Color.Transparent
                         )
                         .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -1638,15 +1400,15 @@ fun EnhancedDrawerContent(
                     Icon(
                         item.icon,
                         contentDescription = item.label,
-                        tint = if (currentScreen.value == item.screen) Color(0xFF2196F3) else Color.Gray,
+                        tint = if (currentScreen.value == item.screen) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface.copy(alpha = 0.56f),
                         modifier = Modifier
-                            .size(24.dp)
-                            .padding(end = 16.dp)
+                            .size(22.dp)
                     )
+                    Spacer(Modifier.width(16.dp))
                     Text(
                         item.label,
                         fontSize = 14.sp,
-                        color = if (currentScreen.value == item.screen) Color(0xFF2196F3) else Color.Black,
+                        color = if (currentScreen.value == item.screen) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface,
                         fontWeight = if (currentScreen.value == item.screen) FontWeight.Bold else FontWeight.Normal
                     )
                 }
@@ -1667,8 +1429,9 @@ fun EnhancedDrawerContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Logout, contentDescription = "Logout",
-                tint = Color.Gray, modifier = Modifier.size(24.dp).padding(end = 16.dp))
-            Text("Logout", fontSize = 14.sp, color = Color.Gray)
+                tint = MaterialTheme.colors.error, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(16.dp))
+            Text("Logout", fontSize = 14.sp, color = MaterialTheme.colors.error, fontWeight = FontWeight.SemiBold)
         }
     }
 }

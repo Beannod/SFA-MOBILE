@@ -156,6 +156,8 @@
 - [x] Skeleton loaders on list/detail screens (`SkeletonList` + animated shimmer on CustomerListScreen, ProductListScreen, OrderListScreen)
 - [x] Offline customer detail view (falls back to Room cache via `OfflineRepository.getCustomerDetail`)
 - [x] Offline order creation (customers + products loaded from Room cache; order queued to `sync_queue`)
+- [x] **Retrofit + OkHttp networking layer** — replaced `HttpURLConnection` + `org.json` with `network/RetrofitClient.kt` + `network/ApiService.kt`; auth interceptor injects `X-User-Id`/`X-Source` on every request; sync-queue flush reuses shared OkHttpClient
+- [x] **Paging 3 offline-first pagination** — `RemoteMediator` (fetch-all → cache Room → serve via `PagingSource`); all 3 list screens use `collectAsLazyPagingItems()`; stats count `Flow`s for chips/badges
 
 ### Phase 2 — Core sync architecture
 - [ ] `POST /api/sync/batch` with batch upload + per-item result
@@ -248,3 +250,5 @@
 - [ ] Route plan entry — salesperson plans customer visits for the day
 - [ ] Route visualization on map (planned vs actual GPS trail)
 - [ ] Alternative product suggestion when stock is zero
+
+

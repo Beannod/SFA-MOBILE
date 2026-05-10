@@ -30,6 +30,8 @@ namespace SfaApi.Data
 		public DbSet<UserMobilePermissions> UserMobilePermissions { get; set; } = null!;
 		/// <summary>Lookup table of Nepal places used for route-planner autocomplete.</summary>
 		public DbSet<NepalPlace> NepalPlaces { get; set; } = null!;
+		/// <summary>Editable designation hierarchy (lower level means higher authority).</summary>
+		public DbSet<DesignationConfig> DesignationConfigs { get; set; } = null!;
 		/// <summary>Key-value store for product form dropdown options.</summary>
 		public DbSet<ProductConfig> ProductConfigs { get; set; } = null!;
 
@@ -250,6 +252,11 @@ namespace SfaApi.Data
 			modelBuilder.Entity<ProductConfig>().Property(c => c.ConfigKey).HasMaxLength(32);
 			modelBuilder.Entity<ProductConfig>().Property(c => c.ConfigValue).HasMaxLength(128);
 			modelBuilder.Entity<ProductConfig>().HasIndex(c => new { c.ConfigKey, c.ConfigValue }).IsUnique();
+
+			// ── DesignationConfig ──
+			modelBuilder.Entity<DesignationConfig>().ToTable("designation_config_sfa");
+			modelBuilder.Entity<DesignationConfig>().Property(d => d.Name).HasMaxLength(128);
+			modelBuilder.Entity<DesignationConfig>().HasIndex(d => d.Name).IsUnique();
 
 			base.OnModelCreating(modelBuilder);
 		}

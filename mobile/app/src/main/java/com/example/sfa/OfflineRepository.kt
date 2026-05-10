@@ -4,12 +4,13 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
+import com.example.sfa.network.RetrofitClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Network utilities
@@ -26,17 +27,19 @@ fun isOnline(context: Context): Boolean {
 // Offline-first Repository
 //
 // Each read function:
-//   1. If online  → fetch from server, save to cache, return server data
+//   1. If online  → fetch from server via Retrofit, save to cache, return data
 //   2. If offline → return cached data (stale-while-offline)
 //
 // Each write function:
-//   1. If online  → POST/PUT to server, update cache, return true
+//   1. If online  → POST/PUT via Retrofit, return true
 //   2. If offline → queue to sync_queue table, return true (optimistic)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class OfflineRepository(private val context: Context) {
 
     private val db by lazy { AppDatabase.get(context) }
+    private val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
+    private val api by lazy { RetrofitClient.createApi(base) }
 
     // ── Customers ─────────────────────────────────────────────────────────────
 
@@ -46,14 +49,14 @@ class OfflineRepository(private val context: Context) {
         managerId: Int? = null
     ): List<Customer> = withContext(Dispatchers.IO) {
         if (isOnline(context)) {
-            val fresh = fetchCustomers(baseUrl, assignedUserId, managerId)
-            if (fresh != null) {
-                // Cache only the slice that was fetched (don't wipe unrelated user's data)
+            try {
+                val fresh = api.getCustomers(assignedUserId, managerId)
                 db.customerDao().insertAll(fresh.map { it.toEntity() })
                 return@withContext fresh
+            } catch (e: Exception) {
+                Log.e("SFA", "getCustomers network error", e)
             }
         }
-        // Offline fallback
         Log.d("SFA", "Customer list — serving from cache")
         val cached = when {
             assignedUserId != null -> db.customerDao().getByAssignedUser(assignedUserId)
@@ -65,10 +68,12 @@ class OfflineRepository(private val context: Context) {
     suspend fun getCustomerDetail(baseUrl: String, id: Int): Customer? =
         withContext(Dispatchers.IO) {
             if (isOnline(context)) {
-                val fresh = fetchCustomerDetail(baseUrl, id)
-                if (fresh != null) {
+                try {
+                    val fresh = api.getCustomer(id)
                     db.customerDao().insert(fresh.toEntity())
                     return@withContext fresh
+                } catch (e: Exception) {
+                    Log.e("SFA", "getCustomerDetail network error", e)
                 }
             }
             db.customerDao().getById(id)?.toModel()
@@ -77,13 +82,23 @@ class OfflineRepository(private val context: Context) {
     suspend fun saveCustomer(baseUrl: String, body: JSONObject, customerId: Int? = null): Boolean =
         withContext(Dispatchers.IO) {
             val endpoint = if (customerId != null) "/api/customers/$customerId" else "/api/customers"
-            val method = if (customerId != null) "PUT" else "POST"
+            val method   = if (customerId != null) "PUT" else "POST"
             if (isOnline(context)) {
-                val ok = httpWrite("$baseUrl$endpoint", method, body.toString())
-                if (ok) return@withContext true
+                try {
+                    val reqBody  = body.toString().toRequestBody("application/json".toMediaType())
+                    val response = if (customerId != null)
+                        api.updateCustomer(customerId, reqBody)
+                    else
+                        api.createCustomer(reqBody)
+                    if (response.isSuccessful) return@withContext true
+                    Log.e("SFA", "saveCustomer HTTP ${response.code()}")
+                } catch (e: Exception) {
+                    Log.e("SFA", "saveCustomer network error", e)
+                }
             }
-            // Queue for later sync
-            db.syncQueueDao().insert(SyncQueueItem(endpoint = endpoint, method = method, body = body.toString()))
+            db.syncQueueDao().insert(
+                SyncQueueItem(endpoint = endpoint, method = method, body = body.toString())
+            )
             Log.d("SFA", "Customer queued for sync: $endpoint")
             true // optimistic
         }
@@ -93,17 +108,20 @@ class OfflineRepository(private val context: Context) {
     suspend fun getProducts(baseUrl: String, queryString: String = ""): List<Product> =
         withContext(Dispatchers.IO) {
             if (isOnline(context)) {
-                val url = "$baseUrl/api/products${if (queryString.isNotEmpty()) "?$queryString" else ""}"
-                val fresh = fetchProducts(url)
-                if (fresh.isNotEmpty()) {
-                    // Only replace full cache on an unfiltered fetch
-                    if (queryString.isEmpty()) {
-                        db.productDao().deleteAll()
-                        db.productDao().insertAll(fresh.map { it.toEntity() })
-                    } else {
-                        db.productDao().insertAll(fresh.map { it.toEntity() })
+                try {
+                    val params = parseQueryString(queryString)
+                    val fresh  = api.getProducts(params)
+                    if (fresh.isNotEmpty()) {
+                        if (queryString.isEmpty()) {
+                            db.productDao().deleteAll()
+                            db.productDao().insertAll(fresh.map { it.toEntity() })
+                        } else {
+                            db.productDao().insertAll(fresh.map { it.toEntity() })
+                        }
+                        return@withContext fresh
                     }
-                    return@withContext fresh
+                } catch (e: Exception) {
+                    Log.e("SFA", "getProducts network error", e)
                 }
             }
             Log.d("SFA", "Product list — serving from cache")
@@ -113,10 +131,12 @@ class OfflineRepository(private val context: Context) {
     suspend fun getProductDetail(baseUrl: String, id: Int): Product? =
         withContext(Dispatchers.IO) {
             if (isOnline(context)) {
-                val fresh = fetchProductDetail("$baseUrl/api/products/$id")
-                if (fresh != null) {
+                try {
+                    val fresh = api.getProduct(id)
                     db.productDao().insert(fresh.toEntity())
                     return@withContext fresh
+                } catch (e: Exception) {
+                    Log.e("SFA", "getProductDetail network error", e)
                 }
             }
             db.productDao().getById(id)?.toModel()
@@ -130,10 +150,12 @@ class OfflineRepository(private val context: Context) {
         managerId: Int? = null
     ): List<Order> = withContext(Dispatchers.IO) {
         if (isOnline(context)) {
-            val fresh = fetchOrders(baseUrl, createdByUserId, managerId)
-            if (fresh != null) {
+            try {
+                val fresh = api.getOrders(createdByUserId, managerId)
                 db.orderDao().insertAll(fresh.map { it.toEntity() })
                 return@withContext fresh
+            } catch (e: Exception) {
+                Log.e("SFA", "getOrders network error", e)
             }
         }
         Log.d("SFA", "Order list — serving from cache")
@@ -147,9 +169,18 @@ class OfflineRepository(private val context: Context) {
     suspend fun createOrder(baseUrl: String, body: JSONObject): Boolean =
         withContext(Dispatchers.IO) {
             if (isOnline(context)) {
-                return@withContext httpWrite("$baseUrl/api/orders", "POST", body.toString())
+                try {
+                    val reqBody  = body.toString().toRequestBody("application/json".toMediaType())
+                    val response = api.createOrder(reqBody)
+                    if (response.isSuccessful) return@withContext true
+                    Log.e("SFA", "createOrder HTTP ${response.code()}")
+                } catch (e: Exception) {
+                    Log.e("SFA", "createOrder network error", e)
+                }
             }
-            db.syncQueueDao().insert(SyncQueueItem(endpoint = "/api/orders", method = "POST", body = body.toString()))
+            db.syncQueueDao().insert(
+                SyncQueueItem(endpoint = "/api/orders", method = "POST", body = body.toString())
+            )
             Log.d("SFA", "Order queued for sync")
             true // optimistic
         }
@@ -159,18 +190,40 @@ class OfflineRepository(private val context: Context) {
     suspend fun checkIn(baseUrl: String, body: JSONObject): Boolean =
         withContext(Dispatchers.IO) {
             if (isOnline(context)) {
-                return@withContext httpWrite("$baseUrl/api/attendance/checkin", "POST", body.toString())
+                try {
+                    val reqBody  = body.toString().toRequestBody("application/json".toMediaType())
+                    val response = api.checkIn(reqBody)
+                    if (response.isSuccessful) return@withContext true
+                    Log.e("SFA", "checkIn HTTP ${response.code()}")
+                } catch (e: Exception) {
+                    Log.e("SFA", "checkIn network error", e)
+                }
             }
-            db.syncQueueDao().insert(SyncQueueItem(endpoint = "/api/attendance/checkin", method = "POST", body = body.toString()))
+            db.syncQueueDao().insert(
+                SyncQueueItem(endpoint = "/api/attendance/checkin", method = "POST", body = body.toString())
+            )
             true
         }
 
     suspend fun checkOut(baseUrl: String, attendanceId: Int, body: JSONObject): Boolean =
         withContext(Dispatchers.IO) {
             if (isOnline(context)) {
-                return@withContext httpWrite("$baseUrl/api/attendance/checkout/$attendanceId", "PUT", body.toString())
+                try {
+                    val reqBody  = body.toString().toRequestBody("application/json".toMediaType())
+                    val response = api.checkOut(attendanceId, reqBody)
+                    if (response.isSuccessful) return@withContext true
+                    Log.e("SFA", "checkOut HTTP ${response.code()}")
+                } catch (e: Exception) {
+                    Log.e("SFA", "checkOut network error", e)
+                }
             }
-            db.syncQueueDao().insert(SyncQueueItem(endpoint = "/api/attendance/checkout/$attendanceId", method = "PUT", body = body.toString()))
+            db.syncQueueDao().insert(
+                SyncQueueItem(
+                    endpoint = "/api/attendance/checkout/$attendanceId",
+                    method   = "PUT",
+                    body     = body.toString()
+                )
+            )
             true
         }
 
@@ -181,18 +234,20 @@ class OfflineRepository(private val context: Context) {
     }
 
     // ── Flush sync queue (called by SyncWorker) ───────────────────────────────
+    //
+    // Uses the shared OkHttpClient from RetrofitClient so auth headers
+    // (X-User-Id, X-Source) are injected automatically.
 
     suspend fun flushSyncQueue(baseUrl: String): Int {
         var flushed = 0
         val items = db.syncQueueDao().getAll()
         for (item in items) {
-            val ok = httpWrite("$baseUrl${item.endpoint}", item.method, item.body)
+            val ok = okHttpWrite("$base${item.endpoint}", item.method, item.body)
             if (ok) {
                 db.syncQueueDao().delete(item)
                 flushed++
             } else {
                 if (item.retryCount >= 5) {
-                    // Give up after 5 retries
                     db.syncQueueDao().delete(item)
                     Log.w("SFA", "Dropping failed sync item after 5 retries: ${item.endpoint}")
                 } else {
@@ -204,23 +259,27 @@ class OfflineRepository(private val context: Context) {
         return flushed
     }
 
-    // ── Internal HTTP helper ──────────────────────────────────────────────────
+    // ── Internal helpers ──────────────────────────────────────────────────────
 
-    private fun httpWrite(url: String, method: String, json: String): Boolean {
+    /** Raw OkHttp write reusing RetrofitClient's shared client (auth interceptor included). */
+    private fun okHttpWrite(url: String, method: String, json: String): Boolean {
         return try {
-            val conn = URL(url).openConnection() as HttpURLConnection
-            conn.requestMethod = method
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.doOutput = true
-            conn.connectTimeout = 8000
-            conn.readTimeout = 8000
-            conn.outputStream.use { it.write(json.toByteArray()) }
-            val code = conn.responseCode
-            conn.disconnect()
-            code in 200..299
+            val body    = json.toRequestBody("application/json".toMediaType())
+            val request = Request.Builder().url(url).method(method, body).build()
+            RetrofitClient.okHttpClient.newCall(request).execute().use { it.isSuccessful }
         } catch (e: Exception) {
-            Log.e("SFA", "httpWrite error $url", e)
+            Log.e("SFA", "okHttpWrite error $url", e)
             false
         }
     }
+
+    /** Converts a URL query string (e.g. "search=foo&discontinued=false") into a Map. */
+    private fun parseQueryString(qs: String): Map<String, String> {
+        if (qs.isBlank()) return emptyMap()
+        return qs.split("&").mapNotNull { pair ->
+            val idx = pair.indexOf('=')
+            if (idx < 0) null else pair.substring(0, idx) to pair.substring(idx + 1)
+        }.toMap()
+    }
 }
+

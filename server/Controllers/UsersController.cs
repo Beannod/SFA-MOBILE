@@ -14,6 +14,22 @@ namespace SfaApi.Controllers
 
 		public UsersController(AppDbContext db) => _db = db;
 
+		/// <summary>
+		/// Resolves DesignationLevel from the DB designation_config_sfa table.
+		/// Falls back to the static DesignationLevel.For() map if not found, then 99.
+		/// </summary>
+		private async Task<int> ResolveDesignationLevel(string? designation)
+		{
+			if (string.IsNullOrWhiteSpace(designation)) return 99;
+			var normalized = designation.Trim().ToLower();
+			var row = await _db.DesignationConfigs
+				.AsNoTracking()
+				.FirstOrDefaultAsync(d => d.IsActive && d.Name.ToLower() == normalized);
+			if (row != null) return row.Level;
+			// Fallback to hardcoded map for backwards compat
+			return Models.DesignationLevel.For(designation);
+		}
+
 		private string GetSource()
 		{
 			var xSource = Request.Headers["X-Source"].FirstOrDefault();
@@ -231,7 +247,7 @@ namespace SfaApi.Controllers
 		public async Task<IActionResult> Create(User user)
 		{
 			user.CreatedAt = NepalTime.Now;
-			user.DesignationLevel = Models.DesignationLevel.For(user.Designation);
+			user.DesignationLevel = await ResolveDesignationLevel(user.Designation);
 
 			// Hash the password before storing
 			if (!string.IsNullOrWhiteSpace(user.Password))
@@ -288,11 +304,11 @@ namespace SfaApi.Controllers
 			if (!string.IsNullOrWhiteSpace(dto.Password))
 				user.Password = PasswordService.HashPassword(dto.Password);
 
-			// Designation change — recalculate level
+			// Designation change — recalculate level from DB config
 			if (dto.Designation != null)
 			{
 				user.Designation = dto.Designation;
-				user.DesignationLevel = Models.DesignationLevel.For(dto.Designation);
+				user.DesignationLevel = await ResolveDesignationLevel(dto.Designation);
 			}
 
 			// ReportsTo change — validate hierarchy

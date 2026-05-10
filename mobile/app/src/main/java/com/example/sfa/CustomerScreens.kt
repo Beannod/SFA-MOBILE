@@ -1,34 +1,42 @@
 package com.example.sfa
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,7 +104,7 @@ fun CustomersScreen(user: LoggedInUser, onPlaceOrder: (customerId: Int) -> Unit 
 // Customer List
 // ═══════════════════════════════════════════════════════════════════════════════
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerListScreen(
     user: LoggedInUser,
@@ -118,15 +126,20 @@ fun CustomerListScreen(
             managerId      = if (showTeamView.value && !isAdmin) user.id else null,
             assignedUserId = if (!showTeamView.value && !isAdmin) user.id else null
         )
-        vm.refresh()
     }
 
-    val items         by vm.filteredItems.collectAsStateWithLifecycle()
-    val isLoading     by vm.isLoading.collectAsStateWithLifecycle()
-    val isLoadingMore by vm.isLoadingMore.collectAsStateWithLifecycle()
+    val lazyCustomers = vm.pagedCustomers.collectAsLazyPagingItems()
+    val isRefreshing  = lazyCustomers.loadState.refresh is LoadState.Loading
+    val isLoadingMore = lazyCustomers.loadState.append  is LoadState.Loading
+
     val isOnline      by vm.isOnline.collectAsStateWithLifecycle()
     val pendingCount  by vm.pendingSyncCount.collectAsStateWithLifecycle()
     val searchQuery   by vm.searchQuery.collectAsStateWithLifecycle()
+    val totalCount    by vm.totalCount.collectAsStateWithLifecycle()
+    val dealerCount   by vm.dealerCount.collectAsStateWithLifecycle()
+    val retailerCount by vm.retailerCount.collectAsStateWithLifecycle()
+    val projectCount  by vm.projectCount.collectAsStateWithLifecycle()
+    val allIds        by vm.allIds.collectAsStateWithLifecycle()
 
     // Legacy multi-select (kept as local state — pure UI concern)
     val isMultiSelectMode   = remember { mutableStateOf(false) }
@@ -136,19 +149,13 @@ fun CustomerListScreen(
     val scope               = rememberCoroutineScope()
     val base                = remember { BuildConfig.SFA_API_BASE_URL.trimEnd('/') }
 
-    // Alias filtered list to "customers" / "filtered" to keep all code below unchanged
-    val customers = items
-    val filtered  = items   // search is applied inside ViewModel
-
     val listState = rememberLazyListState()
-    InfiniteScrollEffect(listState = listState, loadMore = vm::loadMore)
 
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isLoading,
-        onRefresh = { vm.refresh() }
-    )
-
-    Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = { lazyCustomers.refresh() },
+        modifier = Modifier.fillMaxSize()
+    ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Offline / pending-sync indicator
         OfflineBanner(isOnline = isOnline, pendingCount = pendingCount)
@@ -187,8 +194,7 @@ fun CustomerListScreen(
                 Text(if (isMultiSelectMode.value) "Done" else "Select")
             }
             Spacer(modifier = Modifier.width(8.dp))
-            // Sync button — manually pull fresh data from server
-            IconButton(onClick = { vm.refresh() }) {
+            IconButton(onClick = { lazyCustomers.refresh() }) {
                 Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = MaterialTheme.colors.primary)
             }
             FloatingActionButton(
@@ -229,7 +235,7 @@ fun CustomerListScreen(
                     )
                     TextButton(onClick = {
                         selectedCustomerIds.clear()
-                        selectedCustomerIds.addAll(filtered.map { it.id })
+                        selectedCustomerIds.addAll(allIds)
                     }) {
                         Text("All")
                     }
@@ -305,17 +311,16 @@ fun CustomerListScreen(
 
         // ── Team View Toggle (managers only — hidden for Admin who always sees all) ────
         if (canViewTeam && !isAdmin) {
-            Row(
+            val myColor   = if (!showTeamView.value) MaterialTheme.colors.primary else Color.Gray
+            val teamColor = if (showTeamView.value)  Color(0xFF0288D1)             else Color.Gray
+            LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp)
                     .padding(bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val myColor   = if (!showTeamView.value) MaterialTheme.colors.primary else Color.Gray
-                val teamColor = if (showTeamView.value)  Color(0xFF0288D1)             else Color.Gray
-
+                item {
                 Surface(
                     color = if (!showTeamView.value) MaterialTheme.colors.primary.copy(alpha = 0.12f)
                             else Color.LightGray.copy(alpha = 0.3f),
@@ -330,6 +335,8 @@ fun CustomerListScreen(
                         color = myColor
                     )
                 }
+                }
+                item {
                 Surface(
                     color = if (showTeamView.value) Color(0xFF0288D1).copy(alpha = 0.12f)
                             else Color.LightGray.copy(alpha = 0.3f),
@@ -351,11 +358,12 @@ fun CustomerListScreen(
                         )
                     }
                 }
+                }
             }
         }
 
         // Team banner
-        if (showTeamView.value && !isLoading) {
+        if (showTeamView.value && !isRefreshing) {
             Surface(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 6.dp),
                 color = Color(0xFF0288D1).copy(alpha = 0.08f),
@@ -369,8 +377,8 @@ fun CustomerListScreen(
                     Icon(Icons.Default.Person, contentDescription = null,
                         tint = Color(0xFF0288D1), modifier = Modifier.size(16.dp))
                     Text(
-                        if (isAdmin) "Showing all customers (${customers.size} total)"
-                        else "Showing team's customers (${customers.size} total)",
+                        if (isAdmin) "Showing all customers ($totalCount total)"
+                        else "Showing team's customers ($totalCount total)",
                         style = MaterialTheme.typography.caption,
                         color = Color(0xFF0288D1),
                         fontWeight = FontWeight.Bold
@@ -378,28 +386,26 @@ fun CustomerListScreen(
                 }
             }
         }
-        Row(
+        LazyRow(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val dealers = customers.count { it.customerType == "Dealer" }
-            val retailers = customers.count { it.customerType == "Retailer" }
-            val projects = customers.count { it.customerType == "Project" }
-            StatChip("All: ${customers.size}", Color(0xFF1976D2))
-            StatChip("Dealers: $dealers", Color(0xFF388E3C))
-            StatChip("Retailers: $retailers", Color(0xFFF57C00))
-            StatChip("Projects: $projects", Color(0xFF7B1FA2))
+            item { StatChip("All: $totalCount", Color(0xFF1976D2)) }
+            item { StatChip("Dealers: $dealerCount", Color(0xFF388E3C)) }
+            item { StatChip("Retailers: $retailerCount", Color(0xFFF57C00)) }
+            item { StatChip("Projects: $projectCount", Color(0xFF7B1FA2)) }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (isLoading && items.isEmpty()) {
+        if (isRefreshing && lazyCustomers.itemCount == 0) {
             SkeletonList()
-        } else if (!isLoading && filtered.isEmpty()) {
+        } else if (!isRefreshing && lazyCustomers.itemCount == 0) {
             Text("No customers found.", color = Color.Gray, modifier = Modifier.padding(20.dp).align(Alignment.CenterHorizontally))
         } else {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                items(filtered) { customer ->
+                items(count = lazyCustomers.itemCount) { index ->
+                    val customer = lazyCustomers[index] ?: return@items
                     val isSelected = customer.id in selectedCustomerIds
                     CustomerCard(
                         customer = customer,
@@ -426,12 +432,7 @@ fun CustomerListScreen(
             } // end LazyColumn
         }
     } // end Column
-    PullRefreshIndicator(
-        refreshing = isLoading,
-        state = pullRefreshState,
-        modifier = Modifier.align(Alignment.TopCenter)
-    )
-    } // end Box
+    }
 }
 
 @Composable
@@ -457,12 +458,17 @@ fun CustomerCard(
     showCheckbox: Boolean = false,
     onClick: () -> Unit
 ) {
+    val tonalCardColor = MaterialTheme.colors.primary
+        .copy(alpha = 0.06f)
+        .compositeOver(MaterialTheme.colors.surface)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
             .clickable { onClick() },
         elevation = 2.dp,
+        backgroundColor = tonalCardColor,
         shape = RoundedCornerShape(8.dp)
     ) {
         Row(
@@ -557,25 +563,53 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
     val scope = rememberCoroutineScope()
     val isLoading = remember { mutableStateOf(false) }
     val errorMsg = remember { mutableStateOf<String?>(null) }
+    val nameError = remember { mutableStateOf<String?>(null) }
     val base = remember { BuildConfig.SFA_API_BASE_URL.trimEnd('/') }
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("draft_add_customer", Context.MODE_PRIVATE) }
 
-    // Fields
-    val name = remember { mutableStateOf("") }
-    val customerType = remember { mutableStateOf("Dealer") }
-    val customerCode = remember { mutableStateOf("") }
-    val contactPerson = remember { mutableStateOf("") }
-    val phone = remember { mutableStateOf("") }
-    val email = remember { mutableStateOf("") }
-    val address = remember { mutableStateOf("") }
-    val city = remember { mutableStateOf("") }
-    val state = remember { mutableStateOf("") }
-    val pincode = remember { mutableStateOf("") }
-    val territory = remember { mutableStateOf(user.territory) }
-    val creditLimit = remember { mutableStateOf("") }
-    val outstandingBalance = remember { mutableStateOf("") }
+    // Fields — restored from auto-saved draft when present
+    val name            = remember { mutableStateOf(prefs.getString("name", "") ?: "") }
+    val customerType    = remember { mutableStateOf(prefs.getString("customerType", "Dealer") ?: "Dealer") }
+    val customerCode    = remember { mutableStateOf(prefs.getString("customerCode", "") ?: "") }
+    val contactPerson   = remember { mutableStateOf(prefs.getString("contactPerson", "") ?: "") }
+    val phone           = remember { mutableStateOf(prefs.getString("phone", "") ?: "") }
+    val email           = remember { mutableStateOf(prefs.getString("email", "") ?: "") }
+    val address         = remember { mutableStateOf(prefs.getString("address", "") ?: "") }
+    val city            = remember { mutableStateOf(prefs.getString("city", "") ?: "") }
+    val state           = remember { mutableStateOf(prefs.getString("province", "") ?: "") }
+    val pincode         = remember { mutableStateOf(prefs.getString("pincode", "") ?: "") }
+    val territory       = remember { mutableStateOf(prefs.getString("territory", user.territory) ?: user.territory) }
+    val creditLimit     = remember { mutableStateOf(prefs.getString("creditLimit", "") ?: "") }
+    val outstandingBalance = remember { mutableStateOf(prefs.getString("outstandingBalance", "") ?: "") }
 
     val typeOptions = listOf("Dealer", "Retailer", "Project")
-    val typeExpanded = remember { mutableStateOf(false) }
+
+    // Auto-save draft whenever any field changes
+    LaunchedEffect(
+        name.value, customerType.value, customerCode.value, contactPerson.value,
+        phone.value, email.value, address.value, city.value, state.value,
+        pincode.value, territory.value, creditLimit.value, outstandingBalance.value
+    ) {
+        prefs.edit()
+            .putString("name", name.value)
+            .putString("customerType", customerType.value)
+            .putString("customerCode", customerCode.value)
+            .putString("contactPerson", contactPerson.value)
+            .putString("phone", phone.value)
+            .putString("email", email.value)
+            .putString("address", address.value)
+            .putString("city", city.value)
+            .putString("province", state.value)
+            .putString("pincode", pincode.value)
+            .putString("territory", territory.value)
+            .putString("creditLimit", creditLimit.value)
+            .putString("outstandingBalance", outstandingBalance.value)
+            .apply()
+    }
+
+    // Clear name error on each keystroke
+    LaunchedEffect(name.value) { nameError.value = null }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Top bar
@@ -590,37 +624,19 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
         }
 
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp).imePadding()
         ) {
             // Customer Type dropdown
-            Text("Customer Type", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Gray)
-            Box {
-                OutlinedTextField(
-                    value = customerType.value,
-                    onValueChange = {},
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) }
-                )
-                // Transparent overlay to reliably capture taps (readOnly OutlinedTextField
-                // consumes click for focus, so clickable on the field itself is unreliable)
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable { typeExpanded.value = true }
-                )
-                DropdownMenu(expanded = typeExpanded.value, onDismissRequest = { typeExpanded.value = false }) {
-                    typeOptions.forEach { option ->
-                        DropdownMenuItem(onClick = { customerType.value = option; typeExpanded.value = false }) {
-                            Text(option)
-                        }
-                    }
-                }
-            }
+            SearchableDropdown(
+                label = "Customer Type",
+                options = typeOptions,
+                selected = customerType.value,
+                onSelect = { customerType.value = it }
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
             SectionLabel("Shop / Firm Details")
-            FormField("Shop / Firm Name *", name)
+            FormField("Shop / Firm Name *", name, error = nameError.value)
             FormField("Customer Code", customerCode)
             FormField("Contact Person", contactPerson)
             FormField("Phone", phone, keyboardType = KeyboardType.Phone)
@@ -647,7 +663,7 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
             Spacer(modifier = Modifier.height(12.dp))
             SectionLabel("Financial")
             FormField("Credit Limit (Rs.)", creditLimit, keyboardType = KeyboardType.Decimal)
-            FormField("Outstanding Balance (Rs.)", outstandingBalance, keyboardType = KeyboardType.Decimal)
+            FormField("Outstanding Balance (Rs.)", outstandingBalance, keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done)
 
             errorMsg.value?.let { msg ->
                 Spacer(modifier = Modifier.height(8.dp))
@@ -658,7 +674,7 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
             Button(
                 onClick = {
                     if (name.value.isBlank()) {
-                        errorMsg.value = "Shop / Firm Name is required"
+                        nameError.value = "Shop / Firm Name is required"
                         return@Button
                     }
                     scope.launch {
@@ -682,7 +698,10 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
                             territory = territory.value.trim()
                         )
                         isLoading.value = false
-                        if (saved != null) onSaved() else errorMsg.value = "Failed to save customer"
+                        if (saved != null) {
+                            prefs.edit().clear().apply()
+                            onSaved()
+                        } else errorMsg.value = "Failed to save customer"
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -810,16 +829,34 @@ fun SectionLabel(text: String) {
 fun FormField(
     label: String,
     state: MutableState<String>,
-    keyboardType: KeyboardType = KeyboardType.Text
+    keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Next,
+    error: String? = null
 ) {
-    OutlinedTextField(
-        value = state.value,
-        onValueChange = { state.value = it },
-        label = { Text(label) },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType)
-    )
+    val focusManager = LocalFocusManager.current
+    Column {
+        OutlinedTextField(
+            value = state.value,
+            onValueChange = { state.value = it },
+            label = { Text(label) },
+            singleLine = true,
+            isError = error != null,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                onDone = { focusManager.clearFocus() }
+            )
+        )
+        if (error != null) {
+            Text(
+                text = error,
+                color = MaterialTheme.colors.error,
+                style = MaterialTheme.typography.caption,
+                modifier = Modifier.padding(start = 16.dp, bottom = 2.dp)
+            )
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

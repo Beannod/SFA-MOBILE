@@ -23,7 +23,7 @@ sfa-mobile/
 - Login with username/password; returns role, `allowedFeatures`, and `webPermissions`
 - Three roles: **Admin** (full access), **Supervisor** (no location tracking), **Salesperson** (customers/orders/products/stock)
 - Per-user feature toggles — admin can override any feature access per user
-- Designation hierarchy (6 levels): Sales Head → Zonal Manager → Regional Sales Manager → Area Sales Manager → Senior Sales Executive → Sales Executive
+- Designation hierarchy is editable from web Configuration (stored in `designation_config_sfa`), with default seed levels: Sales Head → Zonal Manager → Regional Sales Manager → Area Sales Manager → Senior Sales Executive → Sales Executive
 - `ReportsToId` self-referencing FK — each user reports to a higher-authority manager
 - Hierarchy validation enforced on create/update (manager must outrank subordinate)
 - `GET /api/users/hierarchy` — full org tree as nested JSON

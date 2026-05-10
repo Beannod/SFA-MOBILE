@@ -1,6 +1,7 @@
 package com.example.sfa
 
 import android.content.Context
+import androidx.paging.PagingSource
 import androidx.room.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -169,6 +170,31 @@ interface CustomerDao {
     @Query("SELECT COUNT(*) FROM customers")
     suspend fun count(): Int
 
+    // ── Paging 3 sources ──────────────────────────────────────────────────────
+
+    @Query("SELECT * FROM customers ORDER BY name ASC")
+    fun pagingSource(): PagingSource<Int, CustomerEntity>
+
+    @Query("SELECT * FROM customers WHERE assignedUserId = :userId ORDER BY name ASC")
+    fun pagingSourceByUser(userId: Int): PagingSource<Int, CustomerEntity>
+
+    @Query("SELECT * FROM customers WHERE name LIKE '%' || :q || '%' OR contactPerson LIKE '%' || :q || '%' OR city LIKE '%' || :q || '%' ORDER BY name ASC")
+    fun searchPagingSource(q: String): PagingSource<Int, CustomerEntity>
+
+    // ── Stats / select-all helpers ────────────────────────────────────────────
+
+    @Query("SELECT COUNT(*) FROM customers")
+    fun countAllFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM customers WHERE customerType = :type")
+    fun countByTypeFlow(type: String): Flow<Int>
+
+    @Query("SELECT id FROM customers ORDER BY name ASC")
+    suspend fun getAllIds(): List<Int>
+
+    @Query("SELECT id FROM customers WHERE name LIKE '%' || :q || '%' OR contactPerson LIKE '%' || :q || '%' OR city LIKE '%' || :q || '%' ORDER BY name ASC")
+    suspend fun searchIds(q: String): List<Int>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<CustomerEntity>)
 
@@ -181,20 +207,31 @@ interface CustomerDao {
 
 @Dao
 interface ProductDao {
-    @Query("SELECT * FROM products WHERE isActive = 1 ORDER BY name ASC")
+    @Query("SELECT * FROM products WHERE isArchived = 0 ORDER BY name ASC")
     suspend fun getAll(): List<ProductEntity>
 
-    @Query("SELECT * FROM products WHERE isActive = 1 ORDER BY name ASC LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM products WHERE isArchived = 0 ORDER BY name ASC LIMIT :limit OFFSET :offset")
     suspend fun getPaged(limit: Int, offset: Int): List<ProductEntity>
 
-    @Query("SELECT * FROM products WHERE isActive = 1 AND (name LIKE '%' || :q || '%' OR category LIKE '%' || :q || '%') ORDER BY name ASC LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM products WHERE isArchived = 0 AND (name LIKE '%' || :q || '%' OR category LIKE '%' || :q || '%') ORDER BY name ASC LIMIT :limit OFFSET :offset")
     suspend fun searchPaged(q: String, limit: Int, offset: Int): List<ProductEntity>
 
     @Query("SELECT * FROM products WHERE id = :id")
     suspend fun getById(id: Int): ProductEntity?
 
-    @Query("SELECT COUNT(*) FROM products WHERE isActive = 1")
+    @Query("SELECT COUNT(*) FROM products WHERE isArchived = 0")
     suspend fun count(): Int
+
+    // ── Paging 3 sources ──────────────────────────────────────────────────────
+
+    @Query("SELECT * FROM products WHERE isArchived = 0 ORDER BY name ASC")
+    fun pagingSource(): PagingSource<Int, ProductEntity>
+
+    @Query("SELECT * FROM products WHERE isArchived = 0 AND (name LIKE '%' || :q || '%' OR category LIKE '%' || :q || '%' OR itemNo LIKE '%' || :q || '%') ORDER BY name ASC")
+    fun searchPagingSource(q: String): PagingSource<Int, ProductEntity>
+
+    @Query("SELECT COUNT(*) FROM products WHERE isArchived = 0")
+    fun countFlow(): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<ProductEntity>)
@@ -225,6 +262,28 @@ interface OrderDao {
 
     @Query("SELECT COUNT(*) FROM orders")
     suspend fun count(): Int
+
+    // ── Paging 3 sources ──────────────────────────────────────────────────────
+
+    @Query("SELECT * FROM orders ORDER BY id DESC")
+    fun pagingSource(): PagingSource<Int, OrderEntity>
+
+    @Query("SELECT * FROM orders WHERE createdByUserId = :userId ORDER BY id DESC")
+    fun pagingSourceByUser(userId: Int): PagingSource<Int, OrderEntity>
+
+    @Query("SELECT * FROM orders WHERE status = :status ORDER BY id DESC")
+    fun pagingSourceByStatus(status: String): PagingSource<Int, OrderEntity>
+
+    @Query("SELECT * FROM orders WHERE createdByUserId = :userId AND status = :status ORDER BY id DESC")
+    fun pagingSourceByUserAndStatus(userId: Int, status: String): PagingSource<Int, OrderEntity>
+
+    // ── Status count helpers ──────────────────────────────────────────────────
+
+    @Query("SELECT COUNT(*) FROM orders")
+    fun countAllFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM orders WHERE status = :status")
+    fun countByStatusFlow(status: String): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<OrderEntity>)

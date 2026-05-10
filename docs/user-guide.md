@@ -326,11 +326,12 @@ Log in with the same credentials as the mobile app.
 
 1. Open **Users** from the navigation menu.
 2. View all users in a table showing name, role, designation, and manager.
-3. Tap **Add User** to create a new account:
+3. (Admin only) Open **Configuration → Designation Hierarchy** to edit designation names and authority levels.
+4. Tap **Add User** to create a new account:
    - Set name, username, password, role, and designation.
    - Pick the manager this user reports to (only users with a higher authority level appear).
    - Set which mobile features and web pages this user can access.
-4. Tap **Org Chart** to see the full reporting hierarchy as a collapsible tree.
+5. Tap **Org Chart** to see the full reporting hierarchy as a collapsible tree.
 
 ### Approving Customers
 

@@ -12,13 +12,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,7 +40,7 @@ import java.util.*
 // Lists all Pending orders from the manager's subtree; Approve or Reject inline
 // ═══════════════════════════════════════════════════════════════════════════════
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ApprovalsScreen(user: LoggedInUser) {
     val scope = rememberCoroutineScope()
@@ -116,39 +118,53 @@ fun ApprovalsScreen(user: LoggedInUser) {
 
     LaunchedEffect(Unit) { load() }
 
-    val pullRefreshState = rememberPullRefreshState(refreshing = isLoading.value, onRefresh = { load() })
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Header
-        Column(modifier = Modifier.fillMaxWidth().background(Color(0xFF1A73E8)).padding(16.dp)) {
-            Text("Approvals", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Text("Pending orders awaiting your decision", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Approvals") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color(0xFF1A73E8),
+                    titleContentColor = Color.White
+                )
+            )
         }
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            Text(
+                "Pending orders awaiting your decision",
+                color = Color(0xFF1A73E8),
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            )
 
-        statusMsg.value?.let { msg ->
-            Surface(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-                color = if (msg.startsWith("Failed")) Color(0xFFFFEBEE) else Color(0xFFE8F5E9),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            statusMsg.value?.let { msg ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                    color = if (msg.startsWith("Failed")) Color(0xFFFFEBEE) else Color(0xFFE8F5E9),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Icon(
-                        if (msg.startsWith("Failed")) Icons.Default.Warning else Icons.Default.Check,
-                        contentDescription = null,
-                        tint = if (msg.startsWith("Failed")) Color(0xFFD32F2F) else Color(0xFF388E3C),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(msg, fontWeight = FontWeight.Medium, fontSize = 14.sp,
-                        color = if (msg.startsWith("Failed")) Color(0xFFD32F2F) else Color(0xFF388E3C))
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            if (msg.startsWith("Failed")) Icons.Default.Warning else Icons.Default.Check,
+                            contentDescription = null,
+                            tint = if (msg.startsWith("Failed")) Color(0xFFD32F2F) else Color(0xFF388E3C),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(msg, fontWeight = FontWeight.Medium, fontSize = 14.sp,
+                            color = if (msg.startsWith("Failed")) Color(0xFFD32F2F) else Color(0xFF388E3C))
+                    }
                 }
             }
-        }
 
-        Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
+            PullToRefreshBox(
+                isRefreshing = isLoading.value,
+                onRefresh = { load() },
+                modifier = Modifier.fillMaxSize()
+            ) {
             when {
                 isLoading.value -> CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center).padding(20.dp)
@@ -193,11 +209,7 @@ fun ApprovalsScreen(user: LoggedInUser) {
                     item { Spacer(Modifier.height(24.dp)) }
                 }
             }
-            PullRefreshIndicator(
-                refreshing = isLoading.value,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
+            }
         }
     }
 }
@@ -208,9 +220,15 @@ fun ApprovalOrderCard(
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
+    val tonalCardColor = MaterialTheme.colors.primary
+        .copy(alpha = 0.06f)
+        .compositeOver(MaterialTheme.colors.surface)
+
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
-        elevation = 3.dp, shape = RoundedCornerShape(10.dp)
+        elevation = 3.dp,
+        backgroundColor = tonalCardColor,
+        shape = RoundedCornerShape(10.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -296,7 +314,7 @@ data class ReportRow(
     val approvedRevenue: Double
 )
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(user: LoggedInUser) {
     val scope = rememberCoroutineScope()
@@ -396,14 +414,24 @@ fun ReportsScreen(user: LoggedInUser) {
 
     LaunchedEffect(selectedYear.value, selectedMonth.value) { load() }
 
-    val pullRefreshState = rememberPullRefreshState(refreshing = isLoading.value, onRefresh = { load() })
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Header
-        Column(modifier = Modifier.fillMaxWidth().background(Color(0xFF1A73E8)).padding(16.dp)) {
-            Text("Sales Reports", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Text("Monthly summary for your team", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Sales Reports") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color(0xFF1A73E8),
+                    titleContentColor = Color.White
+                )
+            )
         }
+    ) { innerPadding ->
+    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Text(
+            "Monthly summary for your team",
+            color = Color(0xFF1A73E8),
+            fontSize = 13.sp,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        )
 
         // Month selector
         val monthNames = listOf("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
@@ -436,7 +464,11 @@ fun ReportsScreen(user: LoggedInUser) {
             }) { Icon(Icons.Default.ArrowForward, contentDescription = "Next month") }
         }
 
-        Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
+        PullToRefreshBox(
+            isRefreshing = isLoading.value,
+            onRefresh = { load() },
+            modifier = Modifier.fillMaxSize()
+        ) {
             when {
                 isLoading.value -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 loadFailed.value -> ErrorRetryColumn(message = "Couldn't load reports", onRetry = { load() })
@@ -511,18 +543,23 @@ fun ReportsScreen(user: LoggedInUser) {
                     item { Spacer(Modifier.height(24.dp)) }
                 }
             }
-            PullRefreshIndicator(
-                refreshing = isLoading.value,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
         }
+    }
     }
 }
 
 @Composable
 fun ReportSummaryCard(label: String, value: String, color: Color, icon: ImageVector, modifier: Modifier = Modifier) {
-    Card(modifier = modifier, elevation = 2.dp, shape = RoundedCornerShape(10.dp)) {
+    val tonalCardColor = MaterialTheme.colors.primary
+        .copy(alpha = 0.06f)
+        .compositeOver(MaterialTheme.colors.surface)
+
+    Card(
+        modifier = modifier,
+        elevation = 2.dp,
+        backgroundColor = tonalCardColor,
+        shape = RoundedCornerShape(10.dp)
+    ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier.size(36.dp).background(color.copy(alpha = 0.12f), RoundedCornerShape(8.dp)),
@@ -550,7 +587,9 @@ fun ReportRowCard(row: ReportRow, rank: Int) {
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        elevation = 2.dp, shape = RoundedCornerShape(10.dp)
+        elevation = 2.dp,
+        backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.05f).compositeOver(MaterialTheme.colors.surface),
+        shape = RoundedCornerShape(10.dp)
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             // Rank badge
@@ -590,7 +629,7 @@ fun ReportRowCard(row: ReportRow, rank: Int) {
 // PAYMENTS SCREEN  — Customer outstanding balances + payment recording stub
 // ═══════════════════════════════════════════════════════════════════════════════
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentsScreen(user: LoggedInUser) {
     val scope = rememberCoroutineScope()
@@ -621,8 +660,6 @@ fun PaymentsScreen(user: LoggedInUser) {
 
     LaunchedEffect(Unit) { load() }
 
-    val pullRefreshState = rememberPullRefreshState(refreshing = isLoading.value, onRefresh = { load() })
-
     // Only customers with balance info or all; filter + sort
     val filtered = customers.filter {
         searchQuery.value.isBlank() ||
@@ -636,14 +673,25 @@ fun PaymentsScreen(user: LoggedInUser) {
     val totalOutstanding = customers.sumOf { it.outstandingBalance }
     val withBalance = customers.count { it.outstandingBalance > 0 }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Header
-        Column(modifier = Modifier.fillMaxWidth().background(Color(0xFF1A73E8)).padding(16.dp)) {
-            Text("Payments & Outstanding", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            if (!isLoading.value && !loadFailed.value) {
-                Text("Rs. %.0f total due across $withBalance customer${if (withBalance != 1) "s" else ""}".format(totalOutstanding),
-                    color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
-            }
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Payments & Outstanding") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color(0xFF1A73E8),
+                    titleContentColor = Color.White
+                )
+            )
+        }
+    ) { innerPadding ->
+    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        if (!isLoading.value && !loadFailed.value) {
+            Text(
+                "Rs. %.0f total due across $withBalance customer${if (withBalance != 1) "s" else ""}".format(totalOutstanding),
+                color = Color(0xFF1A73E8),
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            )
         }
 
         // Search + sort toggle
@@ -684,7 +732,11 @@ fun PaymentsScreen(user: LoggedInUser) {
             }
         }
 
-        Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
+        PullToRefreshBox(
+            isRefreshing = isLoading.value,
+            onRefresh = { load() },
+            modifier = Modifier.fillMaxSize()
+        ) {
             when {
                 isLoading.value -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 loadFailed.value -> ErrorRetryColumn(message = "Couldn't load customers", onRetry = { load() })
@@ -705,12 +757,8 @@ fun PaymentsScreen(user: LoggedInUser) {
                     item { Spacer(Modifier.height(24.dp)) }
                 }
             }
-            PullRefreshIndicator(
-                refreshing = isLoading.value,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
         }
+    }
     }
 }
 
@@ -723,7 +771,9 @@ fun PaymentCustomerCard(customer: Customer) {
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        elevation = 2.dp, shape = RoundedCornerShape(10.dp)
+        elevation = 2.dp,
+        backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.06f).compositeOver(MaterialTheme.colors.surface),
+        shape = RoundedCornerShape(10.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -2,12 +2,19 @@ package com.example.sfa
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -119,12 +127,16 @@ private fun shimmerBrush(): Brush {
 @Composable
 fun SkeletonListCard(modifier: Modifier = Modifier) {
     val brush = shimmerBrush()
+    val tonalCardColor = MaterialTheme.colors.primary
+        .copy(alpha = 0.05f)
+        .compositeOver(MaterialTheme.colors.surface)
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp),
         elevation = 2.dp,
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(8.dp),
+        backgroundColor = tonalCardColor
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             // Title line
@@ -184,5 +196,157 @@ fun InfiniteScrollEffect(listState: LazyListState, loadMore: () -> Unit) {
     }
     LaunchedEffect(shouldLoad) {
         if (shouldLoad) loadMore()
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Searchable Dropdown
+//
+// Drop-in replacement for the readOnly OutlinedTextField + Box-overlay +
+// DropdownMenu pattern. Tapping the field opens a dialog with a live-search
+// text field and a scrollable option list.
+//
+// Usage:
+//   SearchableDropdown(
+//       label    = "Quality",
+//       options  = productConfig.quality,
+//       selected = line.quality,
+//       onSelect = { onChanged(line.copy(quality = it)) },
+//       allowNone = true
+//   )
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun SearchableDropdown(
+    label: String,
+    options: List<String>,
+    selected: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    placeholder: String = "Select\u2026",
+    allowNone: Boolean = false
+) {
+    val showDialog = remember { mutableStateOf(false) }
+
+    // Read-only trigger field
+    Box(modifier = modifier) {
+        OutlinedTextField(
+            value = selected,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            placeholder = { Text(placeholder, color = Color.LightGray) },
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) }
+        )
+        // Overlay because readOnly OutlinedTextField consumes click events
+        Box(modifier = Modifier.matchParentSize().clickable { showDialog.value = true })
+    }
+
+    if (showDialog.value) {
+        val search = remember { mutableStateOf("") }
+        val filtered = remember(search.value, options) {
+            if (search.value.isBlank()) options
+            else options.filter { it.contains(search.value, ignoreCase = true) }
+        }
+
+        AlertDialog(
+            onDismissRequest = { showDialog.value = false },
+            title = {
+                Column {
+                    Text(label, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = search.value,
+                        onValueChange = { search.value = it },
+                        placeholder = { Text("Search\u2026") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, contentDescription = null,
+                                modifier = Modifier.size(18.dp))
+                        },
+                        trailingIcon = {
+                            if (search.value.isNotEmpty()) {
+                                IconButton(onClick = { search.value = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear",
+                                        modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    )
+                }
+            },
+            text = {
+                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                    if (allowNone) {
+                        item {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    onSelect("")
+                                    showDialog.value = false
+                                }
+                            ) {
+                                Text(
+                                    "\u2014 None \u2014",
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 12.dp)
+                                )
+                            }
+                            Divider()
+                        }
+                    }
+                    if (filtered.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("No options found", color = Color.Gray,
+                                    style = MaterialTheme.typography.caption)
+                            }
+                        }
+                    } else {
+                        items(filtered) { option ->
+                            val isSelected = option == selected
+                            Surface(
+                                color = if (isSelected) MaterialTheme.colors.primary.copy(alpha = 0.08f)
+                                        else Color.Transparent,
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    onSelect(option)
+                                    showDialog.value = false
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    if (isSelected) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colors.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    } else {
+                                        Spacer(Modifier.width(16.dp))
+                                    }
+                                    Text(
+                                        option,
+                                        fontWeight = if (isSelected) FontWeight.Bold
+                                                    else FontWeight.Normal
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showDialog.value = false }) { Text("Cancel") }
+            }
+        )
     }
 }

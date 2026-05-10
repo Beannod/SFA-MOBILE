@@ -75,6 +75,7 @@ All timestamps in the system are in **Nepal Standard Time (NPT, UTC+5:45)**.
 | Table | Description |
 |---|---|
 | `user_sfa` | All users (admin, supervisor, salesperson) |
+| `designation_config_sfa` | Editable designation-to-level hierarchy used in manager validation |
 | `user_web_perm_sfa` | Web panel permissions per user |
 | `user_mobile_perm_sfa` | Mobile app feature permissions per user |
 | `customer_sfa` | Customer master data |
@@ -130,7 +131,9 @@ The `allowedFeatures` list drives which tiles appear on the mobile dashboard. Th
 
 ### Designation Hierarchy
 
-Six levels of authority (1 = highest):
+Designation levels are editable from the web admin **Configuration** page and persisted in `designation_config_sfa`.
+
+Default levels seeded by migration (1 = highest):
 
 | Level | Designation |
 |---|---|
@@ -144,6 +147,15 @@ Six levels of authority (1 = highest):
 - Each user has a `ReportsToId` pointing to their manager.
 - API enforces that a manager must have a **lower level number** (higher authority) than the user reporting to them.
 - Validation runs on both user create and user update.
+
+### Designation Config API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/designation-config` | List designation rows (supports `?activeOnly=true`) |
+| `POST` | `/api/designation-config` | Create designation row |
+| `PUT` | `/api/designation-config/{id}` | Update designation name/level/active status |
+| `DELETE` | `/api/designation-config/{id}` | Delete designation row |
 
 ### User API Endpoints
 
@@ -586,8 +598,9 @@ The web panel is served directly by the API from `server/wwwroot/`. No separate 
 **User Management**
 1. Open the Users page from the nav.
 2. View all users in a table with role, designation, and manager.
-3. Click **Add User** → fill name, role, designation, manager (filtered dropdown showing only higher-authority users), and feature permissions.
-4. Click **Org Chart** tab to see the full hierarchy tree.
+3. (Admin) Open **Configuration → Designation Hierarchy** to maintain designation names and authority levels.
+4. Click **Add User** → fill name, role, designation, manager (filtered dropdown showing only higher-authority users), and feature permissions.
+5. Click **Org Chart** tab to see the full hierarchy tree.
 
 **Order Approval**
 1. Open the Orders page.
@@ -713,6 +726,7 @@ GET /api/health
 |---|---|---|
 | Auth | POST | `/api/auth/login` |
 | Users | GET, POST, PUT | `/api/users` |
+| Designation Config | GET, POST, PUT, DELETE | `/api/designation-config` |
 | Customers | GET, POST, PUT | `/api/customers` |
 | Orders | GET, POST, PUT | `/api/orders` |
 | Products | GET, POST, PUT, DELETE | `/api/products` |

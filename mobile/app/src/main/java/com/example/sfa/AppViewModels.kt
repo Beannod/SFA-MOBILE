@@ -8,9 +8,13 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Job
+import androidx.paging.*
+import com.example.sfa.network.RetrofitClient
+import com.example.sfa.paging.CustomerRemoteMediator
+import com.example.sfa.paging.OrderRemoteMediator
+import com.example.sfa.paging.ProductRemoteMediator
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -53,12 +57,19 @@ fun connectivityFlow(context: Context): Flow<Boolean> = callbackFlow {
 // CustomerViewModel
 // ═══════════════════════════════════════════════════════════════════════════════
 
+private data class CustomerConfig(
+    val userId: Int = 0,
+    val managerId: Int? = null,
+    val assignedUserId: Int? = null,
+    val version: Int = 0        // incremented to force Pager rebuild / re-fetch
+)
+
 class CustomerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val ctx = app.applicationContext
-    private val repo = OfflineRepository(ctx)
-    private val db   = AppDatabase.get(ctx)
+    private val db  = AppDatabase.get(ctx)
     private val base get() = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
+    private val api by lazy { RetrofitClient.createApi(base) }
 
     // — connectivity + sync badge ——————————————————————————————————————
     val isOnline: StateFlow<Boolean> = connectivityFlow(ctx)
@@ -67,122 +78,96 @@ class CustomerViewModel(app: Application) : AndroidViewModel(app) {
     val pendingSyncCount: StateFlow<Int> = db.syncQueueDao().countFlow()
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
-    // — list state ——————————————————————————————————————————————————————
-    private val _items      = MutableStateFlow<List<Customer>>(emptyList())
-    val items: StateFlow<List<Customer>> = _items
-
-    private val _isLoading     = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
-
-    private val _isLoadingMore = MutableStateFlow(false)
-    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore
-
-    private val _hasMore       = MutableStateFlow(true)
-    val hasMore: StateFlow<Boolean> = _hasMore
-
-    private val _isOfflineData = MutableStateFlow(false)
-    val isOfflineData: StateFlow<Boolean> = _isOfflineData
-
-    // — search + filter ————————————————————————————————————————————————
-    private val _searchQuery   = MutableStateFlow("")
+    // — paging state ———————————————————————————————————————————————————
+    private val _config      = MutableStateFlow(CustomerConfig())
+    private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    // Debounced search applied client-side to the already-loaded items
-    val filteredItems: StateFlow<List<Customer>> = combine(_items, _searchQuery) { list, q ->
-        if (q.isBlank()) list
-        else list.filter {
-            it.name.contains(q, ignoreCase = true) ||
-            it.contactPerson.contains(q, ignoreCase = true) ||
-            it.city.contains(q, ignoreCase = true)
-        }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    @OptIn(ExperimentalPagingApi::class, ExperimentalCoroutinesApi::class)
+    val pagedCustomers: Flow<PagingData<Customer>> = combine(_config, _searchQuery) { cfg, q ->
+        Pair(cfg, q)
+    }.flatMapLatest { (cfg, q) ->
+        Pager(
+            config = PagingConfig(pageSize = PAGE_SIZE, enablePlaceholders = false),
+            remoteMediator = CustomerRemoteMediator(
+                context        = ctx,
+                db             = db,
+                api            = api,
+                assignedUserId = cfg.assignedUserId,
+                managerId      = cfg.managerId
+            ),
+            pagingSourceFactory = {
+                when {
+                    q.isNotBlank()             -> db.customerDao().searchPagingSource(q)
+                    cfg.assignedUserId != null -> db.customerDao().pagingSourceByUser(cfg.assignedUserId)
+                    else                       -> db.customerDao().pagingSource()
+                }
+            }
+        ).flow.map { pagingData -> pagingData.map { it.toModel() } }
+    }.cachedIn(viewModelScope)
 
-    // — pagination state ————————————————————————————————————————————————
-    private var currentPage = 0
-    private var loadJob: Job? = null
+    // — type counts for stat chips + team banner ————————————————————————
+    val totalCount:    StateFlow<Int> = db.customerDao().countAllFlow()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val dealerCount:   StateFlow<Int> = db.customerDao().countByTypeFlow("Dealer")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val retailerCount: StateFlow<Int> = db.customerDao().countByTypeFlow("Retailer")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val projectCount:  StateFlow<Int> = db.customerDao().countByTypeFlow("Project")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
-    // — user context (set before first load) ———————————————————————————
-    private var userId: Int = 0
-    private var managerId: Int? = null
-    private var assignedUserId: Int? = null
+    // — IDs for "Select All" multi-select ——————————————————————————————
+    private val _allIds = MutableStateFlow<List<Int>>(emptyList())
+    val allIds: StateFlow<List<Int>> = _allIds
+
+    // — public API ——————————————————————————————————————————————————————
 
     fun configure(userId: Int, managerId: Int? = null, assignedUserId: Int? = null) {
-        this.userId         = userId
-        this.managerId      = managerId
-        this.assignedUserId = assignedUserId
+        _config.update {
+            it.copy(
+                userId         = userId,
+                managerId      = managerId,
+                assignedUserId = assignedUserId,
+                version        = it.version + 1     // always re-fetch on configure
+            )
+        }
+        refreshAllIds()
     }
 
-    /** Initial or forced full refresh */
     fun refresh() {
-        loadJob?.cancel()
-        loadJob = viewModelScope.launch {
-            currentPage = 0
-            _hasMore.value = true
-            _isLoading.value = true
-            _isOfflineData.value = false
-            fetchPage(page = 0, replace = true)
-            _isLoading.value = false
-        }
+        _config.update { it.copy(version = it.version + 1) }
     }
 
-    /** Called when the list nears the bottom */
-    fun loadMore() {
-        if (_isLoadingMore.value || !_hasMore.value || _isLoading.value) return
-        loadJob = viewModelScope.launch {
-            _isLoadingMore.value = true
-            fetchPage(page = currentPage + 1, replace = false)
-            _isLoadingMore.value = false
-        }
+    fun setSearch(q: String) {
+        _searchQuery.value = q
+        refreshAllIds()
     }
 
-    private suspend fun fetchPage(page: Int, replace: Boolean) {
-        val offset = page * PAGE_SIZE
-        val online = isOnline.value
-
-        val result: List<Customer> = if (online) {
-            // Server fetch — no native pagination yet, so we page client-side after caching
-            if (page == 0) {
-                val fresh = repo.getCustomers(base, assignedUserId = assignedUserId, managerId = managerId)
-                // Fresh data is already cached inside getCustomers
-                _isOfflineData.value = false
-                fresh
-            } else {
-                // Subsequent pages served from cache
-                _isOfflineData.value = false
-                db.customerDao().getPaged(PAGE_SIZE, offset).map { it.toModel() }
-            }
-        } else {
-            _isOfflineData.value = true
-            if (assignedUserId != null)
-                db.customerDao().getPagedByUser(assignedUserId!!, PAGE_SIZE, offset).map { it.toModel() }
+    private fun refreshAllIds() {
+        viewModelScope.launch {
+            _allIds.value = if (_searchQuery.value.isBlank())
+                db.customerDao().getAllIds()
             else
-                db.customerDao().getPaged(PAGE_SIZE, offset).map { it.toModel() }
-        }
-
-        val hasMore = result.size >= PAGE_SIZE
-        _hasMore.value = hasMore
-        currentPage = page
-
-        if (replace) {
-            _items.value = result
-        } else {
-            _items.value = _items.value + result
+                db.customerDao().searchIds(_searchQuery.value)
         }
     }
-
-    fun setSearch(q: String) { _searchQuery.value = q }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ProductViewModel
 // ═══════════════════════════════════════════════════════════════════════════════
 
+private data class ProductQueryConfig(
+    val params: Map<String, String> = emptyMap(),
+    val version: Int = 0
+)
+
 class ProductViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val ctx  = app.applicationContext
-    private val repo = OfflineRepository(ctx)
-    private val db   = AppDatabase.get(ctx)
+    private val ctx = app.applicationContext
+    private val db  = AppDatabase.get(ctx)
     private val base get() = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
+    private val api by lazy { RetrofitClient.createApi(base) }
 
     val isOnline: StateFlow<Boolean> = connectivityFlow(ctx)
         .stateIn(viewModelScope, SharingStarted.Eagerly, isOnline(ctx))
@@ -190,85 +175,40 @@ class ProductViewModel(app: Application) : AndroidViewModel(app) {
     val pendingSyncCount: StateFlow<Int> = db.syncQueueDao().countFlow()
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
-    private val _items         = MutableStateFlow<List<Product>>(emptyList())
-    val items: StateFlow<List<Product>> = _items
-
-    private val _isLoading     = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
-
-    private val _isLoadingMore = MutableStateFlow(false)
-    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore
-
-    private val _hasMore       = MutableStateFlow(true)
-    val hasMore: StateFlow<Boolean> = _hasMore
-
-    private val _isOfflineData = MutableStateFlow(false)
-    val isOfflineData: StateFlow<Boolean> = _isOfflineData
-
-    private val _searchQuery   = MutableStateFlow("")
+    // — paging state ———————————————————————————————————————————————————
+    private val _queryConfig = MutableStateFlow(ProductQueryConfig())
+    private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    private var currentPage = 0
-    private var loadJob: Job? = null
-    private var activeQuery = ""   // last query string sent to server
+    val productCount: StateFlow<Int> = db.productDao().countFlow()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
-    fun refresh(queryString: String = "") {
-        activeQuery = queryString
-        loadJob?.cancel()
-        loadJob = viewModelScope.launch {
-            currentPage = 0
-            _hasMore.value = true
-            _isLoading.value = true
-            _isOfflineData.value = false
-            fetchPage(0, queryString, replace = true)
-            _isLoading.value = false
-        }
-    }
-
-    fun loadMore() {
-        if (_isLoadingMore.value || !_hasMore.value || _isLoading.value) return
-        loadJob = viewModelScope.launch {
-            _isLoadingMore.value = true
-            fetchPage(currentPage + 1, activeQuery, replace = false)
-            _isLoadingMore.value = false
-        }
-    }
-
-    private suspend fun fetchPage(page: Int, queryString: String, replace: Boolean) {
-        val offset = page * PAGE_SIZE
-        val online = isOnline.value
-
-        val result: List<Product> = if (online) {
-            if (page == 0) {
-                val fresh = repo.getProducts(base, queryString)
-                _isOfflineData.value = false
-                fresh
-            } else {
-                _isOfflineData.value = false
-                val q = _searchQuery.value
-                if (q.isBlank())
-                    db.productDao().getPaged(PAGE_SIZE, offset).map { it.toModel() }
-                else
-                    db.productDao().searchPaged(q, PAGE_SIZE, offset).map { it.toModel() }
+    @OptIn(ExperimentalPagingApi::class, ExperimentalCoroutinesApi::class)
+    val pagedProducts: Flow<PagingData<Product>> = combine(_queryConfig, _searchQuery) { qCfg, q ->
+        Pair(qCfg, q)
+    }.flatMapLatest { (qCfg, q) ->
+        Pager(
+            config = PagingConfig(pageSize = PAGE_SIZE, enablePlaceholders = false),
+            remoteMediator = ProductRemoteMediator(
+                context     = ctx,
+                db          = db,
+                api         = api,
+                queryParams = qCfg.params
+            ),
+            pagingSourceFactory = {
+                if (q.isNotBlank()) db.productDao().searchPagingSource(q)
+                else                db.productDao().pagingSource()
             }
-        } else {
-            _isOfflineData.value = true
-            val q = _searchQuery.value
-            if (q.isBlank())
-                db.productDao().getPaged(PAGE_SIZE, offset).map { it.toModel() }
-            else
-                db.productDao().searchPaged(q, PAGE_SIZE, offset).map { it.toModel() }
-        }
+        ).flow.map { pagingData -> pagingData.map { it.toModel() } }
+    }.cachedIn(viewModelScope)
 
-        _hasMore.value = result.size >= PAGE_SIZE
-        currentPage = page
-
-        if (replace) _items.value = result else _items.value = _items.value + result
+    /** Call when category, filter chip, or refreshTrigger changes. */
+    fun refresh(queryParams: Map<String, String> = emptyMap()) {
+        _queryConfig.update { it.copy(params = queryParams, version = it.version + 1) }
     }
 
     fun setSearch(q: String) {
         _searchQuery.value = q
-        refresh(if (q.isBlank()) "discontinued=false" else "search=${q}&discontinued=false")
     }
 }
 
@@ -276,12 +216,18 @@ class ProductViewModel(app: Application) : AndroidViewModel(app) {
 // OrderViewModel
 // ═══════════════════════════════════════════════════════════════════════════════
 
+private data class OrderConfig(
+    val userId: Int = 0,
+    val managerId: Int? = null,
+    val version: Int = 0
+)
+
 class OrderViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val ctx  = app.applicationContext
-    private val repo = OfflineRepository(ctx)
-    private val db   = AppDatabase.get(ctx)
+    private val ctx = app.applicationContext
+    private val db  = AppDatabase.get(ctx)
     private val base get() = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
+    private val api by lazy { RetrofitClient.createApi(base) }
 
     val isOnline: StateFlow<Boolean> = connectivityFlow(ctx)
         .stateIn(viewModelScope, SharingStarted.Eagerly, isOnline(ctx))
@@ -289,95 +235,62 @@ class OrderViewModel(app: Application) : AndroidViewModel(app) {
     val pendingSyncCount: StateFlow<Int> = db.syncQueueDao().countFlow()
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
-    private val _items         = MutableStateFlow<List<Order>>(emptyList())
-    val items: StateFlow<List<Order>> = _items
+    // — paging state ———————————————————————————————————————————————————
+    private val _config       = MutableStateFlow(OrderConfig())
+    private val _statusFilter = MutableStateFlow("All")
+    val statusFilter: StateFlow<String> = _statusFilter
 
-    private val _isLoading     = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
+    @OptIn(ExperimentalPagingApi::class, ExperimentalCoroutinesApi::class)
+    val pagedOrders: Flow<PagingData<Order>> = combine(_config, _statusFilter) { cfg, status ->
+        Pair(cfg, status)
+    }.flatMapLatest { (cfg, status) ->
+        Pager(
+            config = PagingConfig(pageSize = PAGE_SIZE, enablePlaceholders = false),
+            remoteMediator = OrderRemoteMediator(
+                context   = ctx,
+                db        = db,
+                api       = api,
+                userId    = cfg.userId,
+                managerId = cfg.managerId
+            ),
+            pagingSourceFactory = {
+                when {
+                    cfg.managerId != null && status == "All" -> db.orderDao().pagingSource()
+                    cfg.managerId != null                    -> db.orderDao().pagingSourceByStatus(status)
+                    status == "All"                          -> db.orderDao().pagingSourceByUser(cfg.userId)
+                    else -> db.orderDao().pagingSourceByUserAndStatus(cfg.userId, status)
+                }
+            }
+        ).flow.map { pagingData -> pagingData.map { it.toModel() } }
+    }.cachedIn(viewModelScope)
 
-    private val _isLoadingMore = MutableStateFlow(false)
-    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore
+    // — status counts for chips ————————————————————————————————————————
+    val totalOrderCount:      StateFlow<Int> = db.orderDao().countAllFlow()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val pendingOrderCount:    StateFlow<Int> = db.orderDao().countByStatusFlow("Pending")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val approvedOrderCount:   StateFlow<Int> = db.orderDao().countByStatusFlow("Approved")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val dispatchedOrderCount: StateFlow<Int> = db.orderDao().countByStatusFlow("Dispatched")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val deliveredOrderCount:  StateFlow<Int> = db.orderDao().countByStatusFlow("Delivered")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val cancelledOrderCount:  StateFlow<Int> = db.orderDao().countByStatusFlow("Cancelled")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
-    private val _hasMore       = MutableStateFlow(true)
-    val hasMore: StateFlow<Boolean> = _hasMore
-
-    private val _isOfflineData = MutableStateFlow(false)
-    val isOfflineData: StateFlow<Boolean> = _isOfflineData
-
-    private val _searchQuery   = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery
-
-    val filteredItems: StateFlow<List<Order>> = combine(_items, _searchQuery) { list, q ->
-        if (q.isBlank()) list
-        else list.filter {
-            it.orderNumber.contains(q, ignoreCase = true) ||
-            it.customerName.contains(q, ignoreCase = true) ||
-            it.status.contains(q, ignoreCase = true)
-        }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
-    private var currentPage    = 0
-    private var loadJob: Job?  = null
-    private var userId: Int    = 0
-    private var managerId: Int? = null
+    // — public API ——————————————————————————————————————————————————————
 
     fun configure(userId: Int, managerId: Int? = null) {
-        this.userId    = userId
-        this.managerId = managerId
+        _config.update {
+            it.copy(userId = userId, managerId = managerId, version = it.version + 1)
+        }
     }
 
     fun refresh() {
-        loadJob?.cancel()
-        loadJob = viewModelScope.launch {
-            currentPage = 0
-            _hasMore.value = true
-            _isLoading.value = true
-            _isOfflineData.value = false
-            fetchPage(0, replace = true)
-            _isLoading.value = false
-        }
+        _config.update { it.copy(version = it.version + 1) }
     }
 
-    fun loadMore() {
-        if (_isLoadingMore.value || !_hasMore.value || _isLoading.value) return
-        loadJob = viewModelScope.launch {
-            _isLoadingMore.value = true
-            fetchPage(currentPage + 1, replace = false)
-            _isLoadingMore.value = false
-        }
+    fun setStatusFilter(status: String) {
+        _statusFilter.value = status
     }
-
-    private suspend fun fetchPage(page: Int, replace: Boolean) {
-        val offset = page * PAGE_SIZE
-        val online = isOnline.value
-
-        val result: List<Order> = if (online) {
-            if (page == 0) {
-                val fresh = repo.getOrders(base,
-                    createdByUserId = if (managerId == null) userId else null,
-                    managerId = managerId)
-                _isOfflineData.value = false
-                fresh ?: emptyList()
-            } else {
-                _isOfflineData.value = false
-                if (managerId != null)
-                    db.orderDao().getPaged(PAGE_SIZE, offset).map { it.toModel() }
-                else
-                    db.orderDao().getPagedByUser(userId, PAGE_SIZE, offset).map { it.toModel() }
-            }
-        } else {
-            _isOfflineData.value = true
-            if (managerId != null)
-                db.orderDao().getPaged(PAGE_SIZE, offset).map { it.toModel() }
-            else
-                db.orderDao().getPagedByUser(userId, PAGE_SIZE, offset).map { it.toModel() }
-        }
-
-        _hasMore.value = result.size >= PAGE_SIZE
-        currentPage = page
-
-        if (replace) _items.value = result else _items.value = _items.value + result
-    }
-
-    fun setSearch(q: String) { _searchQuery.value = q }
 }
