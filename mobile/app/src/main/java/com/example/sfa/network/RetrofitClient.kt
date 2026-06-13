@@ -1,6 +1,11 @@
 package com.example.sfa.network
 
 import com.example.sfa.BuildConfig
+import com.google.gson.GsonBuilder
+import com.google.gson.TypeAdapter
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
+import com.google.gson.stream.JsonWriter
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -51,12 +56,28 @@ object RetrofitClient {
         .writeTimeout(15, TimeUnit.SECONDS)
         .build()
 
+    // ── Gson: null JSON strings become "" so Room's NOT NULL columns never see null ──
+    // Using TypeAdapter (stream-level) instead of JsonDeserializer so the null token
+    // is intercepted before Gson can bypass it via Unsafe field injection.
+
+    private val gson = GsonBuilder()
+        .registerTypeAdapter(String::class.java, object : TypeAdapter<String>() {
+            override fun write(out: JsonWriter, value: String?) {
+                if (value == null) out.nullValue() else out.value(value)
+            }
+            override fun read(inp: JsonReader): String {
+                if (inp.peek() == JsonToken.NULL) { inp.nextNull(); return "" }
+                return inp.nextString()
+            }
+        })
+        .create()
+
     // ── Retrofit factory ──────────────────────────────────────────────────────
 
     fun createApi(baseUrl: String): ApiService = Retrofit.Builder()
         .baseUrl(baseUrl.trimEnd('/') + '/')
         .client(okHttpClient)
-        .addConverterFactory(GsonConverterFactory.create())
+        .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
         .create(ApiService::class.java)
 }

@@ -1,12 +1,14 @@
 package com.example.sfa
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -131,9 +133,9 @@ fun HomeScreen(
 
             is HomeUiState.Success -> {
                 val stats = state.stats
-                val canCust = "customers" in user.allowedFeatures
-                val canOrd  = "orders"    in user.allowedFeatures
-                val canProd = "products"  in user.allowedFeatures
+                val canCust = user.hasFeature("customers")
+                val canOrd  = user.hasFeature("orders")
+                val canProd = user.hasFeature("products")
 
                 val tiles: List<DashboardTile> = if (isManager) listOf(
                     DashboardTile("Team Members",     stats.teamSize.toString(),         Icons.Default.AccountBox,   Color(0xFF1976D2)),
@@ -205,16 +207,18 @@ fun DashboardSummaryCard(
     val primary = MaterialTheme.colors.primary
     val primaryDark = MaterialTheme.colors.primaryVariant
     Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 22.dp),
-        elevation = 6.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(28.dp),
+        elevation = 10.dp,
         backgroundColor = primaryDark
     ) {
         Column(
             modifier = Modifier
                 .background(
-                    Brush.verticalGradient(
-                        colors = listOf(primary, primaryDark)
+                    Brush.linearGradient(
+                        colors = listOf(Color(0xFFE4B55E), primary, primaryDark)
                     )
                 )
                 .padding(horizontal = 20.dp, vertical = 24.dp)
@@ -296,8 +300,9 @@ fun DashboardSummaryCard(
 private fun SummaryStatChip(label: String, value: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.13f)
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White.copy(alpha = 0.14f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
@@ -331,46 +336,53 @@ fun QuickActionsRow(
     onNavigate: (Screen) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val actions = listOfNotNull(
+        if (user.hasFeature("orders")) QuickActionSpec("New Order", Icons.Default.Add, Color(0xFFF57C00), onNewOrder) else null,
+        if (user.hasFeature("customers")) QuickActionSpec("Customers", Icons.Default.Person, Color(0xFF388E3C)) { onNavigate(Screen.CUSTOMERS) } else null,
+        if (user.hasFeature("products")) QuickActionSpec("Products", Icons.Default.List, Color(0xFF1976D2)) { onNavigate(Screen.PRODUCTS) } else null,
+        if (user.hasFeature("route")) QuickActionSpec("Route", Icons.Default.AltRoute, Color(0xFF0F766E)) { onNavigate(Screen.ROUTE) } else null,
+        if (user.hasFeature("team")) QuickActionSpec("Team", Icons.Default.SupervisorAccount, Color(0xFF7B1FA2)) { onNavigate(Screen.USERS) } else null,
+        if (user.hasFeature("reports")) QuickActionSpec("Reports", Icons.Default.Leaderboard, Color(0xFF1565C0)) { onNavigate(Screen.REPORTS) } else null,
+        if (user.hasFeature("payments")) QuickActionSpec("Payments", Icons.Default.Payments, Color(0xFF00897B)) { onNavigate(Screen.PAYMENTS) } else null,
+        if (user.hasFeature("approveOrders")) QuickActionSpec("Approvals", Icons.Default.FactCheck, Color(0xFFD32F2F)) { onNavigate(Screen.APPROVALS) } else null
+    )
+    if (actions.isEmpty()) return
+
     Column(modifier = modifier.padding(horizontal = 16.dp)) {
         Text(
             "Quick Actions",
-            fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF444444)
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = MaterialTheme.colors.onBackground.copy(alpha = 0.82f)
         )
         Spacer(Modifier.height(8.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            if ("orders" in user.allowedFeatures) {
-                QuickActionButton(
-                    label = "New Order",
-                    icon = Icons.Default.Add,
-                    color = Color(0xFFF57C00),
-                    modifier = Modifier.weight(1f),
-                    onClick = onNewOrder
-                )
-            }
-            if ("customers" in user.allowedFeatures) {
-                QuickActionButton(
-                    label = "Customers",
-                    icon = Icons.Default.Person,
-                    color = Color(0xFF388E3C),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.CUSTOMERS) }
-                )
-            }
-            if ("products" in user.allowedFeatures) {
-                QuickActionButton(
-                    label = "Products",
-                    icon = Icons.Default.List,
-                    color = Color(0xFF1976D2),
-                    modifier = Modifier.weight(1f),
-                    onClick = { onNavigate(Screen.PRODUCTS) }
-                )
+        actions.chunked(3).forEachIndexed { rowIndex, row ->
+            if (rowIndex > 0) Spacer(Modifier.height(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                row.forEach { action ->
+                    QuickActionButton(
+                        label = action.label,
+                        icon = action.icon,
+                        color = action.color,
+                        modifier = Modifier.weight(1f),
+                        onClick = action.onClick
+                    )
+                }
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
 }
+
+private data class QuickActionSpec(
+    val label: String,
+    val icon: ImageVector,
+    val color: Color,
+    val onClick: () -> Unit
+)
 
 @Composable
 private fun QuickActionButton(
@@ -382,18 +394,28 @@ private fun QuickActionButton(
 ) {
     Card(
         modifier = modifier.clickable { onClick() },
-        elevation = 2.dp,
-        shape = RoundedCornerShape(10.dp),
+        elevation = 6.dp,
+        shape = RoundedCornerShape(18.dp),
         backgroundColor = MaterialTheme.colors.surface
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
+            modifier = Modifier
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            color.copy(alpha = 0.12f),
+                            MaterialTheme.colors.surface
+                        )
+                    )
+                )
+                .padding(vertical = 14.dp, horizontal = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
-                    .background(color.copy(alpha = 0.12f), CircleShape),
+                    .size(38.dp)
+                    .background(color.copy(alpha = 0.14f), CircleShape)
+                    .border(1.dp, color.copy(alpha = 0.12f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(icon, contentDescription = label, tint = color, modifier = Modifier.size(20.dp))
@@ -422,7 +444,9 @@ fun RecentActivityList(
         ) {
             Text(
                 "Recent Activity",
-                fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF444444)
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = MaterialTheme.colors.onBackground.copy(alpha = 0.82f)
             )
             Spacer(Modifier.weight(1f))
             TextButton(onClick = onOrderClick, contentPadding = PaddingValues(0.dp)) {
@@ -431,8 +455,8 @@ fun RecentActivityList(
         }
         Spacer(Modifier.height(6.dp))
         Card(
-            shape = RoundedCornerShape(12.dp),
-            elevation = 2.dp,
+            shape = RoundedCornerShape(20.dp),
+            elevation = 6.dp,
             backgroundColor = MaterialTheme.colors.surface
         ) {
             Column {
@@ -513,47 +537,42 @@ fun DashboardTileCard(tile: DashboardTile, modifier: Modifier = Modifier) {
         modifier = modifier
             .height(96.dp)
             .let { m -> if (tile.onClick != null) m.clickable { tile.onClick.invoke() } else m },
-        elevation = 3.dp,
-        shape = RoundedCornerShape(10.dp),
+        elevation = 7.dp,
+        shape = RoundedCornerShape(18.dp),
         backgroundColor = MaterialTheme.colors.surface
     ) {
-        Row(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(tile.color.copy(alpha = 0.10f), MaterialTheme.colors.surface)
+                    )
+                )
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(tile.value, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = tile.color)
+                Text(
+                    tile.title,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Box(
                 modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(
-                        tile.color,
-                        shape = RoundedCornerShape(topStart = 10.dp, bottomStart = 10.dp)
-                    )
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .size(42.dp)
+                    .background(tile.color.copy(alpha = 0.11f), CircleShape)
+                    .border(1.dp, tile.color.copy(alpha = 0.14f), CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(tile.value, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = tile.color)
-                    Text(
-                        tile.title,
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(tile.color.copy(alpha = 0.11f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        tile.icon, contentDescription = tile.title,
-                        tint = tile.color, modifier = Modifier.size(22.dp)
-                    )
-                }
+                Icon(
+                    tile.icon, contentDescription = tile.title,
+                    tint = tile.color, modifier = Modifier.size(22.dp)
+                )
             }
         }
     }

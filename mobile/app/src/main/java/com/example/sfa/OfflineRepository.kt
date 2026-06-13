@@ -59,7 +59,7 @@ class OfflineRepository(private val context: Context) {
         }
         Log.d("SFA", "Customer list — serving from cache")
         val cached = when {
-            assignedUserId != null -> db.customerDao().getByAssignedUser(assignedUserId)
+            assignedUserId != null -> db.customerDao().getOwnedByUser(assignedUserId)
             else -> db.customerDao().getAll()
         }
         cached.map { it.toModel() }

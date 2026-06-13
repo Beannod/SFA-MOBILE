@@ -1,6 +1,7 @@
 package com.example.sfa
 
 import android.util.Log
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -153,16 +154,18 @@ fun UserListScreen(
         isLoading.value = false
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF0F2F5))) {
+    Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF4F7FB))) {
         // Header bar
-        Box(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF1A73E8))
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            shape = RoundedCornerShape(24.dp),
+            elevation = 8.dp,
+            color = Color(0xFF1A73E8)
         ) {
             Column {
-                Text("My Team", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Team Ledger", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Text(
                     if (isLoading.value) "Loading..." else "${users.size} member${if (users.size != 1) "s" else ""}",
                     color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp
@@ -180,7 +183,13 @@ fun UserListScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp),
-            colors = TextFieldDefaults.outlinedTextFieldColors(backgroundColor = Color.White)
+            shape = RoundedCornerShape(20.dp),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                backgroundColor = Color.White,
+                focusedBorderColor = Color(0xFF1A73E8),
+                unfocusedBorderColor = Color(0xFFB8C7D9),
+                cursorColor = Color(0xFF1A73E8)
+            )
         )
 
         if (isLoading.value) {
@@ -236,8 +245,8 @@ fun UserListCard(
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onViewProfile(sfaUser) },
-        elevation = 3.dp,
-        shape = RoundedCornerShape(12.dp),
+        elevation = 7.dp,
+        shape = RoundedCornerShape(18.dp),
         backgroundColor = Color.White
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -250,7 +259,8 @@ fun UserListCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                    .border(1.dp, Color(0xFFDFE7F1), RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp))
+                    .padding(horizontal = 12.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Avatar circle with initials
@@ -280,7 +290,7 @@ fun UserListCard(
                             }
                         }
                     }
-                    Text(sfaUser.designation.ifBlank { sfaUser.role }, color = Color.Gray, fontSize = 12.sp)
+                        Text(sfaUser.designation.ifBlank { sfaUser.role }, color = Color.Gray, fontSize = 12.sp)
                     if (sfaUser.territory.isNotBlank()) {
                         Text("📍 ${sfaUser.territory}", color = Color.Gray, fontSize = 11.sp)
                     }
@@ -462,9 +472,13 @@ fun UserProfileScreen(
 
 @Composable
 fun ProfileSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(elevation = 2.dp, shape = RoundedCornerShape(12.dp), backgroundColor = Color.White,
+    Card(elevation = 4.dp, shape = RoundedCornerShape(18.dp), backgroundColor = Color.White,
         modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .border(1.dp, Color(0xFFDCE7F3), RoundedCornerShape(18.dp))
+                .padding(16.dp)
+        ) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF1A73E8))
             Divider(modifier = Modifier.padding(vertical = 8.dp))
             content()
@@ -501,13 +515,14 @@ fun EditProfileScreen(
     // Only the direct manager (reportsToId) can manage feature permissions — not even Admin
     val canManagePermissions = sfaUser.id != loggedInUser.id &&
         loggedInUser.id == sfaUser.reportsToId
-    val hasApproveOrders  = remember { mutableStateOf("approveOrders"  in sfaUser.allowedFeatures) }
-    val hasDispatchOrders = remember { mutableStateOf("dispatchOrders" in sfaUser.allowedFeatures) }
-    val hasDeliverOrders  = remember { mutableStateOf("deliverOrders"  in sfaUser.allowedFeatures) }
-    val hasCancelOrders   = remember { mutableStateOf("cancelOrders"   in sfaUser.allowedFeatures) }
+    fun userHasFeature(key: String) = sfaUser.allowedFeatures.any { it.equals(key, ignoreCase = true) }
+    val hasApproveOrders  = remember { mutableStateOf(userHasFeature("approveOrders")) }
+    val hasDispatchOrders = remember { mutableStateOf(userHasFeature("dispatchOrders")) }
+    val hasDeliverOrders  = remember { mutableStateOf(userHasFeature("deliverOrders")) }
+    val hasCancelOrders   = remember { mutableStateOf(userHasFeature("cancelOrders")) }
     // Menu visibility toggles — if allowedFeatures is empty treat all as enabled
     val effectiveFeatures = sfaUser.allowedFeatures
-    fun feat(key: String) = effectiveFeatures.isEmpty() || key in effectiveFeatures
+    fun feat(key: String) = effectiveFeatures.isEmpty() || effectiveFeatures.any { it.equals(key, ignoreCase = true) }
     val menuDashboard  = remember { mutableStateOf(feat("dashboard")) }
     val menuCustomers  = remember { mutableStateOf(feat("customers")) }
     val menuOrders     = remember { mutableStateOf(feat("orders")) }
@@ -779,7 +794,13 @@ fun EditProfileScreen(
                             val allManaged = managedMenuKeys + managedFlags
                             // Only carry over unmanaged keys that are valid mobile keys (not web-only like 'stock')
                             val validMobileKeys = setOf("dashboard","customers","orders","products","route","team","expenses","schemes","payments","reports","attendance","location","approveOrders","dispatchOrders","deliverOrders","cancelOrders")
-                            val current = sfaUser.allowedFeatures.filter { it in validMobileKeys && it !in allManaged }.toMutableList()
+                            val current = sfaUser.allowedFeatures
+                                .filter { feature ->
+                                    val key = feature.lowercase()
+                                    validMobileKeys.any { it.equals(key, ignoreCase = true) } &&
+                                        allManaged.none { it.equals(key, ignoreCase = true) }
+                                }
+                                .toMutableList()
                             // Menu access keys
                             if (menuDashboard.value) current.add("dashboard")
                             if (menuCustomers.value) current.add("customers")
@@ -852,9 +873,13 @@ fun EditProfileScreen(
 
 @Composable
 fun EditSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(elevation = 2.dp, shape = RoundedCornerShape(12.dp), backgroundColor = Color.White,
+    Card(elevation = 4.dp, shape = RoundedCornerShape(18.dp), backgroundColor = Color.White,
         modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .border(1.dp, Color(0xFFDCE7F3), RoundedCornerShape(18.dp))
+                .padding(16.dp)
+        ) {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF1A73E8))
             Divider(modifier = Modifier.padding(vertical = 8.dp))
             content()
@@ -878,10 +903,17 @@ fun EditField(
         label = { Text(label) },
         leadingIcon = { Icon(icon, null, modifier = Modifier.size(20.dp)) },
         singleLine = true,
+        shape = RoundedCornerShape(18.dp),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         keyboardActions = KeyboardActions(
             onNext = { focusManager.moveFocus(FocusDirection.Down) },
             onDone = { focusManager.clearFocus() }
+        ),
+        colors = TextFieldDefaults.outlinedTextFieldColors(
+            backgroundColor = Color(0xFFF8FBFF),
+            focusedBorderColor = Color(0xFF1A73E8),
+            unfocusedBorderColor = Color(0xFFB8C7D9),
+            cursorColor = Color(0xFF1A73E8)
         ),
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
     )

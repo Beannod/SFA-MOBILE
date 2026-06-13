@@ -1,7 +1,9 @@
-package com.example.sfa
+﻿package com.example.sfa
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,9 +50,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Customer List / Detail / Add — sub-navigation inside "Customers" tab
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Customer List / Detail / Add â€” sub-navigation inside "Customers" tab
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 enum class CustomerView { LIST, ADD, DETAIL, EDIT }
 
@@ -100,9 +103,9 @@ fun CustomersScreen(user: LoggedInUser, onPlaceOrder: (customerId: Int) -> Unit 
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Customer List
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -113,18 +116,21 @@ fun CustomerListScreen(
     onSelect: (Int) -> Unit,
     vm: CustomerViewModel = viewModel()
 ) {
-    // — ViewModel-driven state ————————————————————————————————————————
-    val isAdmin = user.role.equals("Admin", ignoreCase = true)
-    val canViewTeam = isAdmin || user.designationLevel < 6
+    val isAdmin = user.role.trim().contains("admin", ignoreCase = true)
+    val canViewTeam = isAdmin || user.hasFeature("team") || user.designationLevel < 6
     val canApprove  = isAdmin || user.designationLevel < 6
-    val showTeamView = remember { mutableStateOf(canViewTeam) }
+    
+    // For Admins, we usually want to show the full list immediately.
+    val showTeamView = remember(canViewTeam, isAdmin) { mutableStateOf(canViewTeam && !isAdmin) }
 
-    // Configure and load on first composition or when team-view toggle changes
-    LaunchedEffect(refreshTrigger, showTeamView.value) {
+    // Configure BEFORE collecting so the first Pager already has the right scope.
+    // remember(keys) runs synchronously during composition; LaunchedEffect runs after,
+    // causing a second Pager that races deleteAll()/insertAll() with the first.
+    remember(refreshTrigger, showTeamView.value) {
         vm.configure(
             userId         = user.id,
-            managerId      = if (showTeamView.value && !isAdmin) user.id else null,
-            assignedUserId = if (!showTeamView.value && !isAdmin) user.id else null
+            managerId      = if (!isAdmin && showTeamView.value) user.id else null,
+            assignedUserId = if (!isAdmin && !showTeamView.value) user.id else null
         )
     }
 
@@ -141,7 +147,6 @@ fun CustomerListScreen(
     val projectCount  by vm.projectCount.collectAsStateWithLifecycle()
     val allIds        by vm.allIds.collectAsStateWithLifecycle()
 
-    // Legacy multi-select (kept as local state — pure UI concern)
     val isMultiSelectMode   = remember { mutableStateOf(false) }
     val selectedCustomerIds = remember { mutableStateListOf<Int>() }
     val isBulkApplying      = remember { mutableStateOf(false) }
@@ -157,235 +162,90 @@ fun CustomerListScreen(
         modifier = Modifier.fillMaxSize()
     ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        // Offline / pending-sync indicator
-        OfflineBanner(isOnline = isOnline, pendingCount = pendingCount)
-
-        // Search + Add (Add hidden in team view — cannot create customer on behalf of others)
-        Row(
+        Surface(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            shape = RoundedCornerShape(24.dp),
+            elevation = 6.dp,
+            color = MaterialTheme.colors.surface.copy(alpha = 0.97f)
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { vm.setSearch(it) },
-                label = { Text("Search customers...") },
-                singleLine = true,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            OutlinedButton(
-                onClick = {
-                    isMultiSelectMode.value = !isMultiSelectMode.value
-                    if (!isMultiSelectMode.value) selectedCustomerIds.clear()
-                },
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = if (isMultiSelectMode.value) Color(0xFF2E7D32)
-                    else MaterialTheme.colors.primary
-                )
-            ) {
-                Icon(
-                    imageVector = if (isMultiSelectMode.value) Icons.Default.CheckBox
-                    else Icons.Default.CheckBoxOutlineBlank,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(if (isMultiSelectMode.value) "Done" else "Select")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(onClick = { lazyCustomers.refresh() }) {
-                Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = MaterialTheme.colors.primary)
-            }
-            FloatingActionButton(
-                onClick = onAdd,
-                modifier = Modifier.size(48.dp),
-                backgroundColor = MaterialTheme.colors.primary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
-            }
-        }
-
-        if (isMultiSelectMode.value) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
-                    .padding(bottom = 6.dp),
-                color = Color(0xFF2E7D32).copy(alpha = 0.08f),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        Icons.Default.CheckBox,
-                        contentDescription = null,
-                        tint = Color(0xFF2E7D32),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        "${selectedCustomerIds.size} selected",
-                        color = Color(0xFF2E7D32),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.caption,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = {
-                        selectedCustomerIds.clear()
-                        selectedCustomerIds.addAll(allIds)
-                    }) {
-                        Text("All")
-                    }
-                    TextButton(onClick = { selectedCustomerIds.clear() }) {
-                        Text("Clear")
-                    }
-                }
-            }
-
-            if (canApprove && selectedCustomerIds.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                        .padding(bottom = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                isBulkApplying.value = true
-                                var okCount = 0
-                                val ids = selectedCustomerIds.toList()
-                                ids.forEach { id ->
-                                    if (approveCustomer(base, id, "Approved", user.id)) okCount++
-                                }
-                                bulkActionMsg.value = "Approved $okCount / ${ids.size}"
-                                selectedCustomerIds.clear()
-                                isBulkApplying.value = false
-                                vm.refresh()
-                            }
-                        },
-                        enabled = !isBulkApplying.value,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF388E3C))
-                    ) {
-                        Text(if (isBulkApplying.value) "Applying..." else "Approve Selected", color = Color.White)
-                    }
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                isBulkApplying.value = true
-                                var okCount = 0
-                                val ids = selectedCustomerIds.toList()
-                                ids.forEach { id ->
-                                    if (approveCustomer(base, id, "Rejected", user.id)) okCount++
-                                }
-                                bulkActionMsg.value = "Rejected $okCount / ${ids.size}"
-                                selectedCustomerIds.clear()
-                                isBulkApplying.value = false
-                                vm.refresh()
-                            }
-                        },
-                        enabled = !isBulkApplying.value,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFD32F2F))
-                    ) {
-                        Text(if (isBulkApplying.value) "Applying..." else "Reject Selected", color = Color.White)
-                    }
-                }
-            }
-
-            bulkActionMsg.value?.let { msg ->
-                Text(
-                    msg,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.caption,
-                    color = Color(0xFF2E7D32),
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        // ── Team View Toggle (managers only — hidden for Admin who always sees all) ────
-        if (canViewTeam && !isAdmin) {
-            val myColor   = if (!showTeamView.value) MaterialTheme.colors.primary else Color.Gray
-            val teamColor = if (showTeamView.value)  Color(0xFF0288D1)             else Color.Gray
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
-                    .padding(bottom = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                item {
-                Surface(
-                    color = if (!showTeamView.value) MaterialTheme.colors.primary.copy(alpha = 0.12f)
-                            else Color.LightGray.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.clickable { showTeamView.value = false }
-                ) {
-                    Text(
-                        "My Customers",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.caption,
-                        fontWeight = if (!showTeamView.value) FontWeight.Bold else FontWeight.Normal,
-                        color = myColor
-                    )
-                }
-                }
-                item {
-                Surface(
-                    color = if (showTeamView.value) Color(0xFF0288D1).copy(alpha = 0.12f)
-                            else Color.LightGray.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.clickable { showTeamView.value = true }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(Icons.Default.Person, contentDescription = null,
-                            tint = teamColor, modifier = Modifier.size(14.dp))
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Customer Desk", fontWeight = FontWeight.Bold, fontSize = 21.sp)
                         Text(
-                            "My Team's Customers",
-                            style = MaterialTheme.typography.caption,
-                            fontWeight = if (showTeamView.value) FontWeight.Bold else FontWeight.Normal,
-                            color = teamColor
+                            if (isAdmin || showTeamView.value) "Showing all assigned and team accounts." else "Focusing on your assigned accounts.",
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f),
+                            style = MaterialTheme.typography.caption
+                        )
+                    }
+                    Surface(
+                        color = MaterialTheme.colors.secondary.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(
+                            "$totalCount total",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            color = MaterialTheme.colors.secondary,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.caption
                         )
                     }
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { vm.setSearch(it) },
+                        label = { Text("Search customers...") },
+                        singleLine = true,
+                        trailingIcon = {
+                            if (searchQuery.isNotBlank()) {
+                                IconButton(onClick = { vm.setSearch("") }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = { lazyCustomers.refresh() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = MaterialTheme.colors.primary)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FloatingActionButton(
+                        onClick = onAdd,
+                        modifier = Modifier.size(48.dp),
+                        backgroundColor = MaterialTheme.colors.primary
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White)
+                    }
                 }
             }
         }
 
-        // Team banner
-        if (showTeamView.value && !isRefreshing) {
-            Surface(
+        if (canViewTeam && !isAdmin) {
+            LazyRow(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 6.dp),
-                color = Color(0xFF0288D1).copy(alpha = 0.08f),
-                shape = RoundedCornerShape(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(Icons.Default.Person, contentDescription = null,
-                        tint = Color(0xFF0288D1), modifier = Modifier.size(16.dp))
-                    Text(
-                        if (isAdmin) "Showing all customers ($totalCount total)"
-                        else "Showing team's customers ($totalCount total)",
-                        style = MaterialTheme.typography.caption,
-                        color = Color(0xFF0288D1),
-                        fontWeight = FontWeight.Bold
+                item {
+                    TabChip(
+                        label = "My Customers",
+                        isSelected = !showTeamView.value,
+                        onClick = { showTeamView.value = false }
+                    )
+                }
+                item {
+                    TabChip(
+                        label = "Team's Customers",
+                        isSelected = showTeamView.value,
+                        onClick = { showTeamView.value = true }
                     )
                 }
             }
         }
+
         LazyRow(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -398,40 +258,74 @@ fun CustomerListScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        val refreshError = lazyCustomers.loadState.refresh as? LoadState.Error
         if (isRefreshing && lazyCustomers.itemCount == 0) {
             SkeletonList()
+        } else if (refreshError != null && lazyCustomers.itemCount == 0) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                ) {
+                    Icon(Icons.Default.CloudOff, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(40.dp))
+                    Text("Could not load customers", color = Color.Gray, fontWeight = FontWeight.Bold)
+                    Text(
+                        if (!isOnline) "You are offline. Connect to the network and retry."
+                        else "Server error: ${refreshError.error.message?.take(80) ?: "Unknown error"}",
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.caption,
+                        textAlign = TextAlign.Center
+                    )
+                    Button(onClick = { lazyCustomers.refresh() }) { Text("Retry") }
+                }
+            }
+        } else if (!isOnline && lazyCustomers.itemCount == 0) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                ) {
+                    Icon(Icons.Default.CloudOff, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(40.dp))
+                    Text("No cached data", color = Color.Gray, fontWeight = FontWeight.Bold)
+                    Text("Connect to the internet to load customers.", color = Color.Gray, style = MaterialTheme.typography.caption, textAlign = TextAlign.Center)
+                }
+            }
         } else if (!isRefreshing && lazyCustomers.itemCount == 0) {
-            Text("No customers found.", color = Color.Gray, modifier = Modifier.padding(20.dp).align(Alignment.CenterHorizontally))
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No customers found.", color = Color.Gray)
+            }
         } else {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 items(count = lazyCustomers.itemCount) { index ->
                     val customer = lazyCustomers[index] ?: return@items
-                    val isSelected = customer.id in selectedCustomerIds
                     CustomerCard(
                         customer = customer,
-                        isSelected = isSelected,
-                        showCheckbox = isMultiSelectMode.value,
-                        onClick = {
-                            if (isMultiSelectMode.value) {
-                                if (isSelected) selectedCustomerIds.remove(customer.id)
-                                else selectedCustomerIds.add(customer.id)
-                            } else {
-                                onSelect(customer.id)
-                            }
-                        }
+                        onClick = { onSelect(customer.id) }
                     )
                 }
-                if (isLoadingMore) {
-                    item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        }
-                    }
-                }
-            } // end LazyColumn
+            }
         }
-    } // end Column
+    }
+    }
+}
+
+@Composable
+fun TabChip(label: String, isSelected: Boolean, onClick: () -> Unit) {
+    Surface(
+        color = if (isSelected) MaterialTheme.colors.primary.copy(alpha = 0.15f) else Color.Transparent,
+        shape = RoundedCornerShape(16.dp),
+        border = if (isSelected) null else BorderStroke(1.dp, Color.LightGray),
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Text(
+            label,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.caption,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = if (isSelected) MaterialTheme.colors.primary else Color.Gray
+        )
     }
 }
 
@@ -452,111 +346,31 @@ fun StatChip(text: String, color: Color) {
 }
 
 @Composable
-fun CustomerCard(
-    customer: Customer,
-    isSelected: Boolean = false,
-    showCheckbox: Boolean = false,
-    onClick: () -> Unit
-) {
-    val tonalCardColor = MaterialTheme.colors.primary
-        .copy(alpha = 0.06f)
-        .compositeOver(MaterialTheme.colors.surface)
-
+fun CustomerCard(customer: Customer, onClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).clickable { onClick() },
         elevation = 2.dp,
-        backgroundColor = tonalCardColor,
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .background(
-                    if (isSelected) MaterialTheme.colors.primary.copy(alpha = 0.06f)
-                    else Color.Transparent
-                ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (showCheckbox) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onClick() },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = MaterialTheme.colors.primary,
-                        checkmarkColor = Color.White,
-                        uncheckedColor = Color.Gray
-                    ),
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-            }
-            // Type badge
-            val typeColor = when (customer.customerType) {
-                "Dealer" -> Color(0xFF388E3C)
-                "Retailer" -> Color(0xFFF57C00)
-                "Project" -> Color(0xFF7B1FA2)
-                else -> Color.Gray
-            }
-            Surface(color = typeColor.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp)) {
-                Text(
-                    text = customer.customerType.take(1),
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                    fontWeight = FontWeight.Bold,
-                    color = typeColor,
-                    fontSize = 16.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
+        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(customer.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.subtitle1)
-                if (customer.contactPerson.isNotBlank()) {
-                    Text(customer.contactPerson, style = MaterialTheme.typography.body2, color = Color.Gray)
-                }
-                Row {
-                    if (customer.city.isNotBlank()) {
-                        Text(customer.city, style = MaterialTheme.typography.caption, color = Color.Gray)
-                    }
-                    if (customer.phone.isNotBlank()) {
-                        Text(" \u2022 ${customer.phone}", style = MaterialTheme.typography.caption, color = Color.Gray)
-                    }
-                }
+                Text(customer.customerType, style = MaterialTheme.typography.caption, color = Color.Gray)
             }
-
-            // Outstanding
-            if (customer.outstandingBalance > 0) {
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Rs. %.0f".format(customer.outstandingBalance), fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F), fontSize = 13.sp)
-                    Text("due", style = MaterialTheme.typography.caption, color = Color.Gray)
-                }
-            } else {
-                // Approval status badge
-                val (approvalBg, approvalFg) = when (customer.approvalStatus) {
-                    "Approved" -> Color(0xFFE8F5E9) to Color(0xFF388E3C)
-                    "Rejected" -> Color(0xFFFFEBEE) to Color(0xFFD32F2F)
-                    else -> Color(0xFFFFF8E1) to Color(0xFFF57C00) // Pending
-                }
-                Surface(color = approvalBg, shape = RoundedCornerShape(12.dp)) {
-                    Text(
-                        text = customer.approvalStatus,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = approvalFg,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
+            Text("Rs. %.0f".format(customer.outstandingBalance), color = if (customer.outstandingBalance > 0) Color.Red else Color.Gray)
         }
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Add Customer
-// ═══════════════════════════════════════════════════════════════════════════════
+@Composable
+fun SkeletonList() {
+    Column(modifier = Modifier.padding(12.dp)) {
+        repeat(5) {
+            Box(modifier = Modifier.fillMaxWidth().height(60.dp).padding(vertical = 4.dp).background(Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp)))
+        }
+    }
+}
+
 
 @Composable
 fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Unit) {
@@ -568,7 +382,7 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("draft_add_customer", Context.MODE_PRIVATE) }
 
-    // Fields — restored from auto-saved draft when present
+    // Fields ΓÇö restored from auto-saved draft when present
     val name            = remember { mutableStateOf(prefs.getString("name", "") ?: "") }
     val customerType    = remember { mutableStateOf(prefs.getString("customerType", "Dealer") ?: "Dealer") }
     val customerCode    = remember { mutableStateOf(prefs.getString("customerCode", "") ?: "") }
@@ -716,9 +530,9 @@ fun AddCustomerScreen(user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Uni
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Place Autocomplete — Address field with Nepal Places suggestions
-// ═══════════════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// Place Autocomplete ΓÇö Address field with Nepal Places suggestions
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 
 data class PlaceSuggestion(val name: String, val district: String, val province: String)
 
@@ -859,9 +673,9 @@ fun FormField(
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // Customer Detail + Visit History
-// ═══════════════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -966,7 +780,7 @@ fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit
                         }
                     }
 
-                    // ── Approval + Edit actions ──────────────────────────────────────────
+                    // ΓöÇΓöÇ Approval + Edit actions ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
                     val canApprove = user.role.equals("Admin", ignoreCase = true) || user.designationLevel < 6
                     val canEdit = user.role.equals("Admin", ignoreCase = true) ||
                                   user.designationLevel < 6 ||
@@ -997,7 +811,7 @@ fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                // Edit button—shown for assignee, creator, manager, admin
+                                // Edit buttonΓÇöshown for assignee, creator, manager, admin
                                 if (canEdit) {
                                     Button(
                                         onClick = onEdit,
@@ -1010,7 +824,7 @@ fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit
                                         Text("Edit", color = Color.White, fontSize = 13.sp)
                                     }
                                 }
-                                // Place Order button — only for Approved customers when user can create orders
+                                // Place Order button ΓÇö only for Approved customers when user can create orders
                                 val canOrder = "orders" in user.allowedFeatures
                                 if (canOrder && c.approvalStatus == "Approved") {
                                     Button(
@@ -1024,7 +838,7 @@ fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit
                                         Text("Order", color = Color.White, fontSize = 13.sp)
                                     }
                                 }
-                                // Approve/Reject — shown for managers and admins when status is Pending
+                                // Approve/Reject ΓÇö shown for managers and admins when status is Pending
                                 if (canApprove && c.approvalStatus == "Pending") {
                                     Button(
                                         onClick = {
@@ -1037,7 +851,7 @@ fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit
                                         modifier = Modifier.weight(1f).height(40.dp),
                                         colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF388E3C))
                                     ) {
-                                        Text("✓ Approve", color = Color.White, fontSize = 13.sp)
+                                        Text("Γ£ô Approve", color = Color.White, fontSize = 13.sp)
                                     }
                                     Button(
                                         onClick = {
@@ -1050,7 +864,7 @@ fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit
                                         modifier = Modifier.weight(1f).height(40.dp),
                                         colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFD32F2F))
                                     ) {
-                                        Text("✗ Reject", color = Color.White, fontSize = 13.sp)
+                                        Text("Γ£ù Reject", color = Color.White, fontSize = 13.sp)
                                     }
                                 }
                             }
@@ -1199,9 +1013,9 @@ fun DetailRow(label: String, value: String) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // Edit Customer Screen
-// ═══════════════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 
 @Composable
 fun EditCustomerScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit, onSaved: () -> Unit) {
@@ -1368,9 +1182,9 @@ fun EditCustomerScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit, 
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // Network: Customer APIs
-// ═══════════════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 
 suspend fun fetchCustomers(baseUrl: String, assignedUserId: Int? = null, managerId: Int? = null): List<Customer>? {
     return withContext(Dispatchers.IO) {
@@ -1520,7 +1334,7 @@ suspend fun addCustomerVisit(baseUrl: String, customerId: Int, userId: Int, purp
     }
 }
 
-// ── Approve/Reject customer (manager / admin) ──────────────────────────────
+// ΓöÇΓöÇ Approve/Reject customer (manager / admin) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 suspend fun approveCustomer(baseUrl: String, customerId: Int, status: String, approverId: Int): Boolean {
     return withContext(Dispatchers.IO) {
         try {
@@ -1544,7 +1358,7 @@ suspend fun approveCustomer(baseUrl: String, customerId: Int, status: String, ap
     }
 }
 
-// ── Update (edit) customer profile ─────────────────────────────────────────
+// ΓöÇΓöÇ Update (edit) customer profile ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 suspend fun updateCustomer(
     customerId: Int,
     name: String, customerType: String, contactPerson: String,

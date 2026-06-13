@@ -12,3 +12,6 @@ data class LoggedInUser(
     val reportsToId: Int? = null,
     val allowedFeatures: List<String> = emptyList()
 )
+
+fun LoggedInUser.hasFeature(feature: String): Boolean =
+    allowedFeatures.isEmpty() || allowedFeatures.any { it.equals(feature, ignoreCase = true) }

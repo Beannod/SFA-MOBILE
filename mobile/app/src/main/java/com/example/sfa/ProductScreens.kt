@@ -1,6 +1,7 @@
 package com.example.sfa
 
 import android.util.Log
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -156,21 +157,44 @@ fun ProductListScreen(
 
         // Header with optional Add Product button for admin
         val isAdmin = user.role.equals("Admin", ignoreCase = true)
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(24.dp),
+            elevation = 6.dp,
+            color = MaterialTheme.colors.surface.copy(alpha = 0.97f)
         ) {
-            Text("Products", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.weight(1f))
-            IconButton(onClick = { lazyProducts.refresh() }) {
-                Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = MaterialTheme.colors.primary)
-            }
-            if (isAdmin) {
-                FloatingActionButton(
-                    onClick = onAddProduct,
-                    modifier = Modifier.size(48.dp),
-                    backgroundColor = MaterialTheme.colors.primary
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Product Catalog", fontWeight = FontWeight.Bold, fontSize = 21.sp)
+                    Text(
+                        "Series, size and pricing in one premium grid.",
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f),
+                        style = MaterialTheme.typography.caption
+                    )
+                }
+                Surface(
+                    color = MaterialTheme.colors.primary.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Product", tint = Color.White)
+                    IconButton(onClick = { lazyProducts.refresh() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Sync", tint = MaterialTheme.colors.primary)
+                    }
+                }
+                if (isAdmin) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FloatingActionButton(
+                        onClick = onAddProduct,
+                        modifier = Modifier.size(48.dp),
+                        backgroundColor = MaterialTheme.colors.primary,
+                        elevation = FloatingActionButtonDefaults.elevation(8.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Product", tint = Color.White)
+                    }
                 }
             }
         }
@@ -181,6 +205,15 @@ fun ProductListScreen(
             placeholder = { Text("Search products...") },
             modifier = Modifier.fillMaxWidth().padding(12.dp, 12.dp, 12.dp, 4.dp),
             singleLine = true,
+            shape = RoundedCornerShape(20.dp),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                backgroundColor = MaterialTheme.colors.surface.copy(alpha = 0.94f),
+                focusedBorderColor = MaterialTheme.colors.primary,
+                unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                textColor = MaterialTheme.colors.onSurface,
+                placeholderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.48f),
+                cursorColor = MaterialTheme.colors.primary
+            ),
             trailingIcon = {
                 if (searchText.isNotEmpty()) {
                     IconButton(onClick = { vm.setSearch("") }) {
@@ -237,12 +270,19 @@ fun ProductListScreen(
         }
 
         // Stats
-        Text(
-            "$productCount products",
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.caption,
-            color = Color.Gray
-        )
+        Surface(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            color = MaterialTheme.colors.secondary.copy(alpha = 0.12f),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Text(
+                "$productCount products synced",
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.caption,
+                color = MaterialTheme.colors.secondary,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
 
         if (isRefreshing && lazyProducts.itemCount == 0) {
             SkeletonList()
@@ -283,17 +323,29 @@ fun ProductCatalogCard(product: Product, onClick: () -> Unit) {
     val tonalCardColor = MaterialTheme.colors.primary
         .copy(alpha = 0.06f)
         .compositeOver(MaterialTheme.colors.surface)
+    val rateText = product.ratePerSqm?.let { "Rs. ${String.format("%,.2f", it)} / sqm" } ?: "Rate pending"
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onClick() },
-        elevation = 3.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clickable { onClick() },
+        elevation = 8.dp,
         backgroundColor = tonalCardColor,
-        shape = RoundedCornerShape(10.dp)
+        shape = RoundedCornerShape(20.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            // Top row: name + badges
+        Column(
+            modifier = Modifier
+                .border(1.dp, MaterialTheme.colors.onSurface.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
+                .padding(16.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        SmallChip(product.itemNo.ifBlank { "No item" }, MaterialTheme.colors.primary)
+                        if (product.code.isNotBlank()) SmallChip(product.code, Color(0xFF607D8B))
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         product.name,
                         style = MaterialTheme.typography.subtitle1,
@@ -324,9 +376,32 @@ fun ProductCatalogCard(product: Product, onClick: () -> Unit) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Divider(color = Color(0xFFEEEEEE))
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Surface(
+                color = MaterialTheme.colors.primary.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Pricing", fontSize = 11.sp, color = labelColor, fontWeight = FontWeight.SemiBold)
+                        Text(rateText, fontWeight = FontWeight.Bold, color = MaterialTheme.colors.primary)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Stock Unit", fontSize = 11.sp, color = labelColor, fontWeight = FontWeight.SemiBold)
+                        Text(product.unit.ifBlank { "Box" }, fontWeight = FontWeight.Bold, color = valueColor)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Info grid matching web columns
             // Row 1: Item No | Quality | Series | Size

@@ -47,16 +47,32 @@ class OrderRemoteMediator(
 
         return try {
             var orders = api.getOrders(
-                createdByUserId = if (managerId == null) userId else null,
+                // userId <= 0 means unscoped/admin view; do not apply creator filter.
+                createdByUserId = if (managerId == null && userId > 0) userId else null,
                 managerId = managerId
             )
 
             // Fallback: if scoped query returns empty, pull full list so UI is not blank.
-            if (orders.isEmpty() && (userId != 0 || managerId != null)) {
+            if (orders.isEmpty() && (userId > 0 || managerId != null)) {
                 orders = api.getOrders(
                     createdByUserId = null,
                     managerId = null
                 )
+            }
+
+            // Salesperson view: include orders they created and orders for their owned customers.
+            // This keeps mobile visibility aligned with the customer scope rules.
+            if (managerId == null && userId > 0) {
+                val ownedCustomerIds = api.getCustomers(
+                    assignedUserId = userId,
+                    managerId = null
+                ).map { it.id }.toSet()
+
+                orders = if (ownedCustomerIds.isEmpty()) {
+                    orders.filter { it.createdByUserId == userId }
+                } else {
+                    orders.filter { it.createdByUserId == userId || ownedCustomerIds.contains(it.customerId) }
+                }
             }
 
             db.orderDao().deleteAll()

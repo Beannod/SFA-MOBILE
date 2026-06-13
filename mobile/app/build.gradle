@@ -24,8 +24,8 @@ android {
         applicationId "com.example.sfa"
         minSdk 24
         targetSdk 34
-        versionCode 47
-        versionName "1.46"
+        versionCode 57
+        versionName "1.56"
     }
 
     buildTypes {

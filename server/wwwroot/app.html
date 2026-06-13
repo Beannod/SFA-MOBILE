@@ -4,24 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SFA Admin Panel</title>
-    <script src="auth.js"></script>
+    <script src="auth.js?v=20260511-2"></script>
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="vendor/chartjs/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/app.css?v=20260511-2" />
 </head>
 <body>
 
     <!-- ══ PAGE HEADER ══ -->
     <div class="page-header">
         <div class="page-header-inner">
-            <div class="header-icon" id="headerIcon">⚙️</div>
-            <div>
-                <div class="header-title" id="appHeaderTitle">SFA Admin Panel</div>
-                <div class="header-sub" id="headerSub">Sales Force Automation</div>
+            <div class="page-header-main">
+                <div class="header-icon" id="headerIcon">⚙️</div>
+                <div class="header-copy">
+                    <div class="header-title-row">
+                        <div class="header-title" id="appHeaderTitle">SFA Admin Panel</div>
+                        <span class="header-section-pill" id="headerSectionPill">Dashboard</span>
+                    </div>
+                    <div class="header-sub" id="headerSub">Sales Force Automation</div>
+                </div>
             </div>
-            <div class="header-user-badge" id="headerUserBadge"></div>
-            <div id="geoStatusDot" title="Location tracking" style="width:10px;height:10px;border-radius:50%;background:#9E9E9E;margin-left:10px;flex-shrink:0;display:none" ></div>
+            <div class="header-actions">
+                <div class="header-status-chip">Web Control Room</div>
+                <div class="header-user-badge" id="headerUserBadge"></div>
+                <div id="geoStatusDot" title="Location tracking" style="width:10px;height:10px;border-radius:50%;background:#9E9E9E;flex-shrink:0;display:none"></div>
+            </div>
         </div>
     </div>
 
@@ -99,6 +107,14 @@
 
         <!-- ══ SECTION: CONFIGURATION ══ -->
         <div id="section-config" class="spa-section">
+            <div class="cfg-subnav-wrap" id="cfg-subnavWrap">
+                <button class="cfg-subnav-btn active" data-target="cfg-configCard" onclick="cfgJumpToCard('cfg-configCard', this)">Branding</button>
+                <button class="cfg-subnav-btn" data-target="cfg-designationCard" data-admin-only="true" onclick="cfgJumpToCard('cfg-designationCard', this)">Designations</button>
+                <button class="cfg-subnav-btn" data-target="cfg-salesTeamCard" onclick="cfgJumpToCard('cfg-salesTeamCard', this)">Sales Team</button>
+                <button class="cfg-subnav-btn" data-target="cfg-nepalPlacesCard" data-admin-only="true" onclick="cfgJumpToCard('cfg-nepalPlacesCard', this)">Nepal Places</button>
+                <button class="cfg-subnav-btn" data-target="cfg-custTypesCard" data-admin-only="true" onclick="cfgJumpToCard('cfg-custTypesCard', this)">Customer Types</button>
+                <button class="cfg-subnav-btn" data-target="cfg-productCfgCard" data-admin-only="true" onclick="cfgJumpToCard('cfg-productCfgCard', this)">Product Config</button>
+            </div>
 
             <!-- App Config Card (Admin only) -->
             <div class="card" id="cfg-configCard">
@@ -314,9 +330,24 @@
                 <div id="cfg-pcfgMsg" style="margin-top:8px;font-size:0.836em;color:var(--gray-500)"></div>
             </div>
 
+        <!-- ══ CONFIG CARD POPUP ══ -->
+        <div id="cfg-cardPopup" class="modal-overlay" onclick="if(event.target===this)cfgCloseCardPopup()">
+            <div class="modal-box" style="max-width:min(96vw,1100px);width:96%">
+                <div class="modal-header">
+                    <h3 id="cfg-cardPopupTitle">Configuration</h3>
+                    <button class="close-btn" onclick="cfgCloseCardPopup()">&#x2715;</button>
+                </div>
+                <div id="cfg-cardPopupBody" class="modal-body" style="padding:12px"></div>
+                <div class="modal-footer cfg-card-popup-footer">
+                    <span id="cfg-cardPopupFootnote" class="cfg-card-popup-footnote">Quick setup window</span>
+                    <button class="btn btn-secondary" type="button" onclick="cfgCloseCardPopup()">Close</button>
+                </div>
+            </div>
+        </div>
+
         <!-- ══ CREATE / EDIT USER MODAL ══ -->
         <div id="cfg-createModal" class="modal-overlay" onclick="if(event.target===this)cfgCloseCreateModal()">
-            <div class="modal-box" style="max-width:680px;width:95%">
+            <div class="modal-box cfg-user-modal" style="max-width:680px;width:95%">
                 <div class="modal-header">
                     <h3 id="cfg-formTitle">Add New Sales Person</h3>
                     <button class="close-btn" onclick="cfgCloseCreateModal()">&#x2715;</button>
@@ -390,46 +421,83 @@
                             </select>
                         </div>
                         <div class="form-group" style="grid-column:1/-1">
-                            <label>Reports To</label>
+                            <label>Reports To <span style="font-size:0.8em;color:#94a3b8">(same level + upward, based on designation)</span></label>
+                            <input type="text" id="cfg-reportsToSearch" placeholder="Search manager by name, username, designation" style="margin-bottom:6px">
                             <select id="cfg-reportsToId" style="width:100%"><option value="">-- No Manager --</option></select>
                             <div id="cfg-reportsToInfo" style="font-size:0.8em;color:var(--gray-500);margin-top:4px"></div>
                         </div>
                         <div class="form-group" style="grid-column:1/-1">
-                            <label style="font-weight:700;margin-bottom:6px;display:block">🌐 Web Permissions</label>
-                            <div style="display:flex;flex-wrap:wrap;gap:6px">
-                                <label id="cfg-wft-dashboard"    class="feature-toggle"><input type="checkbox" value="dashboard"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dashboard</label>
-                                <label id="cfg-wft-customers"    class="feature-toggle"><input type="checkbox" value="customers"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Customers</label>
-                                <label id="cfg-wft-orders"       class="feature-toggle"><input type="checkbox" value="orders"         onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Orders</label>
-                                <label id="cfg-wft-products"     class="feature-toggle"><input type="checkbox" value="products"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Products</label>
-                                <label id="cfg-wft-reports"      class="feature-toggle"><input type="checkbox" value="reports"        onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Reports</label>
-                                <label id="cfg-wft-attendance"   class="feature-toggle"><input type="checkbox" value="attendance"     onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Attendance</label>
-                                <label id="cfg-wft-location"     class="feature-toggle"><input type="checkbox" value="location"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Location</label>
-                                <label id="cfg-wft-stock"        class="feature-toggle"><input type="checkbox" value="stock"          onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Stock</label>
-                                <label id="cfg-wft-approveOrders"  class="feature-toggle"><input type="checkbox" value="approveOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Approve Orders</label>
-                                <label id="cfg-wft-dispatchOrders" class="feature-toggle"><input type="checkbox" value="dispatchOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dispatch Orders</label>
-                                <label id="cfg-wft-deliverOrders"  class="feature-toggle"><input type="checkbox" value="deliverOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Deliver Orders</label>
-                                <label id="cfg-wft-cancelOrders"   class="feature-toggle"><input type="checkbox" value="cancelOrders"   onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Cancel Orders</label>
+                            <label style="font-weight:700;margin-bottom:8px;display:block">🌐 Web Permissions</label>
+                            <div style="background:#f8f9fa;border-radius:8px;padding:12px;border:1px solid var(--gray-200)">
+                                <div class="perm-toolbar">
+                                    <span class="perm-toolbar-label">Role Preset</span>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgApplyRolePermissionPreset('create','Salesperson')">Salesperson</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgApplyRolePermissionPreset('create','Supervisor')">Supervisor</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgApplyRolePermissionPreset('create','Admin')">Admin</button>
+                                </div>
+                                <div class="perm-toolbar">
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgSetCreatePermissionMode('web','menu')">Menu</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgSetCreatePermissionMode('web','actions')">Actions</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgSetCreatePermissionMode('web','all')">All</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgSetCreatePermissionMode('web','none')">Clear</button>
+                                </div>
+                                <div style="font-size:0.75em;font-weight:700;color:#6366f1;letter-spacing:0.04em;margin-bottom:8px;text-transform:uppercase">Menu Access</div>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-bottom:12px">
+                                    <label id="cfg-wft-dashboard"    class="feature-toggle"><input type="checkbox" value="dashboard"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dashboard</label>
+                                    <label id="cfg-wft-customers"    class="feature-toggle"><input type="checkbox" value="customers"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Customers</label>
+                                    <label id="cfg-wft-orders"       class="feature-toggle"><input type="checkbox" value="orders"         onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Orders</label>
+                                    <label id="cfg-wft-products"     class="feature-toggle"><input type="checkbox" value="products"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Products</label>
+                                    <label id="cfg-wft-reports"      class="feature-toggle"><input type="checkbox" value="reports"        onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Reports</label>
+                                    <label id="cfg-wft-attendance"   class="feature-toggle"><input type="checkbox" value="attendance"     onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Attendance</label>
+                                    <label id="cfg-wft-location"     class="feature-toggle"><input type="checkbox" value="location"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Location</label>
+                                    <label id="cfg-wft-stock"        class="feature-toggle"><input type="checkbox" value="stock"          onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Stock</label>
+                                </div>
+                                <div style="font-size:0.75em;font-weight:700;color:#6366f1;letter-spacing:0.04em;margin-bottom:8px;text-transform:uppercase">Order Actions</div>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px">
+                                    <label id="cfg-wft-approveOrders"  class="feature-toggle"><input type="checkbox" value="approveOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Approve</label>
+                                    <label id="cfg-wft-dispatchOrders" class="feature-toggle"><input type="checkbox" value="dispatchOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dispatch</label>
+                                    <label id="cfg-wft-deliverOrders"  class="feature-toggle"><input type="checkbox" value="deliverOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Deliver</label>
+                                    <label id="cfg-wft-cancelOrders"   class="feature-toggle"><input type="checkbox" value="cancelOrders"   onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Cancel</label>
+                                </div>
                             </div>
                         </div>
                         <div class="form-group" style="grid-column:1/-1">
-                            <label style="font-weight:700;margin-bottom:6px;display:block">📱 Mobile Permissions</label>
-                            <div style="display:flex;flex-wrap:wrap;gap:6px">
-                                <label id="cfg-mft-dashboard"    class="feature-toggle"><input type="checkbox" value="dashboard"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dashboard</label>
-                                <label id="cfg-mft-customers"    class="feature-toggle"><input type="checkbox" value="customers"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Customers</label>
-                                <label id="cfg-mft-orders"       class="feature-toggle"><input type="checkbox" value="orders"         onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Orders</label>
-                                <label id="cfg-mft-products"     class="feature-toggle"><input type="checkbox" value="products"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Products</label>
-                                <label id="cfg-mft-route"        class="feature-toggle"><input type="checkbox" value="route"          onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Route</label>
-                                <label id="cfg-mft-team"         class="feature-toggle"><input type="checkbox" value="team"           onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Team</label>
-                                <label id="cfg-mft-expenses"     class="feature-toggle"><input type="checkbox" value="expenses"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Expenses</label>
-                                <label id="cfg-mft-schemes"      class="feature-toggle"><input type="checkbox" value="schemes"        onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Schemes</label>
-                                <label id="cfg-mft-payments"     class="feature-toggle"><input type="checkbox" value="payments"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Payments</label>
-                                <label id="cfg-mft-reports"      class="feature-toggle"><input type="checkbox" value="reports"        onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Reports</label>
-                                <label id="cfg-mft-attendance"   class="feature-toggle"><input type="checkbox" value="attendance"     onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Attendance</label>
-                                <label id="cfg-mft-location"     class="feature-toggle"><input type="checkbox" value="location"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Location</label>
-                                <label id="cfg-mft-approveOrders"  class="feature-toggle"><input type="checkbox" value="approveOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Approve Orders</label>
-                                <label id="cfg-mft-dispatchOrders" class="feature-toggle"><input type="checkbox" value="dispatchOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dispatch Orders</label>
-                                <label id="cfg-mft-deliverOrders"  class="feature-toggle"><input type="checkbox" value="deliverOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Deliver Orders</label>
-                                <label id="cfg-mft-cancelOrders"   class="feature-toggle"><input type="checkbox" value="cancelOrders"   onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Cancel Orders</label>
+                            <label style="font-weight:700;margin-bottom:8px;display:block">📱 Mobile Permissions</label>
+                            <div style="background:#f8f9fa;border-radius:8px;padding:12px;border:1px solid var(--gray-200)">
+                                <div class="perm-toolbar">
+                                    <span class="perm-toolbar-label">Role Preset</span>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgApplyRolePermissionPreset('create','Salesperson')">Salesperson</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgApplyRolePermissionPreset('create','Supervisor')">Supervisor</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgApplyRolePermissionPreset('create','Admin')">Admin</button>
+                                </div>
+                                <div class="perm-toolbar">
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgSetCreatePermissionMode('mobile','menu')">Menu</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgSetCreatePermissionMode('mobile','actions')">Actions</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgSetCreatePermissionMode('mobile','all')">All</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="cfgSetCreatePermissionMode('mobile','none')">Clear</button>
+                                </div>
+                                <div style="font-size:0.75em;font-weight:700;color:#6366f1;letter-spacing:0.04em;margin-bottom:8px;text-transform:uppercase">Menu Access</div>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px;margin-bottom:12px">
+                                    <label id="cfg-mft-dashboard"    class="feature-toggle"><input type="checkbox" value="dashboard"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dashboard</label>
+                                    <label id="cfg-mft-customers"    class="feature-toggle"><input type="checkbox" value="customers"      onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Customers</label>
+                                    <label id="cfg-mft-orders"       class="feature-toggle"><input type="checkbox" value="orders"         onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Orders</label>
+                                    <label id="cfg-mft-products"     class="feature-toggle"><input type="checkbox" value="products"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Products</label>
+                                    <label id="cfg-mft-route"        class="feature-toggle"><input type="checkbox" value="route"          onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Route</label>
+                                    <label id="cfg-mft-team"         class="feature-toggle"><input type="checkbox" value="team"           onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Team</label>
+                                    <label id="cfg-mft-expenses"     class="feature-toggle"><input type="checkbox" value="expenses"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Expenses</label>
+                                    <label id="cfg-mft-schemes"      class="feature-toggle"><input type="checkbox" value="schemes"        onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Schemes</label>
+                                    <label id="cfg-mft-payments"     class="feature-toggle"><input type="checkbox" value="payments"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Payments</label>
+                                    <label id="cfg-mft-reports"      class="feature-toggle"><input type="checkbox" value="reports"        onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Reports</label>
+                                    <label id="cfg-mft-attendance"   class="feature-toggle"><input type="checkbox" value="attendance"     onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Attendance</label>
+                                    <label id="cfg-mft-location"     class="feature-toggle"><input type="checkbox" value="location"       onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Location</label>
+                                </div>
+                                <div style="font-size:0.75em;font-weight:700;color:#6366f1;letter-spacing:0.04em;margin-bottom:8px;text-transform:uppercase">Order Actions</div>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px">
+                                    <label id="cfg-mft-approveOrders"  class="feature-toggle"><input type="checkbox" value="approveOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Approve</label>
+                                    <label id="cfg-mft-dispatchOrders" class="feature-toggle"><input type="checkbox" value="dispatchOrders" onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Dispatch</label>
+                                    <label id="cfg-mft-deliverOrders"  class="feature-toggle"><input type="checkbox" value="deliverOrders"  onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Deliver</label>
+                                    <label id="cfg-mft-cancelOrders"   class="feature-toggle"><input type="checkbox" value="cancelOrders"   onchange="cfgOnFeatureChange(this)"><span class="dot"></span>Cancel</label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -444,7 +512,7 @@
 
         <!-- ══ PROFILE / EDIT USER MODAL ══ -->
         <div id="cfg-profileModal" class="modal-overlay" onclick="if(event.target===this)cfgCloseProfileModal()">
-            <div class="modal-box" style="max-width:700px;width:95%">
+            <div class="modal-box cfg-user-modal" style="max-width:700px;width:95%">
                 <div class="modal-header">
                     <h3 id="cfg-pmTitle">User Profile</h3>
                     <button class="close-btn" onclick="cfgCloseProfileModal()">&#x2715;</button>
@@ -513,7 +581,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Reports To</label>
+                        <label>Reports To <span style="font-size:0.8em;color:#94a3b8">(same level + upward, based on designation)</span></label>
+                        <input type="text" id="cfg-pmReportsToSearch" placeholder="Search manager by name, username, designation" style="margin-bottom:6px">
                         <select id="cfg-pmReportsTo" style="width:100%"><option value="">-- No Manager --</option></select>
                     </div>
                     <div class="form-group">
@@ -525,14 +594,14 @@
                         <input type="password" id="cfg-pmConfirmPwd" placeholder="Repeat new password">
                     </div>
                     <div id="cfg-pmWebSection" class="form-group" style="grid-column:1/-1">
-                        <label style="font-weight:700;margin-bottom:6px;display:block">🌐 Web Permissions</label>
-                        <div id="cfg-pmWebGrid" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-                        <span id="cfg-pmFeaturesLockNote" style="font-size:0.78em;color:#94a3b8"></span>
+                        <label style="font-weight:700;margin-bottom:8px;display:block">🌐 Web Permissions</label>
+                        <div id="cfg-pmWebGrid" style="background:#f8f9fa;border-radius:8px;padding:12px;border:1px solid var(--gray-200)"></div>
+                        <span id="cfg-pmFeaturesLockNote" style="font-size:0.78em;color:#94a3b8;display:block;margin-top:6px"></span>
                     </div>
                     <div class="form-group" style="grid-column:1/-1">
-                        <label style="font-weight:700;margin-bottom:6px;display:block">📱 Mobile Permissions</label>
-                        <div id="cfg-pmMobileGrid" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-                        <span id="cfg-pmMobileLockNote" style="font-size:0.78em;color:#94a3b8"></span>
+                        <label style="font-weight:700;margin-bottom:8px;display:block">📱 Mobile Permissions</label>
+                        <div id="cfg-pmMobileGrid" style="background:#f8f9fa;border-radius:8px;padding:12px;border:1px solid var(--gray-200)"></div>
+                        <span id="cfg-pmMobileLockNote" style="font-size:0.78em;color:#94a3b8;display:block;margin-top:6px"></span>
                     </div>
                 </div>
                 <div id="cfg-pmMsg" style="margin:8px 16px 0"></div>
@@ -1358,48 +1427,92 @@
             </div>
         </div>
     </div>
+    <!-- App scripts: keep this order because section modules register global handlers. -->
+    <script src="js/pages/01-core-config.js?v=20260511-2"></script>
+    <script src="js/pages/02-nepal-places.js?v=20260511-2"></script>
+    <script src="js/pages/03-customers.js?v=20260511-2"></script>
+    <script src="js/pages/04-shared-address-org.js?v=20260511-2"></script>
+    <script src="js/pages/05-orders.js?v=20260511-2"></script>
+    <script src="js/pages/06-products.js?v=20260511-2"></script>
+    <script src="js/pages/07-stock.js?v=20260511-2"></script>
+    <script src="js/pages/08-attendance.js?v=20260511-2"></script>
+    <script src="js/pages/09-tracking.js?v=20260511-2"></script>
+    <script src="js/pages/10-dashboard.js?v=20260511-2"></script>
+    <script src="js/pages/11-analytics.js?v=20260511-2"></script>
+    <script src="js/pages/12-cross-section.js?v=20260511-2"></script>
+    <script src="js/pages/13-geo-apk.js?v=20260511-2"></script>
+    <script src="js/pages/14-activity-log.js?v=20260511-2"></script>
+    <script>
+        (function() {
+            function getOpenModals() {
+                return Array.prototype.slice.call(document.querySelectorAll('.modal-overlay.open'));
+            }
 
-    <!-- ══════════════════════════════════════════════════════
-         ORDERS SECTION JAVASCRIPT
-    ══════════════════════════════════════════════════════ -->
+            function syncModalBodyState() {
+                document.body.classList.toggle('modal-open', getOpenModals().length > 0);
+            }
 
-    <!-- ══════════════════════════════════════════════════════
-         PRODUCTS SECTION JAVASCRIPT
-    ══════════════════════════════════════════════════════ -->
+            function syncHeaderSection(name) {
+                var pill = document.getElementById('headerSectionPill');
+                if (!pill) return;
+                var sectionName = name || (window.location.hash || '').replace('#', '') || '';
+                var link = sectionName ? document.querySelector('.nav a[data-section="' + sectionName + '"]') : document.querySelector('.nav a.active');
+                var label = link ? link.textContent.replace(/\s+/g, ' ').trim() : 'Dashboard';
+                pill.textContent = label || 'Dashboard';
+            }
 
-    <!-- ══════════════════════════════════════════════════════
-         STOCK SECTION JAVASCRIPT
-    ══════════════════════════════════════════════════════ -->
+            if (typeof window.openModal !== 'function') {
+                window.openModal = function(target) {
+                    var modal = typeof target === 'string' ? document.getElementById(target) : target;
+                    if (!modal) return null;
+                    modal.classList.add('open');
+                    modal.setAttribute('aria-hidden', 'false');
+                    syncModalBodyState();
+                    return modal;
+                };
+            }
 
-    <!-- ══════════════════════════════════════════════════════
-         ATTENDANCE SECTION JAVASCRIPT
-    ══════════════════════════════════════════════════════ -->
+            if (typeof window.closeModal !== 'function') {
+                window.closeModal = function(target) {
+                    var modal = typeof target === 'string' ? document.getElementById(target) : target;
+                    if (!modal) return;
+                    modal.classList.remove('open');
+                    modal.style.display = '';
+                    modal.setAttribute('aria-hidden', 'true');
+                    syncModalBodyState();
+                };
+            }
 
-    <!-- ══════════════════════════════════════════════════════
-         TRACKING SECTION JAVASCRIPT
-    ══════════════════════════════════════════════════════ -->
+            document.addEventListener('click', function(e) {
+                if (e.target && e.target.classList && e.target.classList.contains('modal-overlay')) {
+                    window.closeModal(e.target);
+                }
+            });
 
-    <!-- ══════════════════════════════════════════════════════
-         DASHBOARD SECTION JAVASCRIPT
-    ══════════════════════════════════════════════════════ -->
+            window.addEventListener('keydown', function(e) {
+                if (e.key !== 'Escape' && e.code !== 'Escape') return;
+                var openModals = getOpenModals();
+                if (!openModals.length) return;
+                window.closeModal(openModals[openModals.length - 1]);
+            }, true);
 
-    <!-- ══════════════════════════════════════════════════════
-         ANALYTICS + IMAGE UPLOAD JS (shared)
-    ══════════════════════════════════════════════════════ -->
+            var originalShowSection = window.showSection;
+            if (typeof originalShowSection === 'function' && !originalShowSection.__headerSyncPatched) {
+                window.showSection = function(name) {
+                    var result = originalShowSection(name);
+                    syncHeaderSection(name);
+                    return result;
+                };
+                window.showSection.__headerSyncPatched = true;
+            }
 
-    <!-- ══════════════════════════════════════════════════════
-         CROSS-SECTION WIRING
-    ══════════════════════════════════════════════════════ -->
-
-    <!-- ══════════════════════════════════════════════════════
-         BROWSER GEO-TRACKING
-         Runs for non-admin users. Pings /api/location every 60s.
-    ══════════════════════════════════════════════════════ -->
-
-    <!-- ══════════════════════════════════════════════════════
-         ACTIVITY LOG SECTION JAVASCRIPT
-    ══════════════════════════════════════════════════════ -->
-    <script src="js/app.js"></script>
+            syncHeaderSection();
+            syncModalBodyState();
+        })();
+    </script>
 </body>
 </html>
+
+
+
 

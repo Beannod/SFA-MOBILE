@@ -1,6 +1,7 @@
 ﻿package com.example.sfa
 
 import android.util.Log
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -187,17 +188,19 @@ fun OrderListScreen(
     vm: OrderViewModel = viewModel()
 ) {
     val scope = rememberCoroutineScope()
-    val canViewTeam = user.designationLevel < 6
-    val showTeamView = remember { mutableStateOf(canViewTeam) }
-    val canApprove = "approveOrders" in user.allowedFeatures
+    val isAdmin = user.role.trim().contains("admin", ignoreCase = true)
+    val canViewTeam = isAdmin || user.hasFeature("team") || user.designationLevel < 6
+    val showTeamView = remember(canViewTeam, isAdmin) { mutableStateOf(canViewTeam && !isAdmin) }
+    val canApprove = isAdmin || user.hasFeature("approveOrders")
 
-    // Init status filter from param, then delegate all filter state to ViewModel
-    LaunchedEffect(Unit) { vm.setStatusFilter(initialStatusFilter) }
-
-    LaunchedEffect(refreshTrigger, showTeamView.value) {
+    // Configure and set status filter BEFORE collecting so the first Pager already
+    // has the right scope — avoids the LaunchedEffect race where multiple Pagers are
+    // created rapidly, each calling deleteAll() and wiping the previous insertAll().
+    remember(initialStatusFilter) { vm.setStatusFilter(initialStatusFilter) }
+    remember(refreshTrigger, showTeamView.value, isAdmin, user.id) {
         vm.configure(
-            userId    = user.id,
-            managerId = if (showTeamView.value) user.id else null
+            userId    = if (isAdmin) 0 else user.id,
+            managerId = if (showTeamView.value && !isAdmin) user.id else null
         )
     }
 
@@ -224,6 +227,15 @@ fun OrderListScreen(
         "Cancelled"  to cancelledCount
     )
 
+    // If a deep link/dashboard applies a status with no rows, fall back to "All"
+    // so fetched data is still visible instead of showing a blank list.
+    val selectedStatusCount = statusCounts[filterStatus] ?: 0
+    LaunchedEffect(filterStatus, selectedStatusCount, totalOrderCount) {
+        if (filterStatus != "All" && selectedStatusCount == 0 && totalOrderCount > 0) {
+            vm.setStatusFilter("All")
+        }
+    }
+
     val listState = rememberLazyListState()
 
     PullToRefreshBox(
@@ -235,23 +247,52 @@ fun OrderListScreen(
         // Offline / pending-sync indicator
         OfflineBanner(isOnline = isOnline, pendingCount = pendingCount)
 
-        // Header with Add button
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            shape = RoundedCornerShape(24.dp),
+            elevation = 6.dp,
+            color = MaterialTheme.colors.surface.copy(alpha = 0.97f)
         ) {
-            Text("Orders", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.weight(1f))
-            FloatingActionButton(
-                onClick = onCreate,
-                modifier = Modifier.size(48.dp),
-                backgroundColor = MaterialTheme.colors.primary
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Add, contentDescription = "New Order", tint = Color.White)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Orders Studio", fontWeight = FontWeight.Bold, fontSize = 21.sp)
+                    Text(
+                        "Track pipeline, dispatch state and approval motion.",
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f),
+                        style = MaterialTheme.typography.caption
+                    )
+                }
+                Surface(
+                    color = MaterialTheme.colors.secondary.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        "$totalOrderCount active",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        color = MaterialTheme.colors.secondary,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.caption
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                FloatingActionButton(
+                    onClick = onCreate,
+                    modifier = Modifier.size(48.dp),
+                    backgroundColor = MaterialTheme.colors.primary,
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "New Order", tint = Color.White)
+                }
             }
         }
 
         // ── Team View Toggle (managers only) ────────────────────────────────
-        if (canViewTeam) {
+        if (canViewTeam && !isAdmin) {
             val myColor   = if (!showTeamView.value) MaterialTheme.colors.primary else Color.Gray
             val teamColor = if (showTeamView.value)  Color(0xFF0288D1)             else Color.Gray
             LazyRow(
@@ -360,7 +401,26 @@ fun OrderListScreen(
         if (isRefreshing && lazyOrders.itemCount == 0) {
             SkeletonList()
         } else if (!isRefreshing && lazyOrders.itemCount == 0) {
-            Text("No orders found.", color = Color.Gray, modifier = Modifier.padding(20.dp).align(Alignment.CenterHorizontally))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 20.dp),
+                color = Color(0xFFFFF8E1),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text("No orders yet", fontWeight = FontWeight.Bold, color = Color(0xFF8D6E63))
+                    Text(
+                        if (filterStatus == "All") "Create the first order or pull to refresh once sync completes."
+                        else "No orders match the current status filter. Try another status chip above.",
+                        color = Color(0xFF6D4C41),
+                        style = MaterialTheme.typography.body2
+                    )
+                }
+            }
         } else {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 items(count = lazyOrders.itemCount) { index ->
@@ -428,11 +488,15 @@ fun OrderCard(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
             .clickable { onClick() },
-        elevation = 2.dp,
+        elevation = 7.dp,
         backgroundColor = tonalCardColor,
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(18.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(
+            modifier = Modifier
+                .border(1.dp, MaterialTheme.colors.onSurface.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
+                .padding(14.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Order number
                 Text(order.orderNumber, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.weight(1f))
@@ -448,8 +512,18 @@ fun OrderCard(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            Row {
+            Spacer(modifier = Modifier.height(10.dp))
+            Surface(
+                color = MaterialTheme.colors.primary.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(order.customerName, style = MaterialTheme.typography.body2)
                     Text("${order.itemCount} items", style = MaterialTheme.typography.caption, color = Color.Gray)
@@ -457,6 +531,7 @@ fun OrderCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Rs. %.0f".format(order.totalAmount), fontWeight = FontWeight.Bold, color = Color(0xFF1976D2), fontSize = 16.sp)
                     Text(order.orderDate.take(10), style = MaterialTheme.typography.caption, color = Color.Gray)
+                }
                 }
             }
             // Quick Approve / Reject buttons (shown only when team view + manager)
@@ -556,7 +631,7 @@ fun CreateOrderScreen(
         val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
         val repo = OfflineRepository(context)
         val isAdmin = user.role.equals("Admin", ignoreCase = true)
-        val canViewTeam = isAdmin || user.designationLevel < 6
+        val canViewTeam = isAdmin || user.hasFeature("team")
         // Use OfflineRepository — falls back to Room cache when offline
         val fetched = when {
             isAdmin -> repo.getCustomers(base)
@@ -1976,9 +2051,9 @@ fun OrderDetailScreen(
 
                     // Action buttons — each transition gated by its own permission
                     val status = o.optString("status", "Pending")
-                    val canApprove  = "approveOrders"  in user.allowedFeatures  // Pending → Approved/Rejected
-                    val canDispatch = "dispatchOrders" in user.allowedFeatures  // Approved → Dispatched
-                    val canDeliver  = "deliverOrders"  in user.allowedFeatures  // Dispatched → Delivered
+                    val canApprove  = user.hasFeature("approveOrders")  // Pending → Approved/Rejected
+                    val canDispatch = user.hasFeature("dispatchOrders") // Approved → Dispatched
+                    val canDeliver  = user.hasFeature("deliverOrders")  // Dispatched → Delivered
                     val isOwner = user.id == o.optInt("createdByUserId")
                     val ordId = o.optInt("id")
                     val showActions = (status == "Pending" && (canApprove || isOwner)) ||

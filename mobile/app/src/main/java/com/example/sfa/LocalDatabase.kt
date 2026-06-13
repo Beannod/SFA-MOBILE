@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Room Entities  (mirrors server models — store only what the mobile app uses)
+// Room Entities
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Entity(tableName = "customers")
@@ -40,10 +40,29 @@ data class CustomerEntity(
 )
 
 fun Customer.toEntity() = CustomerEntity(
-    id, name, customerType, code, contactPerson, phone, email,
-    address, city, state, pincode, latitude, longitude,
-    creditLimit, outstandingBalance, assignedUserId, assignedUserName,
-    createdByUserId, createdByUserName, territory, isActive, approvalStatus, isArchived
+    id         = id,
+    name       = (name as? String) ?: "",
+    customerType = (customerType as? String) ?: "Dealer",
+    code       = (code as? String) ?: "",
+    contactPerson = (contactPerson as? String) ?: "",
+    phone      = (phone as? String) ?: "",
+    email      = (email as? String) ?: "",
+    address    = (address as? String) ?: "",
+    city       = (city as? String) ?: "",
+    state      = (state as? String) ?: "",
+    pincode    = (pincode as? String) ?: "",
+    latitude   = latitude,
+    longitude  = longitude,
+    creditLimit = creditLimit,
+    outstandingBalance = outstandingBalance,
+    assignedUserId = assignedUserId,
+    assignedUserName = (assignedUserName as? String) ?: "",
+    createdByUserId = createdByUserId,
+    createdByUserName = (createdByUserName as? String) ?: "",
+    territory  = (territory as? String) ?: "",
+    isActive   = isActive,
+    approvalStatus = (approvalStatus as? String) ?: "Pending",
+    isArchived = isArchived
 )
 
 fun CustomerEntity.toModel() = Customer(
@@ -52,8 +71,6 @@ fun CustomerEntity.toModel() = Customer(
     creditLimit, outstandingBalance, assignedUserId, assignedUserName,
     createdByUserId, createdByUserName, territory, isActive, approvalStatus, isArchived
 )
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Entity(tableName = "products")
 data class ProductEntity(
@@ -86,36 +103,11 @@ data class ProductEntity(
     val cachedAt: Long = System.currentTimeMillis()
 )
 
-// Gson bypasses Kotlin constructors and can leave non-nullable String fields as null
-// at runtime when the JSON value is null. The Elvis operators below guard against that.
-@Suppress("USELESS_ELVIS")
 fun Product.toEntity() = ProductEntity(
-    id      = id,
-    name    = name ?: "",
-    description = description ?: "",
-    itemNo  = itemNo ?: "",
-    quality = quality ?: "",
-    code    = code ?: "",
-    remarks = remarks ?: "",
-    imageUrl = imageUrl ?: "",
-    category = category ?: "Tiles",
-    size    = size ?: "",
-    weight  = weight,
-    thickness = thickness ?: "",
-    finish  = finish ?: "",
-    shade   = shade ?: "",
-    type    = type ?: "",
-    boxCoverage = boxCoverage,
-    kgPerBox = kgPerBox,
-    ratePerSqm = ratePerSqm,
-    piecesPerBox = piecesPerBox,
-    price   = price,
-    dealerPrice = dealerPrice,
-    unit    = unit ?: "Box",
-    isNewArrival = isNewArrival,
-    isDiscontinued = isDiscontinued,
-    isActive = isActive,
-    isArchived = isArchived
+    id, name ?: "", description ?: "", itemNo ?: "", quality ?: "", code ?: "", remarks ?: "", imageUrl ?: "",
+    category ?: "Tiles", size ?: "", weight, thickness ?: "", finish ?: "", shade ?: "", type ?: "",
+    boxCoverage, kgPerBox, ratePerSqm, piecesPerBox, price, dealerPrice, unit ?: "Box",
+    isNewArrival, isDiscontinued, isActive, isArchived
 )
 
 fun ProductEntity.toModel() = Product(
@@ -124,8 +116,6 @@ fun ProductEntity.toModel() = Product(
     boxCoverage, kgPerBox, ratePerSqm, piecesPerBox,
     price, dealerPrice, unit, isNewArrival, isDiscontinued, isActive, isArchived
 )
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Entity(tableName = "orders")
 data class OrderEntity(
@@ -157,16 +147,12 @@ fun OrderEntity.toModel() = Order(
     remarks, orderDate, itemCount
 )
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Pending sync queue — offline writes waiting to be sent to the server
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Entity(tableName = "sync_queue")
 data class SyncQueueItem(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val endpoint: String,         // e.g. "/api/customers"
-    val method: String,           // POST, PUT, PATCH
-    val body: String,             // JSON string
+    val endpoint: String,
+    val method: String,
+    val body: String,
     val createdAt: Long = System.currentTimeMillis(),
     val retryCount: Int = 0
 )
@@ -178,35 +164,10 @@ data class SyncQueueItem(
 @Dao
 interface CustomerDao {
     @Query("SELECT * FROM customers ORDER BY name ASC")
-    suspend fun getAll(): List<CustomerEntity>
-
-    @Query("SELECT * FROM customers ORDER BY name ASC LIMIT :limit OFFSET :offset")
-    suspend fun getPaged(limit: Int, offset: Int): List<CustomerEntity>
-
-    @Query("SELECT * FROM customers WHERE assignedUserId = :userId ORDER BY name ASC LIMIT :limit OFFSET :offset")
-    suspend fun getPagedByUser(userId: Int, limit: Int, offset: Int): List<CustomerEntity>
-
-    @Query("SELECT * FROM customers WHERE assignedUserId = :userId ORDER BY name ASC")
-    suspend fun getByAssignedUser(userId: Int): List<CustomerEntity>
-
-    @Query("SELECT * FROM customers WHERE id = :id")
-    suspend fun getById(id: Int): CustomerEntity?
-
-    @Query("SELECT COUNT(*) FROM customers")
-    suspend fun count(): Int
-
-    // ── Paging 3 sources ──────────────────────────────────────────────────────
-
-    @Query("SELECT * FROM customers ORDER BY name ASC")
     fun pagingSource(): PagingSource<Int, CustomerEntity>
-
-    @Query("SELECT * FROM customers WHERE assignedUserId = :userId ORDER BY name ASC")
-    fun pagingSourceByUser(userId: Int): PagingSource<Int, CustomerEntity>
 
     @Query("SELECT * FROM customers WHERE name LIKE '%' || :q || '%' OR contactPerson LIKE '%' || :q || '%' OR city LIKE '%' || :q || '%' ORDER BY name ASC")
     fun searchPagingSource(q: String): PagingSource<Int, CustomerEntity>
-
-    // ── Stats / select-all helpers ────────────────────────────────────────────
 
     @Query("SELECT COUNT(*) FROM customers")
     fun countAllFlow(): Flow<Int>
@@ -217,8 +178,20 @@ interface CustomerDao {
     @Query("SELECT id FROM customers ORDER BY name ASC")
     suspend fun getAllIds(): List<Int>
 
+    @Query("SELECT id FROM customers WHERE assignedUserId = :userId OR createdByUserId = :userId ORDER BY name ASC")
+    suspend fun getIdsByUser(userId: Int): List<Int>
+
     @Query("SELECT id FROM customers WHERE name LIKE '%' || :q || '%' OR contactPerson LIKE '%' || :q || '%' OR city LIKE '%' || :q || '%' ORDER BY name ASC")
     suspend fun searchIds(q: String): List<Int>
+
+    @Query("SELECT * FROM customers WHERE assignedUserId = :userId OR createdByUserId = :userId ORDER BY name ASC")
+    suspend fun getOwnedByUser(userId: Int): List<CustomerEntity>
+
+    @Query("SELECT * FROM customers ORDER BY name ASC")
+    suspend fun getAll(): List<CustomerEntity>
+
+    @Query("SELECT * FROM customers WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Int): CustomerEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<CustomerEntity>)
@@ -232,23 +205,6 @@ interface CustomerDao {
 
 @Dao
 interface ProductDao {
-    @Query("SELECT * FROM products WHERE isArchived = 0 ORDER BY name ASC")
-    suspend fun getAll(): List<ProductEntity>
-
-    @Query("SELECT * FROM products WHERE isArchived = 0 ORDER BY name ASC LIMIT :limit OFFSET :offset")
-    suspend fun getPaged(limit: Int, offset: Int): List<ProductEntity>
-
-    @Query("SELECT * FROM products WHERE isArchived = 0 AND (name LIKE '%' || :q || '%' OR category LIKE '%' || :q || '%') ORDER BY name ASC LIMIT :limit OFFSET :offset")
-    suspend fun searchPaged(q: String, limit: Int, offset: Int): List<ProductEntity>
-
-    @Query("SELECT * FROM products WHERE id = :id")
-    suspend fun getById(id: Int): ProductEntity?
-
-    @Query("SELECT COUNT(*) FROM products WHERE isArchived = 0")
-    suspend fun count(): Int
-
-    // ── Paging 3 sources ──────────────────────────────────────────────────────
-
     @Query("SELECT * FROM products WHERE isArchived = 0 ORDER BY name ASC")
     fun pagingSource(): PagingSource<Int, ProductEntity>
 
@@ -264,45 +220,23 @@ interface ProductDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: ProductEntity)
 
+    @Query("SELECT * FROM products WHERE isArchived = 0 ORDER BY name ASC")
+    suspend fun getAll(): List<ProductEntity>
+
+    @Query("SELECT * FROM products WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Int): ProductEntity?
+
     @Query("DELETE FROM products")
     suspend fun deleteAll()
 }
 
 @Dao
 interface OrderDao {
-    @Query("SELECT * FROM orders WHERE createdByUserId = :userId ORDER BY id DESC")
-    suspend fun getByUser(userId: Int): List<OrderEntity>
-
-    @Query("SELECT * FROM orders ORDER BY id DESC")
-    suspend fun getAll(): List<OrderEntity>
-
-    @Query("SELECT * FROM orders ORDER BY id DESC LIMIT :limit OFFSET :offset")
-    suspend fun getPaged(limit: Int, offset: Int): List<OrderEntity>
-
-    @Query("SELECT * FROM orders WHERE createdByUserId = :userId ORDER BY id DESC LIMIT :limit OFFSET :offset")
-    suspend fun getPagedByUser(userId: Int, limit: Int, offset: Int): List<OrderEntity>
-
-    @Query("SELECT * FROM orders WHERE id = :id")
-    suspend fun getById(id: Int): OrderEntity?
-
-    @Query("SELECT COUNT(*) FROM orders")
-    suspend fun count(): Int
-
-    // ── Paging 3 sources ──────────────────────────────────────────────────────
-
     @Query("SELECT * FROM orders ORDER BY id DESC")
     fun pagingSource(): PagingSource<Int, OrderEntity>
 
-    @Query("SELECT * FROM orders WHERE createdByUserId = :userId ORDER BY id DESC")
-    fun pagingSourceByUser(userId: Int): PagingSource<Int, OrderEntity>
-
     @Query("SELECT * FROM orders WHERE status = :status ORDER BY id DESC")
     fun pagingSourceByStatus(status: String): PagingSource<Int, OrderEntity>
-
-    @Query("SELECT * FROM orders WHERE createdByUserId = :userId AND status = :status ORDER BY id DESC")
-    fun pagingSourceByUserAndStatus(userId: Int, status: String): PagingSource<Int, OrderEntity>
-
-    // ── Status count helpers ──────────────────────────────────────────────────
 
     @Query("SELECT COUNT(*) FROM orders")
     fun countAllFlow(): Flow<Int>
@@ -313,8 +247,11 @@ interface OrderDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<OrderEntity>)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(item: OrderEntity)
+    @Query("SELECT * FROM orders WHERE createdByUserId = :userId ORDER BY id DESC")
+    suspend fun getByUser(userId: Int): List<OrderEntity>
+
+    @Query("SELECT * FROM orders ORDER BY id DESC")
+    suspend fun getAll(): List<OrderEntity>
 
     @Query("DELETE FROM orders")
     suspend fun deleteAll()
@@ -322,33 +259,28 @@ interface OrderDao {
 
 @Dao
 interface SyncQueueDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(item: SyncQueueItem)
+
     @Query("SELECT * FROM sync_queue ORDER BY createdAt ASC")
     suspend fun getAll(): List<SyncQueueItem>
 
-    @Insert
-    suspend fun insert(item: SyncQueueItem)
+    @Query("SELECT COUNT(*) FROM sync_queue")
+    fun countFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM sync_queue")
+    suspend fun count(): Int
 
     @Delete
     suspend fun delete(item: SyncQueueItem)
 
     @Query("UPDATE sync_queue SET retryCount = retryCount + 1 WHERE id = :id")
     suspend fun incrementRetry(id: Int)
-
-    @Query("SELECT COUNT(*) FROM sync_queue")
-    suspend fun count(): Int
-
-    // Live count — observed by ViewModel to drive the offline badge
-    @Query("SELECT COUNT(*) FROM sync_queue")
-    fun countFlow(): Flow<Int>
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Database
-// ═══════════════════════════════════════════════════════════════════════════════
 
 @Database(
     entities = [CustomerEntity::class, ProductEntity::class, OrderEntity::class, SyncQueueItem::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -359,14 +291,9 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         @Volatile private var instance: AppDatabase? = null
-
-        fun get(context: Context): AppDatabase =
-            instance ?: synchronized(this) {
-                instance ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "sfa_offline.db"
-                ).fallbackToDestructiveMigration().build().also { instance = it }
-            }
+        fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
+            instance ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "sfa_offline.db")
+                .fallbackToDestructiveMigration().build().also { instance = it }
+        }
     }
 }

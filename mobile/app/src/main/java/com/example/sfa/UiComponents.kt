@@ -2,11 +2,13 @@ package com.example.sfa
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -41,11 +43,19 @@ fun OfflineBanner(isOnline: Boolean, pendingCount: Int) {
     when {
         !isOnline -> {
             Surface(
-                color = Color(0xFFB71C1C),
-                modifier = Modifier.fillMaxWidth()
+                color = Color.Transparent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(
+                            Brush.horizontalGradient(listOf(Color(0xFF8A1F2A), Color(0xFFB53B4A)))
+                        )
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -70,11 +80,19 @@ fun OfflineBanner(isOnline: Boolean, pendingCount: Int) {
         }
         pendingCount > 0 -> {
             Surface(
-                color = Color(0xFFE65100),
-                modifier = Modifier.fillMaxWidth()
+                color = Color.Transparent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(
+                            Brush.horizontalGradient(listOf(Color(0xFFC7801D), Color(0xFFE0A33C)))
+                        )
+                        .padding(horizontal = 16.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -134,8 +152,8 @@ fun SkeletonListCard(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp),
-        elevation = 2.dp,
-        shape = RoundedCornerShape(8.dp),
+        elevation = 6.dp,
+        shape = RoundedCornerShape(18.dp),
         backgroundColor = tonalCardColor
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -237,6 +255,14 @@ fun SearchableDropdown(
             label = { Text(label) },
             placeholder = { Text(placeholder, color = Color.LightGray) },
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                backgroundColor = MaterialTheme.colors.background.copy(alpha = 0.72f),
+                focusedBorderColor = MaterialTheme.colors.primary,
+                unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                textColor = MaterialTheme.colors.onSurface,
+                cursorColor = MaterialTheme.colors.primary
+            ),
             trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) }
         )
         // Overlay because readOnly OutlinedTextField consumes click events
@@ -252,6 +278,8 @@ fun SearchableDropdown(
 
         AlertDialog(
             onDismissRequest = { showDialog.value = false },
+            shape = RoundedCornerShape(24.dp),
+            backgroundColor = MaterialTheme.colors.surface,
             title = {
                 Column {
                     Text(label, fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -262,6 +290,14 @@ fun SearchableDropdown(
                         placeholder = { Text("Search\u2026") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            backgroundColor = MaterialTheme.colors.background.copy(alpha = 0.72f),
+                            focusedBorderColor = MaterialTheme.colors.primary,
+                            unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                            textColor = MaterialTheme.colors.onSurface,
+                            cursorColor = MaterialTheme.colors.primary
+                        ),
                         leadingIcon = {
                             Icon(Icons.Default.Search, contentDescription = null,
                                 modifier = Modifier.size(18.dp))
@@ -312,7 +348,10 @@ fun SearchableDropdown(
                             Surface(
                                 color = if (isSelected) MaterialTheme.colors.primary.copy(alpha = 0.08f)
                                         else Color.Transparent,
-                                modifier = Modifier.fillMaxWidth().clickable {
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .clickable {
                                     onSelect(option)
                                     showDialog.value = false
                                 }

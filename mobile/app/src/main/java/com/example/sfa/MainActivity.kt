@@ -35,12 +35,16 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.border
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -64,9 +68,9 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // App Navigation
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 enum class Screen {
     LOGIN, DASHBOARD, PRODUCTS, CUSTOMERS, ORDERS, ROUTE, TRACKING, EXPENSES, SCHEMES,
@@ -108,9 +112,9 @@ fun postSystemNotification(context: android.content.Context, notif: Notification
     } catch (_: SecurityException) { /* POST_NOTIFICATIONS not granted yet */ }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Main Activity
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class MainActivity : ComponentActivity() {
 
@@ -119,7 +123,7 @@ class MainActivity : ComponentActivity() {
     val pendingNavTarget = mutableStateOf<Screen?>(null)
 
     companion object {
-        // IDs we've already posted to the system tray — avoid re-posting on every refresh
+        // IDs we've already posted to the system tray â€” avoid re-posting on every refresh
         val shownNotifIds = HashSet<Int>()
         const val NOTIF_CHANNEL_ID = "sfa_server_notifs"
         const val EXTRA_NAVIGATE_TO = "NAVIGATE_TO"
@@ -248,40 +252,96 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private val PremiumInk = Color(0xFF0F172A)
+private val PremiumNavy = Color(0xFF183B5B)
+private val PremiumOcean = Color(0xFF1E5E8C)
+private val PremiumSky = Color(0xFF4FA3D9)
+private val PremiumMint = Color(0xFF35A58A)
+private val PremiumGold = Color(0xFFE4B55E)
+private val PremiumMist = Color(0xFFF5F7FB)
+private val PremiumSurface = Color(0xFFFFFFFF)
+private val PremiumNight = Color(0xFF0B1220)
+private val PremiumNightSurface = Color(0xFF121C2B)
+
+private fun premiumTypography(): Typography {
+    val base = Typography()
+    return Typography(
+        h4 = base.h4.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp),
+        h5 = base.h5.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp),
+        h6 = base.h6.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.1).sp),
+        subtitle1 = base.subtitle1.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
+        subtitle2 = base.subtitle2.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.1.sp),
+        body1 = base.body1.copy(letterSpacing = 0.1.sp),
+        body2 = base.body2.copy(letterSpacing = 0.1.sp),
+        button = base.button.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.3.sp),
+        caption = base.caption.copy(letterSpacing = 0.2.sp),
+        overline = base.overline.copy(letterSpacing = 0.8.sp, fontWeight = FontWeight.SemiBold)
+    )
+}
+
+private fun premiumShapes() = Shapes(
+    small = RoundedCornerShape(14.dp),
+    medium = RoundedCornerShape(20.dp),
+    large = RoundedCornerShape(28.dp)
+)
+
+private fun premiumScreenBrush(isDark: Boolean): Brush = Brush.verticalGradient(
+    colors = if (isDark) {
+        listOf(Color(0xFF0A1322), Color(0xFF0F1E30), Color(0xFF111B28))
+    } else {
+        listOf(Color(0xFFF7F3EA), Color(0xFFF5F7FB), Color(0xFFEAF1F7))
+    }
+)
+
+private fun premiumHeroBrush(isDark: Boolean): Brush = Brush.linearGradient(
+    colors = if (isDark) {
+        listOf(PremiumSky, PremiumOcean, PremiumNight)
+    } else {
+        listOf(PremiumGold, PremiumSky, PremiumOcean)
+    }
+)
+
+private fun premiumCardShape(): Shape = RoundedCornerShape(24.dp)
+
 @Composable
 fun SfaTheme(content: @Composable () -> Unit) {
     val darkTheme = isSystemInDarkTheme()
     val colors = if (darkTheme) {
         darkColors(
-            primary = Color(0xFF64B5F6),
-            primaryVariant = Color(0xFF1565C0),
-            secondary = Color(0xFF31C48D),
-            background = Color(0xFF101820),
-            surface = Color(0xFF17212B),
-            error = Color(0xFFEF5350),
-            onPrimary = Color(0xFF06131F),
-            onSecondary = Color(0xFF06130E),
-            onBackground = Color(0xFFE8EEF5),
-            onSurface = Color(0xFFE8EEF5),
+            primary = PremiumSky,
+            primaryVariant = PremiumOcean,
+            secondary = PremiumMint,
+            background = PremiumNight,
+            surface = PremiumNightSurface,
+            error = Color(0xFFFF7C74),
+            onPrimary = PremiumInk,
+            onSecondary = PremiumInk,
+            onBackground = Color(0xFFF1F6FB),
+            onSurface = Color(0xFFF1F6FB),
             onError = Color.White
         )
     } else {
         lightColors(
-            primary = Color(0xFF1565C0),
-            primaryVariant = Color(0xFF0D47A1),
-            secondary = Color(0xFF00A676),
-            background = Color(0xFFF4F6F8),
-            surface = Color.White,
+            primary = PremiumOcean,
+            primaryVariant = PremiumNavy,
+            secondary = PremiumMint,
+            background = PremiumMist,
+            surface = PremiumSurface,
             error = Color(0xFFB3261E),
             onPrimary = Color.White,
             onSecondary = Color.White,
-            onBackground = Color(0xFF17212B),
-            onSurface = Color(0xFF17212B),
+            onBackground = PremiumInk,
+            onSurface = PremiumInk,
             onError = Color.White
         )
     }
 
-    MaterialTheme(colors = colors, content = content)
+    MaterialTheme(
+        colors = colors,
+        typography = premiumTypography(),
+        shapes = premiumShapes(),
+        content = content
+    )
 }
 
 @Composable
@@ -392,9 +452,9 @@ fun SfaApp(
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Main Scaffold with Drawer
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 data class MenuItem(
     val screen: Screen,
@@ -403,7 +463,7 @@ data class MenuItem(
     val featureKey: String = ""  // matches column names in user_mobile_perm_sfa; blank = always visible
 )
 
-// ── Notification data class ──────────────────────────────────────────────────
+// â”€â”€ Notification data class â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 data class NotificationItem(
     val id: Int,
     val title: String,
@@ -474,12 +534,12 @@ val menuItems = listOf(
     MenuItem(Screen.ROUTE,      "Route Planner",   Icons.Default.AltRoute,          "route"),
     MenuItem(Screen.TRACKING,   "Live Tracking",   Icons.Default.GpsFixed,          "location"),
     MenuItem(Screen.USERS,      "My Team",         Icons.Default.SupervisorAccount, "team"),
-    MenuItem(Screen.EXPENSES,   "Expenses",        Icons.Default.ReceiptLong,       "expenses"),
-    MenuItem(Screen.SCHEMES,    "Schemes",         Icons.Default.LocalOffer,        "schemes"),
     MenuItem(Screen.APPROVALS,  "Approvals",       Icons.Default.FactCheck,         "approveOrders"),
     MenuItem(Screen.PAYMENTS,   "Payments",        Icons.Default.Payments,          "payments"),
     MenuItem(Screen.REPORTS,    "Reports",         Icons.Default.Leaderboard,       "reports"),
 )
+
+private val primaryBottomFeatureKeys = setOf("dashboard", "customers", "orders", "products")
 
 @Composable
 fun MainScaffold(
@@ -495,7 +555,12 @@ fun MainScaffold(
     val scope = rememberCoroutineScope()
     val visibleMenuItems = menuItems.filter { item ->
         if (item.featureKey.isBlank()) true
-        else user.allowedFeatures.any { it.equals(item.featureKey, ignoreCase = true) }
+        else user.hasFeature(item.featureKey)
+    }
+    LaunchedEffect(user.allowedFeatures, currentScreen.value) {
+        if (visibleMenuItems.none { it.screen == currentScreen.value }) {
+            currentScreen.value = visibleMenuItems.firstOrNull()?.screen ?: Screen.DASHBOARD
+        }
     }
     val orderOpenCreate = remember { mutableStateOf(false) }
     val orderInitialFilter = remember { mutableStateOf("All") }
@@ -532,19 +597,14 @@ fun MainScaffold(
         }
     }
 
-    // Primary bottom-nav tabs — respect allowedFeatures just like the drawer
-    val bottomTabs = listOf(
-        MenuItem(Screen.DASHBOARD, "Home",      Icons.Default.Home,         "dashboard"),
-        MenuItem(Screen.CUSTOMERS, "Customers", Icons.Default.PeopleAlt,    "customers"),
-        MenuItem(Screen.ORDERS,    "Orders",    Icons.Default.ShoppingCart, "orders"),
-    ).filter { tab ->
-        if (tab.featureKey.isNotBlank())
-            user.allowedFeatures.any { it.equals(tab.featureKey, ignoreCase = true) }
-        else true
-    }
+    val bottomTabs = visibleMenuItems
+        .filter { it.featureKey in primaryBottomFeatureKeys }
+        .take(4)
 
     Scaffold(
         scaffoldState = scaffoldState,
+        backgroundColor = Color.Transparent,
+        drawerBackgroundColor = Color.Transparent,
         bottomBar = {
             EnhancedBottomNavigation(
                 currentScreen = currentScreen,
@@ -565,58 +625,66 @@ fun MainScaffold(
             )
         }
     ) { padding ->
-        AnimatedContent(
-            targetState = currentScreen.value,
-            modifier = Modifier.padding(padding),
-            transitionSpec = {
-                val direction = if (targetState.ordinal > initialState.ordinal)
-                    AnimatedContentTransitionScope.SlideDirection.Start
-                else
-                    AnimatedContentTransitionScope.SlideDirection.End
-                slideIntoContainer(direction, animationSpec = tween(280, easing = FastOutSlowInEasing)) togetherWith
-                        slideOutOfContainer(direction, animationSpec = tween(220, easing = FastOutLinearInEasing))
-            },
-            label = "screen_transition"
-        ) { screen ->
-            when (screen) {
-                Screen.DASHBOARD -> HomeScreen(
-                    user = user,
-                    onNavigate = { currentScreen.value = it },
-                    onNavigateToOrders = { filter ->
-                        orderInitialFilter.value = filter
-                        currentScreen.value = Screen.ORDERS
-                    },
-                    onNewOrder = { orderOpenCreate.value = true; currentScreen.value = Screen.ORDERS }
-                )
-                Screen.PRODUCTS  -> ProductCatalogScreen(user)
-                Screen.CUSTOMERS -> CustomersScreen(
-                    user = user,
-                    onPlaceOrder = { customerId ->
-                        orderPrefilledCustomerId.value = customerId
-                        currentScreen.value = Screen.ORDERS
-                    }
-                )
-                Screen.ORDERS    -> OrdersScreen(
-                    user = user,
-                    openAddForm = orderOpenCreate.value,
-                    onAddFormOpened = { orderOpenCreate.value = false },
-                    initialStatusFilter = orderInitialFilter.value,
-                    preselectedCustomerId = orderPrefilledCustomerId.value
-                )
-                Screen.ROUTE     -> RouteScreen(user)
-                Screen.TRACKING  -> LiveTrackingScreen(user)
-                Screen.USERS     -> UsersScreen(loggedInUser = user)
-                Screen.EXPENSES  -> PlaceholderScreen("Expenses", "Daily expense entry & bill upload")
-                Screen.SCHEMES   -> PlaceholderScreen("Schemes", "Current dealer schemes & slab discounts")
-                Screen.APPROVALS -> ApprovalsScreen(user)
-                Screen.PAYMENTS  -> PaymentsScreen(user)
-                Screen.REPORTS   -> ReportsScreen(user)
-                else -> {}
+        val darkTheme = isSystemInDarkTheme()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(premiumScreenBrush(darkTheme))
+                .padding(padding)
+        ) {
+            AnimatedContent(
+                targetState = currentScreen.value,
+                modifier = Modifier.fillMaxSize(),
+                transitionSpec = {
+                    val direction = if (targetState.ordinal > initialState.ordinal)
+                        AnimatedContentTransitionScope.SlideDirection.Start
+                    else
+                        AnimatedContentTransitionScope.SlideDirection.End
+                    slideIntoContainer(direction, animationSpec = tween(280, easing = FastOutSlowInEasing)) togetherWith
+                            slideOutOfContainer(direction, animationSpec = tween(220, easing = FastOutLinearInEasing))
+                },
+                label = "screen_transition"
+            ) { screen ->
+                when (screen) {
+                    Screen.DASHBOARD -> HomeScreen(
+                        user = user,
+                        onNavigate = { currentScreen.value = it },
+                        onNavigateToOrders = { filter ->
+                            orderInitialFilter.value = filter
+                            currentScreen.value = Screen.ORDERS
+                        },
+                        onNewOrder = { orderOpenCreate.value = true; currentScreen.value = Screen.ORDERS }
+                    )
+                    Screen.PRODUCTS  -> ProductCatalogScreen(user)
+                    Screen.CUSTOMERS -> CustomersScreen(
+                        user = user,
+                        onPlaceOrder = { customerId ->
+                            orderPrefilledCustomerId.value = customerId
+                            currentScreen.value = Screen.ORDERS
+                        }
+                    )
+                    Screen.ORDERS    -> OrdersScreen(
+                        user = user,
+                        openAddForm = orderOpenCreate.value,
+                        onAddFormOpened = { orderOpenCreate.value = false },
+                        initialStatusFilter = orderInitialFilter.value,
+                        preselectedCustomerId = orderPrefilledCustomerId.value
+                    )
+                    Screen.ROUTE     -> RouteScreen(user)
+                    Screen.TRACKING  -> LiveTrackingScreen(user)
+                    Screen.USERS     -> UsersScreen(loggedInUser = user)
+                    Screen.EXPENSES  -> PlaceholderScreen("Expenses", "Daily expense entry & bill upload")
+                    Screen.SCHEMES   -> PlaceholderScreen("Schemes", "Current dealer schemes & slab discounts")
+                    Screen.APPROVALS -> ApprovalsScreen(user)
+                    Screen.PAYMENTS  -> PaymentsScreen(user)
+                    Screen.REPORTS   -> ReportsScreen(user)
+                    else -> {}
+                }
             }
         }
     }
 
-    // ── Notifications Panel ──────────────────────────────────────────────────
+    // â”€â”€ Notifications Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (showNotifications.value) {
         M3AlertDialog(
             onDismissRequest = { showNotifications.value = false },
@@ -711,7 +779,7 @@ fun DrawerContent(
     val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header — tap to view own profile
+        // Header â€” tap to view own profile
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -772,7 +840,7 @@ fun DrawerContent(
                 }
             }
             Spacer(Modifier.height(6.dp))
-            Text("Tap to view team & profile →",
+            Text("Tap to view team & profile â†’",
                 style = MaterialTheme.typography.caption, color = Color.White.copy(alpha = 0.6f))
         }
 
@@ -825,9 +893,9 @@ fun DrawerContent(
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Login Screen — with saved accounts for one-click login
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Login Screen â€” with saved accounts for one-click login
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 data class SavedCredential(val username: String, val password: String, val fullName: String, val role: String)
 
@@ -917,55 +985,65 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colors.background),
+            .background(premiumScreenBrush(isSystemInDarkTheme())),
         verticalArrangement = Arrangement.spacedBy(0.dp),
         contentPadding = PaddingValues(bottom = 20.dp)
     ) {
-        // ── Logo header ──────────────────────────────────────────────────────
+        // â”€â”€ Logo header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         item {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(MaterialTheme.colors.primary, MaterialTheme.colors.primaryVariant)
-                        )
-                    )
-                    .padding(top = 56.dp, bottom = 34.dp),
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .clip(premiumCardShape())
+                    .background(premiumHeroBrush(isSystemInDarkTheme()))
+                    .border(1.dp, Color.White.copy(alpha = 0.12f), premiumCardShape())
+                    .padding(top = 48.dp, bottom = 34.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         modifier = Modifier
-                            .size(76.dp)
-                            .background(Color.White.copy(alpha = 0.16f), CircleShape),
+                            .size(84.dp)
+                            .background(Color.White.copy(alpha = 0.14f), CircleShape)
+                            .border(1.dp, Color.White.copy(alpha = 0.28f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.Business,
                             contentDescription = "SFA",
                             tint = Color.White,
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(42.dp)
                         )
                     }
                     Spacer(Modifier.height(14.dp))
                     Text(
+                        "Premium Field Suite",
+                        color = Color.White.copy(alpha = 0.78f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.2.sp
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
                         "Sales Force Automation",
                         color = Color.White,
-                        fontSize = 18.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Field sales, orders, and customers",
-                        color = Color.White.copy(alpha = 0.76f),
-                        fontSize = 12.sp
+                        "Orders, customers, products, approvals, and route operations in one place",
+                        color = Color.White.copy(alpha = 0.78f),
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 28.dp)
                     )
                 }
             }
         }
 
-        // ── Saved accounts ───────────────────────────────────────────────────
+        // â”€â”€ Saved accounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (savedAccounts.value.isNotEmpty()) {
             item {
                 Column(
@@ -983,9 +1061,9 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                                 .fillMaxWidth()
                                 .padding(bottom = 8.dp)
                                 .clickable { doLogin(cred.username, cred.password) },
-                            elevation = 2.dp,
-                            shape = RoundedCornerShape(12.dp),
-                            backgroundColor = MaterialTheme.colors.surface
+                            elevation = 6.dp,
+                            shape = RoundedCornerShape(20.dp),
+                            backgroundColor = MaterialTheme.colors.surface.copy(alpha = 0.96f)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 11.dp),
@@ -994,7 +1072,8 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
-                                        .background(MaterialTheme.colors.primary.copy(alpha = 0.12f), CircleShape),
+                                        .background(MaterialTheme.colors.primary.copy(alpha = 0.10f), CircleShape)
+                                        .border(1.dp, MaterialTheme.colors.primary.copy(alpha = 0.14f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
@@ -1013,7 +1092,7 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                                         fontWeight = FontWeight.Bold, fontSize = 15.sp
                                     )
                                     Text(
-                                        "@${cred.username}  ·  ${cred.role}",
+                                        "@${cred.username}  Â·  ${cred.role}",
                                         style = MaterialTheme.typography.caption,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f)
                                     )
@@ -1050,20 +1129,26 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
             }
         }
 
-        // ── Manual login form ────────────────────────────────────────────────
+        // â”€â”€ Manual login form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 16.dp),
-                elevation = 3.dp,
-                shape = RoundedCornerShape(14.dp),
-                backgroundColor = MaterialTheme.colors.surface
+                elevation = 10.dp,
+                shape = RoundedCornerShape(24.dp),
+                backgroundColor = MaterialTheme.colors.surface.copy(alpha = 0.98f)
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text(
                         if (savedAccounts.value.isEmpty()) "Sign In" else "Add another account",
                         style = MaterialTheme.typography.h6, fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Secure access to your field workflow",
+                        style = MaterialTheme.typography.body2,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.64f)
                     )
                     Spacer(Modifier.height(16.dp))
 
@@ -1074,6 +1159,14 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                         leadingIcon = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colors.primary) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            backgroundColor = MaterialTheme.colors.background.copy(alpha = 0.7f),
+                            focusedBorderColor = MaterialTheme.colors.primary,
+                            unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                            textColor = MaterialTheme.colors.onSurface,
+                            cursorColor = MaterialTheme.colors.primary
+                        ),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                     )
                     Spacer(Modifier.height(12.dp))
@@ -1085,6 +1178,14 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                         leadingIcon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colors.primary) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            backgroundColor = MaterialTheme.colors.background.copy(alpha = 0.7f),
+                            focusedBorderColor = MaterialTheme.colors.primary,
+                            unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.12f),
+                            textColor = MaterialTheme.colors.onSurface,
+                            cursorColor = MaterialTheme.colors.primary
+                        ),
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { doLogin() })
@@ -1093,9 +1194,14 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
 
                     Button(
                         onClick = { doLogin() },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
                         enabled = username.value.isNotBlank() && password.value.isNotBlank() && !isLoading.value,
-                        shape = RoundedCornerShape(10.dp)
+                        elevation = ButtonDefaults.elevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            backgroundColor = MaterialTheme.colors.primary,
+                            contentColor = MaterialTheme.colors.onPrimary
+                        ),
+                        shape = RoundedCornerShape(18.dp)
                     ) {
                         if (isLoading.value) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp))
@@ -1117,9 +1223,9 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Placeholder Screen (for sections not yet built)
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @Composable
 fun PlaceholderScreen(title: String, description: String) {
@@ -1136,9 +1242,9 @@ fun PlaceholderScreen(title: String, description: String) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Network: Login — returns LoggedInUser on success
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Network: Login â€” returns LoggedInUser on success
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 suspend fun loginUser(username: String, password: String): Pair<LoggedInUser?, String> {
     return withContext(Dispatchers.IO) {
@@ -1170,7 +1276,7 @@ suspend fun loginUser(username: String, password: String): Pair<LoggedInUser?, S
 
             if (code in 200..299) {
                 val obj = JSONObject(body)
-                // Parse allowedFeatures — login returns a JSON array (string[])
+                // Parse allowedFeatures â€” login returns a JSON array (string[])
                 val featuresList = run {
                     val arr = obj.optJSONArray("allowedFeatures")
                     if (arr != null)
@@ -1214,9 +1320,9 @@ suspend fun loginUser(username: String, password: String): Pair<LoggedInUser?, S
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Enhanced Bottom Navigation
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @Composable
 fun EnhancedBottomNavigation(
@@ -1227,89 +1333,89 @@ fun EnhancedBottomNavigation(
     onMoreClick: () -> Unit = {},
     onTabClick: (Screen) -> Unit = {}
 ) {
-    Surface(
-        color = MaterialTheme.colors.surface,
-        elevation = 0.dp,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .clip(RoundedCornerShape(26.dp))
+                .background(MaterialTheme.colors.surface.copy(alpha = 0.97f))
+                .border(1.dp, MaterialTheme.colors.onSurface.copy(alpha = 0.08f), RoundedCornerShape(26.dp))
+        ) {
             NavigationBar(
-                modifier = Modifier.fillMaxWidth().height(64.dp),
-                tonalElevation = 4.dp,
-                containerColor = MaterialTheme.colors.surface,
+                modifier = Modifier.fillMaxWidth().height(72.dp),
+                tonalElevation = 0.dp,
+                containerColor = Color.Transparent,
                 windowInsets = WindowInsets(0.dp)
             ) {
-            bottomTabs.forEach { tab ->
-                val isSelected = currentScreen.value == tab.screen
-                NavigationBarItem(
-                    selected = isSelected,
-                    onClick = {
-                        currentScreen.value = tab.screen
-                        onTabClick(tab.screen)
-                    },
-                    icon = {
-                        Icon(
-                        tab.icon,
-                        contentDescription = tab.label,
-                        modifier = Modifier.size(24.dp)
+                bottomTabs.forEach { tab ->
+                    val isSelected = currentScreen.value == tab.screen
+                    NavigationBarItem(
+                        selected = isSelected,
+                        onClick = {
+                            currentScreen.value = tab.screen
+                            onTabClick(tab.screen)
+                        },
+                        icon = {
+                            Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(22.dp))
+                        },
+                        label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colors.primary,
+                            selectedTextColor = MaterialTheme.colors.primary,
+                            indicatorColor = MaterialTheme.colors.primary.copy(alpha = 0.12f),
+                            unselectedIconColor = MaterialTheme.colors.onSurface.copy(alpha = 0.48f),
+                            unselectedTextColor = MaterialTheme.colors.onSurface.copy(alpha = 0.48f)
+                        )
                     )
+                }
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onNotificationsClick,
+                    icon = {
+                        BadgedBox(
+                            badge = {
+                                if (unreadCount > 0) {
+                                    Badge(containerColor = PremiumGold, contentColor = PremiumInk) {
+                                        Text(if (unreadCount > 9) "9+" else unreadCount.toString(), fontSize = 8.sp)
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+                        }
                     },
-                    label = { Text(tab.label, fontSize = 10.sp) },
+                    label = { Text("Alerts", fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = MaterialTheme.colors.primary,
                         selectedTextColor = MaterialTheme.colors.primary,
                         indicatorColor = MaterialTheme.colors.primary.copy(alpha = 0.12f),
-                        unselectedIconColor = Color.Gray,
-                        unselectedTextColor = Color.Gray
+                        unselectedIconColor = MaterialTheme.colors.onSurface.copy(alpha = 0.48f),
+                        unselectedTextColor = MaterialTheme.colors.onSurface.copy(alpha = 0.48f)
+                    )
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onMoreClick,
+                    icon = { Icon(Icons.Default.MoreVert, contentDescription = "More") },
+                    label = { Text("More", fontSize = 10.sp) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colors.primary,
+                        selectedTextColor = MaterialTheme.colors.primary,
+                        indicatorColor = MaterialTheme.colors.primary.copy(alpha = 0.12f),
+                        unselectedIconColor = MaterialTheme.colors.onSurface.copy(alpha = 0.48f),
+                        unselectedTextColor = MaterialTheme.colors.onSurface.copy(alpha = 0.48f)
                     )
                 )
             }
-            NavigationBarItem(
-                selected = false,
-                onClick = onNotificationsClick,
-                icon = {
-                    BadgedBox(
-                        badge = {
-                            if (unreadCount > 0) {
-                                Badge { Text(if (unreadCount > 9) "9+" else unreadCount.toString(), fontSize = 8.sp) }
-                            }
-                        }
-                    ) {
-                        Icon(Icons.Default.Notifications, contentDescription = "Notifications")
-                    }
-                },
-                label = { Text("Alerts", fontSize = 10.sp) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colors.primary,
-                    selectedTextColor = MaterialTheme.colors.primary,
-                    indicatorColor = MaterialTheme.colors.primary.copy(alpha = 0.12f),
-                    unselectedIconColor = Color.Gray,
-                    unselectedTextColor = Color.Gray
-                )
-            )
-            NavigationBarItem(
-                selected = false,
-                onClick = onMoreClick,
-                icon = { Icon(Icons.Default.MoreVert, contentDescription = "More") },
-                label = { Text("More", fontSize = 10.sp) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colors.primary,
-                    selectedTextColor = MaterialTheme.colors.primary,
-                    indicatorColor = MaterialTheme.colors.primary.copy(alpha = 0.12f),
-                    unselectedIconColor = Color.Gray,
-                    unselectedTextColor = Color.Gray
-                )
-            )
-            }
-            // Spacer sized to the system navigation bar height — extends Surface background behind it
-            Spacer(modifier = Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
         }
+        Spacer(modifier = Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Enhanced Drawer Content
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @Composable
 fun EnhancedDrawerContent(
@@ -1325,24 +1431,23 @@ fun EnhancedDrawerContent(
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight()
-            .background(MaterialTheme.colors.surface)
+            .background(MaterialTheme.colors.surface.copy(alpha = 0.98f))
     ) {
         // Header with user info
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(MaterialTheme.colors.primary, MaterialTheme.colors.primaryVariant)
-                    )
-                )
-                .padding(horizontal = 18.dp, vertical = 20.dp)
+                .padding(horizontal = 14.dp, vertical = 14.dp)
+                .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp, topStart = 24.dp, topEnd = 24.dp))
+                .background(premiumHeroBrush(isSystemInDarkTheme()))
+                .padding(horizontal = 18.dp, vertical = 22.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(Color.White.copy(alpha = 0.18f), CircleShape),
+                        .size(52.dp)
+                        .background(Color.White.copy(alpha = 0.16f), CircleShape)
+                        .border(1.dp, Color.White.copy(alpha = 0.22f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -1378,29 +1483,41 @@ fun EnhancedDrawerContent(
             }
         }
 
-        Divider()
+        Spacer(Modifier.height(6.dp))
 
         // Menu items
-        LazyColumn(modifier = Modifier.weight(1f)) {
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 10.dp),
+            contentPadding = PaddingValues(vertical = 10.dp)
+        ) {
             items(items) { item ->
+                val selected = currentScreen.value == item.screen
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
                         .clickable {
                             currentScreen.value = item.screen
                             scope.launch { scaffoldState.drawerState.close() }
                         }
                         .background(
-                            if (currentScreen.value == item.screen) MaterialTheme.colors.primary.copy(alpha = 0.10f)
+                            if (selected) MaterialTheme.colors.primary.copy(alpha = 0.10f)
                             else Color.Transparent
                         )
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .border(
+                            width = if (selected) 1.dp else 0.dp,
+                            color = if (selected) MaterialTheme.colors.primary.copy(alpha = 0.16f) else Color.Transparent,
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         item.icon,
                         contentDescription = item.label,
-                        tint = if (currentScreen.value == item.screen) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface.copy(alpha = 0.56f),
+                        tint = if (selected) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface.copy(alpha = 0.56f),
                         modifier = Modifier
                             .size(22.dp)
                     )
@@ -1408,24 +1525,28 @@ fun EnhancedDrawerContent(
                     Text(
                         item.label,
                         fontSize = 14.sp,
-                        color = if (currentScreen.value == item.screen) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface,
-                        fontWeight = if (currentScreen.value == item.screen) FontWeight.Bold else FontWeight.Normal
+                        color = if (selected) MaterialTheme.colors.primary else MaterialTheme.colors.onSurface,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                     )
                 }
+                Spacer(Modifier.height(6.dp))
             }
         }
 
-        Divider()
+        Divider(startIndent = 16.dp, thickness = 0.6.dp)
 
         // Logout button
         Row(
             modifier = Modifier
+                .padding(horizontal = 10.dp, vertical = 10.dp)
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
                 .clickable {
                     onLogout()
                     scope.launch { scaffoldState.drawerState.close() }
                 }
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .background(MaterialTheme.colors.error.copy(alpha = 0.08f))
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Logout, contentDescription = "Logout",
@@ -1435,5 +1556,6 @@ fun EnhancedDrawerContent(
         }
     }
 }
+
 
 

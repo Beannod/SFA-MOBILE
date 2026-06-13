@@ -119,6 +119,8 @@ All timestamps in the system are in **Nepal Standard Time (NPT, UTC+5:45)**.
 
 The `allowedFeatures` list drives which tiles appear on the mobile dashboard. The `webPermissions` list controls what the web panel shows for that user.
 
+If `allowedFeatures` is returned as an empty list, the mobile app falls back to the role's default feature set so core screens like Customers and Orders remain visible until a per-user override is explicitly saved.
+
 ### Roles
 
 | Role | Default Mobile Features | Default Web Access |
@@ -128,6 +130,7 @@ The `allowedFeatures` list drives which tiles appear on the mobile dashboard. Th
 | **Salesperson** | Customers, Orders, Products, Stock | Customers, Orders, Products |
 
 > Per-user overrides can be set by an Admin from the User Setup screen, completely replacing role defaults.
+> If no mobile features are enabled yet for a user, the Android app uses the role defaults instead of hiding the dashboard tiles.
 
 ### Designation Hierarchy
 
@@ -145,7 +148,7 @@ Default levels seeded by migration (1 = highest):
 | 6 | Sales Executive |
 
 - Each user has a `ReportsToId` pointing to their manager.
-- API enforces that a manager must have a **lower level number** (higher authority) than the user reporting to them.
+- API allows selecting manager from the same level or any higher-authority level (lower/equal level number), excluding self.
 - Validation runs on both user create and user update.
 
 ### Designation Config API Endpoints
@@ -286,6 +289,9 @@ Before an order can be created, the API validates:
 | `GET` | `/api/orders/export` | LKAST CSV export of orders |
 
 > `DELETE` sets `IsArchived = true` and `Status = Cancelled`. The record is **never removed** from the database.
+
+Mobile behavior note:
+- In the Android app, salesperson order lists are now scoped to orders they created plus orders tied to customers they own (assigned to them or created by them). This keeps customer and order visibility consistent on mobile.
 
 ---
 
@@ -599,8 +605,13 @@ The web panel is served directly by the API from `server/wwwroot/`. No separate 
 1. Open the Users page from the nav.
 2. View all users in a table with role, designation, and manager.
 3. (Admin) Open **Configuration → Designation Hierarchy** to maintain designation names and authority levels.
-4. Click **Add User** → fill name, role, designation, manager (filtered dropdown showing only higher-authority users), and feature permissions.
-5. Click **Org Chart** tab to see the full hierarchy tree.
+  - Admin setup sections (**Designation Hierarchy, Nepal Places, Customer Types, Product Config**) open as popup modals from Configuration shortcuts to reduce inline page clutter.
+4. Click **Add User** → fill name, role, designation, manager (filtered to same-level + higher-authority users with free-text search), and feature permissions.
+5. Use permission quick actions (**Menu / Actions / All / Clear**) in create/edit user modals for faster setup.
+6. Use **Role Preset** buttons (Salesperson / Supervisor / Admin) to apply default web+mobile permission sets instantly.
+7. Popup forms use inline field validation (invalid inputs are highlighted with per-field messages).
+8. Config popup close flow has an unsaved-changes guard to prevent accidental data loss.
+9. Click **Org Chart** tab to see the full hierarchy tree.
 
 **Order Approval**
 1. Open the Orders page.

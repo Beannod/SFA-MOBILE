@@ -40,11 +40,16 @@ Your role controls which features appear on your dashboard:
 | **Supervisor** | All salesperson features + view team's attendance and live location |
 | **Admin** | Everything — including adding users, approving customers/orders, and system configuration |
 
+If your account has not been customized yet, the mobile app automatically shows the default screens for your role, including Customers and Orders.
+
 ---
 
 ## 2. Dashboard
 
 After login you land on the **Dashboard**. It shows tiles for every feature your account has access to:
+
+In the web admin panel, the main header now keeps the current module visible, and popup forms can be closed with the close button or by clicking outside the dialog.
+The Configuration page also includes a quick section menu so you can jump between Branding, Sales Team, Customer Types, and other setup areas without scrolling through the full page.
 
 | Tile | Description |
 |---|---|
@@ -67,6 +72,7 @@ The **bell icon** at the top right shows a badge with your unread notification c
 - Tap **Customers** on the dashboard.
 - The list shows each customer's name, type (Dealer / Retailer / Project), phone number, and outstanding balance.
 - Use the **search bar** to find a customer by name, phone, or city.
+- If you are a supervisor/manager, the screen opens in **team view** by default and includes both your own and your team's customers.
 
 ### Adding a New Customer
 
@@ -113,6 +119,8 @@ The detail page shows:
 
 - Tap **Orders** on the dashboard.
 - Orders are shown with order number, customer name, status, and total amount.
+- You will see orders you created and orders linked to your customers.
+- If you are a supervisor/manager, the list opens in **team scope** by default so team orders are visible immediately.
 - Status is colour-coded:
   - **Grey** — Pending
   - **Green** — Approved / Delivered
@@ -327,10 +335,16 @@ Log in with the same credentials as the mobile app.
 1. Open **Users** from the navigation menu.
 2. View all users in a table showing name, role, designation, and manager.
 3. (Admin only) Open **Configuration → Designation Hierarchy** to edit designation names and authority levels.
+   - Admin setup sections like **Designations, Nepal Places, Customer Types, Product Config** now open in popup windows to keep the page compact.
 4. Tap **Add User** to create a new account:
    - Set name, username, password, role, and designation.
-   - Pick the manager this user reports to (only users with a higher authority level appear).
-   - Set which mobile features and web pages this user can access.
+   - Pick the manager this user reports to (same level and higher-authority users are shown based on selected designation).
+   - Use the **Reports To** search box to quickly find manager by name, username, or designation.
+   - Set which mobile features and web pages this user can access using grouped quick buttons:
+     - **Role Preset** (Salesperson / Supervisor / Admin)
+     - **Menu / Actions / All / Clear**
+   - Popup forms now show inline field validation; fix highlighted fields before saving.
+   - If you edited a popup form but did not save, closing shows an unsaved-changes confirmation.
 5. Tap **Org Chart** to see the full reporting hierarchy as a collapsible tree.
 
 ### Approving Customers
