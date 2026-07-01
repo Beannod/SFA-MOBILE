@@ -673,10 +673,11 @@
             var msgDiv = document.getElementById('cfg-message');
             var btn = document.getElementById('cfg-submitBtn');
             var editId = document.getElementById('cfg-editId').value;
+            var isEdit = !!editId;
             var rtId = document.getElementById('cfg-reportsToId').value;
+            var pwd = document.getElementById('cfg-password').value.trim();
             var body = {
                 username: document.getElementById('cfg-username').value.trim(),
-                password: document.getElementById('cfg-password').value.trim(),
                 role: document.getElementById('cfg-role').value,
                 fullName: document.getElementById('cfg-fullName').value.trim(),
                 email: document.getElementById('cfg-email').value.trim()||null,
@@ -692,20 +693,21 @@
                 allowedFeatures: cfgGetSelectedFeatures().join(','),
                 reportsToId: rtId ? parseInt(rtId) : null
             };
-            if (!body.username||!body.fullName||!body.password) {
+            if (pwd) body.password = pwd;
+            if (!body.username || !body.fullName || (!isEdit && !body.password)) {
                 msgDiv.innerHTML='<div class="message error">Username, Password and Full Name are required.</div>'; return;
             }
             btn.disabled=true; btn.textContent='Saving…'; msgDiv.innerHTML='';
-            var isEdit = !!editId;
             try {
                 var res;
                 if (isEdit) {
-                    var cu3=getCurrentUser();
-                    var isDM = cu3&&cfgEditingUserReportsToId&&cu3.id===cfgEditingUserReportsToId;
+                    var cu3 = getCurrentUser();
+                    var isDM = cu3 && cfgEditingUserReportsToId && cu3.id === cfgEditingUserReportsToId;
+                    var canSavePerms = cu3 && (cu3.role === 'Admin' || isDM);
                     var upd = { fullName:body.fullName,email:body.email,phone:body.phone,role:body.role,designation:body.designation,department:body.department,branch:body.branch,territory:body.territory,city:body.city,state:body.state,employeeCode:body.employeeCode,isActive:body.isActive,reportsToId:rtId?parseInt(rtId):null,clearReportsTo:!rtId };
-                    if (body.password) upd.password=body.password;
+                    if (body.password) upd.password = body.password;
                     res = await fetch(CFG_API+'/'+editId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(upd)});
-                    if (isDM) {
+                    if (canSavePerms) {
                         // Save web and mobile permissions via dedicated endpoints
                         await fetch(CFG_API+'/'+editId+'/web-permissions',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfgGetSelectedWebFeatures())});
                         await fetch(CFG_API+'/'+editId+'/mobile-permissions',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfgGetSelectedMobileFeatures())});
@@ -767,6 +769,7 @@
                 var cu=getCurrentUser();
                 var isAdmin=cu&&cu.role==='Admin', isSelf=cu&&cu.id===u.id;
                 var isDirectMgr=cu&&!isSelf&&cu.id===u.reportsToId;
+                cfgEditingUserReportsToId = u.reportsToId || null;
                 var canEditAdmin=isAdmin&&!isSelf;
                 // Web + Mobile permissions editable by Admin OR direct manager
                 var canEditWebPerms=isDirectMgr||(isAdmin&&!isSelf);
@@ -1058,7 +1061,7 @@
                 var users=await r.json();
                 users.forEach(function(u) {
                     if (u.id===excludeId) return;
-                    if (cfgGetDesignationLevel(u.designation) > curLvl) return;
+                    if (cfgGetDesignationLevel(u.designation) >= curLvl) return;
                     var opt=document.createElement('option'); opt.value=u.id;
                     opt.textContent=(u.fullName||u.username)+' ('+(u.designation||u.role)+')';
                     sel.appendChild(opt);
@@ -1083,7 +1086,7 @@
                 var users = await r.json();
                 var candidates = users.filter(function(u) {
                     if (u.id === excludeId) return false;
-                    if (currentDesig && cfgGetDesignationLevel(u.designation) > curLvl) return false;
+                    if (currentDesig && cfgGetDesignationLevel(u.designation) >= curLvl) return false;
                     return true;
                 });
                 // Sort by authority (lower level first) then by name

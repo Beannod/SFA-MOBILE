@@ -355,22 +355,30 @@ namespace SfaApi.Controllers
 		{
 			var user = await _db.Users.FindAsync(id);
 			if (user == null) return NotFound();
-			_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
-			{
-				EntityType = "User", EntityId = id,
-				EntityName = user.FullName,
-				Action     = "Deleted",
-				ChangedByUserId = GetCallerId(),
-				ChangedByName   = await ResolveUserName(GetCallerId()),
-				Source     = GetSource(),
-				Timestamp  = NepalTime.Now
-			});
-			_db.Users.Remove(user);
-			await _db.SaveChangesAsync();
-			return NoContent();
-		}
 
-		// ── Change summary helper ──
+            var directReports = await _db.Users
+                .Where(u => u.ReportsToId == id)
+                .ToListAsync();
+
+            directReports.ForEach(r => r.ReportsToId = null);
+
+            _db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
+            {
+                EntityType = "User", EntityId = id,
+                EntityName = user.FullName,
+                Action     = "Deleted",
+                ChangedByUserId = GetCallerId(),
+                ChangedByName   = await ResolveUserName(GetCallerId()),
+                Source     = GetSource(),
+                Details    = directReports.Count > 0 ? $"Cleared manager from {directReports.Count} direct report(s)." : null,
+                Timestamp  = NepalTime.Now
+            });
+            _db.Users.Remove(user);
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // ── Change summary helper ──
 		private static string BuildUserChangeSummary(UserUpdateDto dto)
 		{
 			var parts = new List<string>();

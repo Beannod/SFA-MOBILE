@@ -1204,6 +1204,7 @@ suspend fun fetchCustomers(baseUrl: String, assignedUserId: Int? = null, manager
 
             val body = conn.inputStream.bufferedReader().readText()
             conn.disconnect()
+            if (body.isBlank()) return@withContext null
             val arr = JSONArray(body)
             val list = mutableListOf<Customer>()
             for (i in 0 until arr.length()) {
@@ -1241,6 +1242,7 @@ suspend fun fetchCustomerVisits(baseUrl: String, customerId: Int): List<Map<Stri
             if (conn.responseCode !in 200..299) return@withContext emptyList<Map<String, String>>()
             val body = conn.inputStream.bufferedReader().readText()
             conn.disconnect()
+            if (body.isBlank()) return@withContext emptyList<Map<String, String>>()
             val arr = JSONArray(body)
             val list = mutableListOf<Map<String, String>>()
             for (i in 0 until arr.length()) {
@@ -1402,6 +1404,7 @@ suspend fun updateCustomer(
             if (code !in 200..299) { conn.disconnect(); return@withContext null }
             val body = conn.inputStream.bufferedReader().readText()
             conn.disconnect()
+            if (body.isBlank()) return@withContext null
             parseCustomer(JSONObject(body))
         } catch (e: Exception) {
             Log.e("SFA", "Update customer error", e)

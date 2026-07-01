@@ -512,9 +512,9 @@ fun EditProfileScreen(
 ) {
     val isAdmin = loggedInUser.role == "Admin"
     val scope   = rememberCoroutineScope()
-    // Only the direct manager (reportsToId) can manage feature permissions — not even Admin
+    // Admin or direct manager can manage feature permissions
     val canManagePermissions = sfaUser.id != loggedInUser.id &&
-        loggedInUser.id == sfaUser.reportsToId
+        (isAdmin || loggedInUser.id == sfaUser.reportsToId)
     fun userHasFeature(key: String) = sfaUser.allowedFeatures.any { it.equals(key, ignoreCase = true) }
     val hasApproveOrders  = remember { mutableStateOf(userHasFeature("approveOrders")) }
     val hasDispatchOrders = remember { mutableStateOf(userHasFeature("dispatchOrders")) }
@@ -819,6 +819,8 @@ fun EditProfileScreen(
                             if (hasCancelOrders.value)   current.add("cancelOrders")
                             current
                         } else null
+                        val reportsToIdValue = if (isAdmin && sfaUser.id != loggedInUser.id) adminReportsToId.value.toIntOrNull() else null
+                        val shouldClearReportsTo = if (isAdmin && sfaUser.id != loggedInUser.id && adminReportsToId.value.isBlank()) true else null
                         val result = saveUserProfile(
                             baseUrl         = base,
                             id              = sfaUser.id,
@@ -836,7 +838,8 @@ fun EditProfileScreen(
                             designationLevel= if (isAdmin && sfaUser.id != loggedInUser.id) adminDesigLevel.value.toIntOrNull() else null,
                             employeeCode    = if (isAdmin && sfaUser.id != loggedInUser.id) adminEmployeeCode.value else null,
                             isActive        = if (isAdmin && sfaUser.id != loggedInUser.id) adminIsActive.value else null,
-                            reportsToId     = if (isAdmin && sfaUser.id != loggedInUser.id) adminReportsToId.value.toIntOrNull() else null
+                            reportsToId     = reportsToIdValue,
+                            clearReportsTo  = shouldClearReportsTo
                         )
                         // Save permissions via dedicated endpoint
                         if (canManagePermissions && permissionList != null && result.first != null) {
@@ -953,6 +956,7 @@ suspend fun fetchSubtreeUsers(baseUrl: String, userId: Int): List<SfaUser> {
             if (conn.responseCode !in 200..299) return@withContext emptyList<SfaUser>()
             val body = conn.inputStream.bufferedReader().readText()
             conn.disconnect()
+            if (body.isBlank()) return@withContext emptyList<SfaUser>()
             val obj = JSONObject(body)
             val arr = obj.optJSONArray("members") ?: JSONArray()
             // Full detail: subtree only returns slim data, so fetch each user
@@ -1019,7 +1023,8 @@ suspend fun saveUserProfile(
     designationLevel: Int? = null,
     employeeCode: String? = null,
     isActive: Boolean? = null,
-    reportsToId: Int? = null
+    reportsToId: Int? = null,
+    clearReportsTo: Boolean? = null
 ): Pair<SfaUser?, String> {
     return withContext(Dispatchers.IO) {
         try {
@@ -1038,7 +1043,8 @@ suspend fun saveUserProfile(
                 designationLevel?.let { put("designationLevel", it) }
                 employeeCode?.let { put("employeeCode", it) }
                 isActive?.let { put("isActive", it) }
-                reportsToId?.let { put("reportsToId", it) }
+                if (reportsToId != null) put("reportsToId", reportsToId)
+                if (clearReportsTo == true) put("clearReportsTo", true)
             }
             val conn = URL("$baseUrl/api/users/$id").openConnection() as HttpURLConnection
             conn.requestMethod = "PUT"

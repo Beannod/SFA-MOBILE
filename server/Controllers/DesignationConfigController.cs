@@ -20,18 +20,25 @@ namespace SfaApi.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] bool activeOnly = false)
         {
-            var query = _db.DesignationConfigs.AsNoTracking().AsQueryable();
-            if (activeOnly)
+            try
             {
-                query = query.Where(d => d.IsActive);
+                var query = _db.DesignationConfigs.AsNoTracking().AsQueryable();
+                if (activeOnly)
+                {
+                    query = query.Where(d => d.IsActive);
+                }
+
+                var rows = await query
+                    .OrderBy(d => d.Level)
+                    .ThenBy(d => d.Name)
+                    .ToListAsync();
+
+                return Ok(rows);
             }
-
-            var rows = await query
-                .OrderBy(d => d.Level)
-                .ThenBy(d => d.Name)
-                .ToListAsync();
-
-            return Ok(rows);
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"Database error: {ex.Message}" });
+            }
         }
 
         public class DesignationConfigUpsertDto

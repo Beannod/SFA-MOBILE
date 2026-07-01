@@ -47,6 +47,7 @@ suspend fun fetchEntityHistory(
         if (conn.responseCode !in 200..299) return@withContext emptyList()
         val body = conn.inputStream.bufferedReader().readText()
         conn.disconnect()
+        if (body.isBlank()) return@withContext emptyList()
         val arr = JSONArray(body)
         (0 until arr.length()).map { i ->
             val obj = arr.getJSONObject(i)

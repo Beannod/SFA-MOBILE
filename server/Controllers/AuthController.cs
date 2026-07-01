@@ -47,27 +47,29 @@ namespace SfaApi.Controllers
 		[HttpPost("login")]
 		public async Task<IActionResult> Login([FromBody] LoginRequest request)
 		{
-			if (string.IsNullOrWhiteSpace(request.Username))
-				return BadRequest(new { error = "Username is required" });
-			if (string.IsNullOrWhiteSpace(request.Password))
-				return BadRequest(new { error = "Password is required" });
+			try
+			{
+				if (string.IsNullOrWhiteSpace(request.Username))
+					return BadRequest(new { error = "Username is required" });
+				if (string.IsNullOrWhiteSpace(request.Password))
+					return BadRequest(new { error = "Password is required" });
 
-			var user = await _db.Users
-				.Include(u => u.MobilePermissions)
-				.Include(u => u.WebPermissions)
-				.FirstOrDefaultAsync(u => u.Username == request.Username);
+				var user = await _db.Users
+					.Include(u => u.MobilePermissions)
+					.Include(u => u.WebPermissions)
+					.FirstOrDefaultAsync(u => u.Username == request.Username);
 
-			if (user == null)
-				return Unauthorized(new { error = "Invalid username or password" });
+				if (user == null)
+					return Unauthorized(new { error = "Invalid username or password" });
 
-			// Use bcrypt to verify password hash
-			if (!PasswordService.VerifyPassword(request.Password, user.Password))
-				return Unauthorized(new { error = "Invalid username or password" });
+				// Use bcrypt to verify password hash
+				if (!PasswordService.VerifyPassword(request.Password, user.Password))
+					return Unauthorized(new { error = "Invalid username or password" });
 
-			if (!user.IsActive)
-				return Unauthorized(new { error = "Account is inactive. Contact admin." });
+				if (!user.IsActive)
+					return Unauthorized(new { error = "Account is inactive. Contact admin." });
 
-			return Ok(new LoginResponse
+				return Ok(new LoginResponse
 			{
 				Id = user.Id,
 				Username = user.Username,
@@ -87,6 +89,11 @@ namespace SfaApi.Controllers
 					? user.WebPermissions.ToKeyList().OrderBy(k => k).ToArray()
 					: SfaApi.Models.PermissionKeys.WebDefaultsForRole(user.Role)
 			});
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { error = $"Database error: {ex.Message}" });
+			}
 		}
 	}
 }

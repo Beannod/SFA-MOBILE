@@ -62,6 +62,7 @@ fun ApprovalsScreen(user: LoggedInUser) {
                 if (code !in 200..299) { loadFailed.value = true; isLoading.value = false; return@launch }
                 val body = conn.inputStream.bufferedReader().readText()
                 conn.disconnect()
+                if (body.isBlank()) { orders.clear(); isLoading.value = false; return@launch }
                 val arr = JSONArray(body)
                 val list = mutableListOf<Map<String, Any>>()
                 for (i in 0 until arr.length()) {
@@ -348,6 +349,7 @@ fun ReportsScreen(user: LoggedInUser) {
                 if (code !in 200..299) { loadFailed.value = true; isLoading.value = false; return@launch }
                 val body = conn.inputStream.bufferedReader().readText()
                 conn.disconnect()
+                if (body.isBlank()) { loadFailed.value = true; isLoading.value = false; return@launch }
                 val arr = JSONArray(body)
 
                 val monthStr = "%04d-%02d".format(selectedYear.value, selectedMonth.value)

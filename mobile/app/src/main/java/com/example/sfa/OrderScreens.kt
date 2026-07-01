@@ -2545,6 +2545,7 @@ suspend fun fetchOrderDetail(baseUrl: String, id: Int): JSONObject? {
             if (conn.responseCode !in 200..299) return@withContext null
             val body = conn.inputStream.bufferedReader().readText()
             conn.disconnect()
+            if (body.isBlank()) return@withContext null
             JSONObject(body)
         } catch (e: Exception) {
             Log.e("SFA", "Fetch order detail error", e)

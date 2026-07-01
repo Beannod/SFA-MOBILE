@@ -113,6 +113,7 @@ private suspend fun fetchServerVersionCode(url: String): Int = withContext(Dispa
     val code = conn.responseCode
     if (code != 200) return@withContext -1
     val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+    if (body.isBlank()) return@withContext -1
     JSONObject(body).getInt("versionCode")
 }
 
@@ -123,6 +124,7 @@ private suspend fun fetchServerVersionName(url: String): String = withContext(Di
     val code = conn.responseCode
     if (code != 200) return@withContext ""
     val body = BufferedReader(InputStreamReader(conn.inputStream)).readText()
+    if (body.isBlank()) return@withContext ""
     JSONObject(body).optString("versionName", "")
 }
 

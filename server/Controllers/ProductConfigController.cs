@@ -20,62 +20,78 @@ namespace SfaApi.Controllers
 		[HttpGet]
 		public async Task<IActionResult> GetAll()
 		{
-			var rows = await _db.ProductConfigs
-				.OrderBy(c => c.ConfigKey)
-				.ThenBy(c => c.SortOrder)
-				.ThenBy(c => c.ConfigValue)
-				.ToListAsync();
+			try
+			{
+				var rows = await _db.ProductConfigs
+					.OrderBy(c => c.ConfigKey)
+					.ThenBy(c => c.SortOrder)
+					.ThenBy(c => c.ConfigValue)
+					.ToListAsync();
 
-			var grouped = rows.GroupBy(r => r.ConfigKey)
-				.ToDictionary(g => g.Key, g => g.Select(r => r.ConfigValue).ToList());
+				var grouped = rows.GroupBy(r => r.ConfigKey)
+					.ToDictionary(g => g.Key, g => g.Select(r => r.ConfigValue).ToList());
 
-			return Ok(grouped);
+				return Ok(grouped);
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { error = $"Database error: {ex.Message}" });
+			}
 		}
 
 		/// <summary>POST /api/product-config — bulk replace: accepts { "category": [...], "size": [...], ... }</summary>
 		[HttpPost]
 		public async Task<IActionResult> Save([FromBody] Dictionary<string, List<string>> payload)
 		{
-			if (payload == null) return BadRequest("Body required");
-
-			var validKeys = new HashSet<string> { "category", "size", "quality", "type", "finish", "shade", "unit" };
-
-			// Remove existing rows for provided keys, then insert new ones
-			foreach (var kv in payload)
+			try
 			{
-				var key = kv.Key.ToLowerInvariant();
-				if (!validKeys.Contains(key)) continue;
+				if (payload == null) return BadRequest("Body required");
 
-				var existing = await _db.ProductConfigs.Where(c => c.ConfigKey == key).ToListAsync();
-				_db.ProductConfigs.RemoveRange(existing);
+				var validKeys = new HashSet<string> { "category", "size", "quality", "type", "finish", "shade", "unit" };
 
-				var order = 0;
-				foreach (var val in kv.Value.Where(v => !string.IsNullOrWhiteSpace(v)).Distinct())
+				// Remove existing rows for provided keys, then insert new ones
+				foreach (var kv in payload)
 				{
-					_db.ProductConfigs.Add(new ProductConfig
-					{
-						ConfigKey = key,
-						ConfigValue = val.Trim(),
-						SortOrder = order++
-					});
-				}
-			}
+					var key = kv.Key.ToLowerInvariant();
+					if (!validKeys.Contains(key)) continue;
 
-			await _db.SaveChangesAsync();
-			return await GetAll();
+					var existing = await _db.ProductConfigs.Where(c => c.ConfigKey == key).ToListAsync();
+					_db.ProductConfigs.RemoveRange(existing);
+
+					var order = 0;
+					foreach (var val in kv.Value.Where(v => !string.IsNullOrWhiteSpace(v)).Distinct())
+					{
+						_db.ProductConfigs.Add(new ProductConfig
+						{
+							ConfigKey = key,
+							ConfigValue = val.Trim(),
+							SortOrder = order++
+						});
+					}
+				}
+
+				await _db.SaveChangesAsync();
+				return await GetAll();
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { error = $"Database error: {ex.Message}" });
+			}
 		}
 
 		/// <summary>PUT /api/product-config/{key} — add a single value to a key</summary>
 		[HttpPut("{key}")]
 		public async Task<IActionResult> AddValue(string key, [FromBody] AddValueDto dto)
 		{
-			key = key.ToLowerInvariant();
-			var validKeys = new HashSet<string> { "category", "size", "quality", "type", "finish", "shade", "unit" };
-			if (!validKeys.Contains(key)) return BadRequest("Invalid config key");
-			if (string.IsNullOrWhiteSpace(dto?.Value)) return BadRequest("Value required");
+			try
+			{
+				key = key.ToLowerInvariant();
+				var validKeys = new HashSet<string> { "category", "size", "quality", "type", "finish", "shade", "unit" };
+				if (!validKeys.Contains(key)) return BadRequest("Invalid config key");
+				if (string.IsNullOrWhiteSpace(dto?.Value)) return BadRequest("Value required");
 
-			var val = dto.Value.Trim();
-			var exists = await _db.ProductConfigs.AnyAsync(c => c.ConfigKey == key && c.ConfigValue == val);
+				var val = dto.Value.Trim();
+				var exists = await _db.ProductConfigs.AnyAsync(c => c.ConfigKey == key && c.ConfigValue == val);
 			if (!exists)
 			{
 				var maxOrder = await _db.ProductConfigs
@@ -92,21 +108,33 @@ namespace SfaApi.Controllers
 
 			return await GetAll();
 		}
+		catch (Exception ex)
+		{
+			return StatusCode(500, new { error = $"Database error: {ex.Message}" });
+		}
+	}
 
 		/// <summary>DELETE /api/product-config/{key}/{value} — remove a single value</summary>
 		[HttpDelete("{key}/{value}")]
 		public async Task<IActionResult> RemoveValue(string key, string value)
 		{
-			key = key.ToLowerInvariant();
-			value = Uri.UnescapeDataString(value).Trim();
-			var row = await _db.ProductConfigs
-				.FirstOrDefaultAsync(c => c.ConfigKey == key && c.ConfigValue == value);
-			if (row != null)
+			try
 			{
-				_db.ProductConfigs.Remove(row);
-				await _db.SaveChangesAsync();
+				key = key.ToLowerInvariant();
+				value = Uri.UnescapeDataString(value).Trim();
+				var row = await _db.ProductConfigs
+					.FirstOrDefaultAsync(c => c.ConfigKey == key && c.ConfigValue == value);
+				if (row != null)
+				{
+					_db.ProductConfigs.Remove(row);
+					await _db.SaveChangesAsync();
+				}
+				return await GetAll();
 			}
-			return await GetAll();
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { error = $"Database error: {ex.Message}" });
+			}
 		}
 	}
 

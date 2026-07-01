@@ -1275,6 +1275,10 @@ suspend fun loginUser(username: String, password: String): Pair<LoggedInUser?, S
             Log.d("SFA", "LOGIN <<< $body")
 
             if (code in 200..299) {
+                if (body.isBlank()) {
+                    emit(LoginResult.Error("Empty response from server"))
+                    return@launch
+                }
                 val obj = JSONObject(body)
                 // Parse allowedFeatures â€” login returns a JSON array (string[])
                 val featuresList = run {

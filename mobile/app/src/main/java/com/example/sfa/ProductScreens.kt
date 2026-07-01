@@ -1044,6 +1044,7 @@ suspend fun fetchProductConfig(baseUrl: String): ProductConfig {
             if (conn.responseCode !in 200..299) return@withContext ProductConfig.Default
             val body = conn.inputStream.bufferedReader().readText()
             conn.disconnect()
+            if (body.isBlank()) return@withContext ProductConfig.Default
             val obj = JSONObject(body)
             fun arr(key: String) = (0 until (obj.optJSONArray(key)?.length() ?: 0))
                 .map { obj.getJSONArray(key).getString(it) }
@@ -1071,6 +1072,7 @@ suspend fun fetchProductDetail(urlString: String): Product? {
             if (conn.responseCode !in 200..299) return@withContext null
             val body = conn.inputStream.bufferedReader().readText()
             conn.disconnect()
+            if (body.isBlank()) return@withContext null
             parseProduct(JSONObject(body))
         } catch (e: Exception) {
             Log.e("SFA", "fetchProductDetail error", e)
