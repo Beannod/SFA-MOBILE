@@ -855,6 +855,41 @@ Admin update → DB → Sync → Mobile visibility
 
 ---
 
-# 18. Conclusion
+# 18. Production Deployment
+
+**Stack:** Render (API host) · AWS RDS SQL Server (database) · Cloudflare (DNS/SSL/WAF)
+
+### Deploy Order
+
+```
+1. AWS RDS    → provision SQL Server, run EF migrations
+2. Render     → connect repo, set env vars, deploy API
+3. Cloudflare → add DNS CNAME for api subdomain, set SSL Full (strict)
+4. Clients    → update API base URL in mobile app and web config
+```
+
+### Key Files
+
+| File | Purpose |
+|---|---|
+| `deploy/render.yaml` | Render Blueprint — service definition |
+| `deploy/env.server.production.example` | Required environment variables template |
+| `deploy/README-deploy.md` | Quick-start deployment summary |
+| `docs/deployment-guide.md` | Full step-by-step deployment guide |
+
+### Required Secrets (set in Render dashboard)
+
+| Variable | Description |
+|---|---|
+| `ConnectionStrings__DefaultConnection` | AWS RDS SQL Server connection string |
+| `Jwt__Key` | 256-bit JWT signing secret *(Phase 4)* |
+| `Jwt__Issuer` | `https://api.yourdomain.com` |
+| `Jwt__Audience` | `sfa-mobile` |
+
+> For complete instructions including RDS setup, Cloudflare WAF, and EF migration commands, see **`docs/deployment-guide.md`**.
+
+---
+
+# 19. Conclusion
 
 This system is designed as an ERP-grade scalable Sales Force Automation platform capable of supporting enterprise-level distribution networks with strong control, auditability, and extensibility.

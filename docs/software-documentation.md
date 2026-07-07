@@ -799,7 +799,7 @@ dotnet ef database update
 dotnet run --project server/SfaApi.csproj
 ```
 
-Server starts on `http://0.0.0.0:5000` and `https://0.0.0.0:5001`.
+Server starts on `http://0.0.0.0:5000`. In production the `PORT` environment variable overrides port 5000.
 
 **4. Verify**
 
@@ -845,6 +845,86 @@ Or use the deploy script:
 # Verify seeded data
 .\scripts\verify-seed.ps1
 ```
+
+---
+
+## 16a. Production Deployment — Render + AWS RDS + Cloudflare
+
+> For the full step-by-step guide see **`docs/deployment-guide.md`**.  
+> For configuration files see the **`deploy/`** folder.
+
+### Deploy Order
+
+```
+1. AWS RDS    → provision SQL Server, run EF migrations
+2. Render     → connect repo, set env vars, deploy API
+3. Cloudflare → add DNS records, configure SSL Full (strict)
+4. Clients    → update API base URL in mobile app and web config
+```
+
+### AWS RDS SQL Server
+
+- Engine: **SQL Server** (Express free-tier or Standard/Enterprise for production).
+- Port: **1433** — add an inbound rule in the RDS Security Group allowing TCP 1433 from Render's outbound IPs.
+- Initial database name: `ReportApp` (matches the EF connection string).
+- Connection string format (recommended — validates the AWS RDS certificate):
+
+```
+Server=<RDS-ENDPOINT>,1433;Database=ReportApp;User Id=sfa_user;******;Encrypt=True;TrustServerCertificate=False;
+```
+
+> Download the [AWS RDS root CA](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html) and install it in the system trust store.  
+> `TrustServerCertificate=True` disables cert validation and must **not** be used in production.
+
+- Run EF migrations against the RDS instance before the first deploy:
+
+```bash
+cd server
+export ConnectionStrings__DefaultConnection="Server=<RDS-ENDPOINT>,1433;..."
+dotnet ef database update
+```
+
+### Render (API Host)
+
+| Field | Value |
+|---|---|
+| Root Directory | `server` |
+| Build Command | `dotnet restore && dotnet publish -c Release -o out` |
+| Start Command | `dotnet out/SfaApi.dll` |
+| Health Check Path | `/api/health` |
+
+Render injects a `PORT` environment variable; the API reads it at startup and binds to that port.
+
+Required environment variables (set in Render dashboard):
+
+| Variable | Value |
+|---|---|
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `ConnectionStrings__DefaultConnection` | *(RDS connection string)* |
+| `Jwt__Key` | *(256-bit secret — Phase 4)* |
+| `Jwt__Issuer` | `https://api.yourdomain.com` |
+| `Jwt__Audience` | `sfa-mobile` |
+
+> ASP.NET Core maps `__` (double underscore) in env var names to nested config keys, so environment variables override `appsettings.json` values automatically.
+
+### Cloudflare (DNS / SSL / WAF)
+
+**DNS Records** — add as Proxied CNAMEs:
+
+| Type | Name | Target |
+|---|---|---|
+| `CNAME` | `api` | `sfa-api.onrender.com` |
+| `CNAME` | `app` | *(web host origin)* |
+
+**SSL/TLS Settings:**
+- Mode: **Full (strict)** — encrypts both edges; requires a valid origin cert (Render provides one automatically).
+- Enable **Always Use HTTPS** under Edge Certificates.
+- Enable **HSTS** (`max-age=31536000`, Include Subdomains) once stable.
+
+**WAF / Security Recommendations:**
+- Enable **Bot Fight Mode** (Security → Bots).
+- Add a **Rate Limiting** rule for `/api/*` (e.g. 300 req/min per IP).
+- Block `/swagger` path in production via a Firewall Rule (or restrict to office IPs).
 
 ---
 
