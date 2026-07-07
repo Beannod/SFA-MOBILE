@@ -3,8 +3,10 @@ using SfaApi.Data;
 using System;
 
 var builder = WebApplication.CreateBuilder(args);
-// Allow the API to listen for external requests on all network interfaces
-builder.WebHost.UseUrls("http://0.0.0.0:5000","https://0.0.0.0:5001");
+// Allow the API to listen for external requests on all network interfaces.
+// In production (e.g. Render), the PORT env var overrides the default 5000.
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // Configure DB (set connection string in appsettings.json)
 builder.Services.AddDbContext<AppDbContext>(options =>
