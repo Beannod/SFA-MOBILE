@@ -51,19 +51,21 @@ Step 4 → Clients   : Update API base URL in mobile app and web config
 2. Add an **inbound rule:**
    - Type: **Custom TCP**
    - Port: **1433**
-   - Source: **Render's IP range** (see [Render IP list](https://render.com/docs/static-outbound-ip-addresses)) — or `0.0.0.0/0` temporarily during setup, then tighten.
-3. Remove the wide-open rule once Render IPs are allowlisted.
+   - Source: **Render's static outbound IPs** (see [Render outbound IP list](https://render.com/docs/static-outbound-ip-addresses) — add each IP as a `/32` entry).
+3. Do not use `0.0.0.0/0` (open to the entire internet) even temporarily; Render's IPs are documented and available before you start.
 
 ### 2.3 Connection String Format
 
+**Recommended (validates the AWS RDS certificate):**
 ```
-Server=<RDS-ENDPOINT>,1433;Database=ReportApp;User Id=sfa_user;******;TrustServerCertificate=True;
+Server=<RDS-ENDPOINT>,1433;Database=ReportApp;User Id=sfa_user;******;Encrypt=True;TrustServerCertificate=False;
 ```
+
+Download the [AWS RDS root CA bundle](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html) and install it in the system trust store of your Render instance, or use the `SslCa` parameter to point to the certificate file.
+
+> **Insecure fallback** — `TrustServerCertificate=True` disables certificate validation and exposes the connection to man-in-the-middle attacks. Only use it when testing connectivity on a private network and never in a public-facing production environment.
 
 Replace `<RDS-ENDPOINT>` with the endpoint shown in the RDS console (e.g. `sfa-db.xxxx.us-east-1.rds.amazonaws.com`).
-
-> `TrustServerCertificate=True` is required because RDS uses a self-signed certificate by default.  
-> For stricter security, download the [AWS RDS root CA](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html) and use `Encrypt=True;TrustServerCertificate=False;` with the cert.
 
 ### 2.4 Run EF Migrations
 
@@ -73,8 +75,8 @@ Run this **once** from the `server/` directory to create all tables:
 cd server
 dotnet tool install --global dotnet-ef   # skip if already installed
 
-# Point at the RDS instance
-export ConnectionStrings__DefaultConnection="Server=<RDS-ENDPOINT>,1433;Database=ReportApp;User Id=sfa_user;******;TrustServerCertificate=True;"
+# Use Encrypt=True with the AWS RDS certificate for a secure connection
+export ConnectionStrings__DefaultConnection="Server=<RDS-ENDPOINT>,1433;Database=ReportApp;User Id=sfa_user;******;Encrypt=True;TrustServerCertificate=False;"
 
 dotnet ef database update
 ```
@@ -82,7 +84,7 @@ dotnet ef database update
 On Windows (PowerShell):
 
 ```powershell
-$env:ConnectionStrings__DefaultConnection = "Server=<RDS-ENDPOINT>,1433;Database=ReportApp;User Id=sfa_user;******;TrustServerCertificate=True;"
+$env:ConnectionStrings__DefaultConnection = "Server=<RDS-ENDPOINT>,1433;Database=ReportApp;User Id=sfa_user;******;Encrypt=True;TrustServerCertificate=False;"
 dotnet ef database update
 ```
 

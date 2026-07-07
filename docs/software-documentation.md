@@ -867,11 +867,14 @@ Or use the deploy script:
 - Engine: **SQL Server** (Express free-tier or Standard/Enterprise for production).
 - Port: **1433** — add an inbound rule in the RDS Security Group allowing TCP 1433 from Render's outbound IPs.
 - Initial database name: `ReportApp` (matches the EF connection string).
-- Connection string format:
+- Connection string format (recommended — validates the AWS RDS certificate):
 
 ```
-Server=<RDS-ENDPOINT>,1433;Database=ReportApp;User Id=sfa_user;******;TrustServerCertificate=True;
+Server=<RDS-ENDPOINT>,1433;Database=ReportApp;User Id=sfa_user;******;Encrypt=True;TrustServerCertificate=False;
 ```
+
+> Download the [AWS RDS root CA](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html) and install it in the system trust store.  
+> `TrustServerCertificate=True` disables cert validation and must **not** be used in production.
 
 - Run EF migrations against the RDS instance before the first deploy:
 
