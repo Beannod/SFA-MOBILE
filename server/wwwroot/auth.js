@@ -46,7 +46,8 @@ var API_BASE_URL =
     if (isOrgChartPage()) return true;
     if (!isAppShellPage()) return false;
     var route = normaliseRoute(routeName);
-    return !!(route && route !== LOGIN_ROUTE && APP_PROTECTED_ROUTES[route]);
+    if (route === LOGIN_ROUTE) return false;
+    return !!APP_PROTECTED_ROUTES[route || DEFAULT_ROUTE];
   }
 
   function parseStoredUser() {
@@ -209,7 +210,7 @@ var API_BASE_URL =
   }
 
   function getRequestedRoute() {
-    if (isOrgChartPage()) return 'orgchart';
+    if (isOrgChartPage()) return ORGCHART_ROUTE;
     return normaliseRoute(window.location.hash) || DEFAULT_ROUTE;
   }
 
@@ -229,8 +230,11 @@ var API_BASE_URL =
     setMessage('success', 'Login successful. Redirecting…');
     unlockAfterAuth();
     var targetRoute = isOrgChartPage() ? ORGCHART_ROUTE : getPendingRoute();
+    var redirectUrl = isOrgChartPage()
+      ? window.location.pathname + window.location.search
+      : getAppShellUrl(targetRoute);
     try { sessionStorage.removeItem(PENDING_ROUTE_KEY); } catch (e) {}
-    window.location.replace(isOrgChartPage() ? window.location.pathname + window.location.search : getAppShellUrl(targetRoute));
+    window.location.replace(redirectUrl);
   }
 
   async function onLoginSubmit(event) {

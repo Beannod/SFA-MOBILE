@@ -126,13 +126,31 @@
 
         // Trigger section loader
         _currentSection = name;
-        var loader = Object.prototype.hasOwnProperty.call(_sectionLoaders, name) ? _sectionLoaders[name] : null;
-        if (typeof loader === 'function') loader();
+        runSectionLoader(name);
         return true;
     }
 
     function registerSection(name, loaderFn) {
         _sectionLoaders[name] = loaderFn;
+    }
+
+    function runSectionLoader(name) {
+        switch (name) {
+            case 'dashboard':
+            case 'config':
+            case 'customers':
+            case 'orders':
+            case 'products':
+            case 'stock':
+            case 'attendance':
+            case 'tracking':
+            case 'apk':
+            case 'orgchart':
+            case 'activity':
+                var loader = _sectionLoaders[name];
+                if (typeof loader === 'function') loader();
+                break;
+        }
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -198,8 +216,8 @@
     });
 
     window.addEventListener('hashchange', function() {
-        var nextSection = window.location.hash ? window.location.hash.slice(1) : '';
-        if (!nextSection || nextSection === 'login') return;
+        var nextSection = window.location.hash ? window.location.hash.slice(1) : 'dashboard';
+        if (nextSection === 'login') return;
         if (nextSection === _currentSection) return;
         showSection(nextSection);
     });
