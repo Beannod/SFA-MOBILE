@@ -41,7 +41,7 @@
        SPA NAVIGATION
     ══════════════════════════════════════════════════════════ */
     var _currentSection = '';
-    var _sectionLoaders = {};
+    var _sectionLoaders = Object.create(null);
 
     var SECTION_META = {
         dashboard:  { icon: '📊', sub: 'Sales Command Center', label: 'Dashboard' },
@@ -93,10 +93,7 @@
     };
 
     function showSection(name) {
-        if (typeof window.sfaRouteRequiresAuth === 'function' &&
-            window.sfaRouteRequiresAuth(name) &&
-            typeof window.sfaRequireAuth === 'function' &&
-            !window.sfaRequireAuth(name)) {
+        if (typeof window.sfaRequireAuth === 'function' && !window.sfaRequireAuth(name)) {
             return false;
         }
 
@@ -129,7 +126,8 @@
 
         // Trigger section loader
         _currentSection = name;
-        if (typeof _sectionLoaders[name] === 'function') _sectionLoaders[name]();
+        var loader = Object.prototype.hasOwnProperty.call(_sectionLoaders, name) ? _sectionLoaders[name] : null;
+        if (typeof loader === 'function') loader();
         return true;
     }
 

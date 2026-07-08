@@ -7,6 +7,7 @@ var API_BASE_URL =
   var PENDING_ROUTE_KEY = 'sfa_admin_pending_route';
   var LOGIN_ROUTE = 'login';
   var DEFAULT_ROUTE = 'dashboard';
+  var ORGCHART_ROUTE = 'orgchart';
   var APP_PROTECTED_ROUTES = {
     dashboard: true,
     config: true,
@@ -45,7 +46,7 @@ var API_BASE_URL =
     if (isOrgChartPage()) return true;
     if (!isAppShellPage()) return false;
     var route = normaliseRoute(routeName);
-    return !route || route === LOGIN_ROUTE || !!APP_PROTECTED_ROUTES[route];
+    return !!(route && route !== LOGIN_ROUTE && APP_PROTECTED_ROUTES[route]);
   }
 
   function parseStoredUser() {
@@ -225,9 +226,9 @@ var API_BASE_URL =
 
   function handleSuccessfulLogin(user) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    setMessage('success', 'Login successful. Loading your dashboard…');
+    setMessage('success', 'Login successful. Redirecting…');
     unlockAfterAuth();
-    var targetRoute = isOrgChartPage() ? 'orgchart' : getPendingRoute();
+    var targetRoute = isOrgChartPage() ? ORGCHART_ROUTE : getPendingRoute();
     try { sessionStorage.removeItem(PENDING_ROUTE_KEY); } catch (e) {}
     window.location.replace(isOrgChartPage() ? window.location.pathname + window.location.search : getAppShellUrl(targetRoute));
   }
