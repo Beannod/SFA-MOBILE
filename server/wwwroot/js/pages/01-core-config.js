@@ -41,7 +41,17 @@
        SPA NAVIGATION
     ══════════════════════════════════════════════════════════ */
     var _currentSection = '';
-    var _sectionLoaders = {};
+    var _dashboardSectionLoader = null;
+    var _configSectionLoader = null;
+    var _customersSectionLoader = null;
+    var _ordersSectionLoader = null;
+    var _productsSectionLoader = null;
+    var _stockSectionLoader = null;
+    var _attendanceSectionLoader = null;
+    var _trackingSectionLoader = null;
+    var _apkSectionLoader = null;
+    var _orgchartSectionLoader = null;
+    var _activitySectionLoader = null;
 
     var SECTION_META = {
         dashboard:  { icon: '📊', sub: 'Sales Command Center', label: 'Dashboard' },
@@ -93,6 +103,10 @@
     };
 
     function showSection(name) {
+        if (typeof window.sfaRequireAuth === 'function' && !window.sfaRequireAuth(name)) {
+            return false;
+        }
+
         // Hide all sections
         document.querySelectorAll('.spa-section').forEach(function(s) { s.classList.remove('active'); });
 
@@ -122,11 +136,40 @@
 
         // Trigger section loader
         _currentSection = name;
-        if (typeof _sectionLoaders[name] === 'function') _sectionLoaders[name]();
+        runSectionLoader(name);
+        return true;
     }
 
     function registerSection(name, loaderFn) {
-        _sectionLoaders[name] = loaderFn;
+        switch (name) {
+            case 'dashboard': _dashboardSectionLoader = loaderFn; break;
+            case 'config': _configSectionLoader = loaderFn; break;
+            case 'customers': _customersSectionLoader = loaderFn; break;
+            case 'orders': _ordersSectionLoader = loaderFn; break;
+            case 'products': _productsSectionLoader = loaderFn; break;
+            case 'stock': _stockSectionLoader = loaderFn; break;
+            case 'attendance': _attendanceSectionLoader = loaderFn; break;
+            case 'tracking': _trackingSectionLoader = loaderFn; break;
+            case 'apk': _apkSectionLoader = loaderFn; break;
+            case 'orgchart': _orgchartSectionLoader = loaderFn; break;
+            case 'activity': _activitySectionLoader = loaderFn; break;
+        }
+    }
+
+    function runSectionLoader(name) {
+        switch (name) {
+            case 'dashboard': if (typeof _dashboardSectionLoader === 'function') _dashboardSectionLoader(); break;
+            case 'config': if (typeof _configSectionLoader === 'function') _configSectionLoader(); break;
+            case 'customers': if (typeof _customersSectionLoader === 'function') _customersSectionLoader(); break;
+            case 'orders': if (typeof _ordersSectionLoader === 'function') _ordersSectionLoader(); break;
+            case 'products': if (typeof _productsSectionLoader === 'function') _productsSectionLoader(); break;
+            case 'stock': if (typeof _stockSectionLoader === 'function') _stockSectionLoader(); break;
+            case 'attendance': if (typeof _attendanceSectionLoader === 'function') _attendanceSectionLoader(); break;
+            case 'tracking': if (typeof _trackingSectionLoader === 'function') _trackingSectionLoader(); break;
+            case 'apk': if (typeof _apkSectionLoader === 'function') _apkSectionLoader(); break;
+            case 'orgchart': if (typeof _orgchartSectionLoader === 'function') _orgchartSectionLoader(); break;
+            case 'activity': if (typeof _activitySectionLoader === 'function') _activitySectionLoader(); break;
+        }
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -153,6 +196,11 @@
        INIT
     ══════════════════════════════════════════════════════════ */
     document.addEventListener('DOMContentLoaded', function() {
+        var requestedSection = window.location.hash ? window.location.hash.slice(1) : 'dashboard';
+        if (typeof window.sfaRequireAuth === 'function' && !window.sfaRequireAuth(requestedSection)) {
+            return;
+        }
+
         var cu = getCurrentUser();
         var appName = getAppName();
         document.getElementById('appHeaderTitle').textContent = appName;
@@ -184,6 +232,13 @@
         showSection(startSection || 'dashboard');
         // Pre-load product config from DB so dropdowns are ready
         if (typeof cfgLoadProductConfigFromDb === 'function') cfgLoadProductConfigFromDb();
+    });
+
+    window.addEventListener('hashchange', function() {
+        var nextSection = window.location.hash ? window.location.hash.slice(1) : 'dashboard';
+        if (nextSection === 'login') return;
+        if (nextSection === _currentSection) return;
+        showSection(nextSection);
     });
 
     document.addEventListener('click', function(e) {
@@ -1533,4 +1588,3 @@
                 cfgSaveProductConfigToDb(cfg);
             }
         };
-

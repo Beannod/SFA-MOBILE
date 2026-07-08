@@ -328,6 +328,8 @@ Open a web browser and go to:
 http://<server-ip>:5000/app.html
 ```
 
+If you are not already signed in, the web app immediately shows the login screen even if you open a direct module link such as `app.html#dashboard`.
+
 Log in with the same credentials as the mobile app.
 
 ### User Management
@@ -346,6 +348,7 @@ Log in with the same credentials as the mobile app.
    - Popup forms now show inline field validation; fix highlighted fields before saving.
    - If you edited a popup form but did not save, closing shows an unsaved-changes confirmation.
 5. Tap **Org Chart** to see the full reporting hierarchy as a collapsible tree.
+6. Tap **Logout** in the header when you are finished. The session is cleared and any protected hash route sends you back to the login screen.
 
 ### Approving Customers
 

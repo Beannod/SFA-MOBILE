@@ -596,12 +596,13 @@ The web panel is served directly by the API from `server/wwwroot/`. No separate 
 | Page | URL | Description |
 |---|---|---|
 | App Shell | `/app.html` | Main admin application; loads and hosts all pages |
-| Auth | `/auth.js` | Login / session handling shared by all pages |
+| Auth | `/auth.js` | Shared login bootstrap, protected-route guard, and logout/session handling |
 | Org Chart | `/orgchart.html` | Collapsible org chart tree for the user hierarchy |
 
 ### Key Admin Workflows
 
 **User Management**
+0. Opening `/app.html` or a protected hash route while signed out immediately switches the shell to the login UI instead of loading admin modules.
 1. Open the Users page from the nav.
 2. View all users in a table with role, designation, and manager.
 3. (Admin) Open **Configuration → Designation Hierarchy** to maintain designation names and authority levels.
@@ -612,6 +613,7 @@ The web panel is served directly by the API from `server/wwwroot/`. No separate 
 7. Popup forms use inline field validation (invalid inputs are highlighted with per-field messages).
 8. Config popup close flow has an unsaved-changes guard to prevent accidental data loss.
 9. Click **Org Chart** tab to see the full hierarchy tree.
+10. Clicking **Logout** clears the stored web session and returns the shell to the login UI before any protected route can reopen.
 
 **Order Approval**
 1. Open the Orders page.

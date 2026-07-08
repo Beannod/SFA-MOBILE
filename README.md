@@ -102,7 +102,7 @@ sfa-mobile/
 
 ### Administration (Web UI)
 - User management with org chart tree (`/orgchart.html`)
-- Web app shell (`/app.html`) and auth page (`/auth.js`)
+- Web app shell (`/app.html`) with shared auth bootstrap/route guard (`/auth.js`)
 - App update management — serve and track latest APK version
 
 ---
