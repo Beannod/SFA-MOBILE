@@ -45,7 +45,7 @@ var API_BASE_URL =
     if (isOrgChartPage()) return true;
     if (!isAppShellPage()) return false;
     var route = normaliseRoute(routeName);
-    return !!APP_PROTECTED_ROUTES[route || DEFAULT_ROUTE];
+    return !route || route === LOGIN_ROUTE || !!APP_PROTECTED_ROUTES[route];
   }
 
   function parseStoredUser() {
