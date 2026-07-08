@@ -41,7 +41,17 @@
        SPA NAVIGATION
     ══════════════════════════════════════════════════════════ */
     var _currentSection = '';
-    var _sectionLoaders = Object.create(null);
+    var _dashboardSectionLoader = null;
+    var _configSectionLoader = null;
+    var _customersSectionLoader = null;
+    var _ordersSectionLoader = null;
+    var _productsSectionLoader = null;
+    var _stockSectionLoader = null;
+    var _attendanceSectionLoader = null;
+    var _trackingSectionLoader = null;
+    var _apkSectionLoader = null;
+    var _orgchartSectionLoader = null;
+    var _activitySectionLoader = null;
 
     var SECTION_META = {
         dashboard:  { icon: '📊', sub: 'Sales Command Center', label: 'Dashboard' },
@@ -131,25 +141,34 @@
     }
 
     function registerSection(name, loaderFn) {
-        _sectionLoaders[name] = loaderFn;
+        switch (name) {
+            case 'dashboard': _dashboardSectionLoader = loaderFn; break;
+            case 'config': _configSectionLoader = loaderFn; break;
+            case 'customers': _customersSectionLoader = loaderFn; break;
+            case 'orders': _ordersSectionLoader = loaderFn; break;
+            case 'products': _productsSectionLoader = loaderFn; break;
+            case 'stock': _stockSectionLoader = loaderFn; break;
+            case 'attendance': _attendanceSectionLoader = loaderFn; break;
+            case 'tracking': _trackingSectionLoader = loaderFn; break;
+            case 'apk': _apkSectionLoader = loaderFn; break;
+            case 'orgchart': _orgchartSectionLoader = loaderFn; break;
+            case 'activity': _activitySectionLoader = loaderFn; break;
+        }
     }
 
     function runSectionLoader(name) {
         switch (name) {
-            case 'dashboard':
-            case 'config':
-            case 'customers':
-            case 'orders':
-            case 'products':
-            case 'stock':
-            case 'attendance':
-            case 'tracking':
-            case 'apk':
-            case 'orgchart':
-            case 'activity':
-                var loader = _sectionLoaders[name];
-                if (typeof loader === 'function') loader();
-                break;
+            case 'dashboard': if (typeof _dashboardSectionLoader === 'function') _dashboardSectionLoader(); break;
+            case 'config': if (typeof _configSectionLoader === 'function') _configSectionLoader(); break;
+            case 'customers': if (typeof _customersSectionLoader === 'function') _customersSectionLoader(); break;
+            case 'orders': if (typeof _ordersSectionLoader === 'function') _ordersSectionLoader(); break;
+            case 'products': if (typeof _productsSectionLoader === 'function') _productsSectionLoader(); break;
+            case 'stock': if (typeof _stockSectionLoader === 'function') _stockSectionLoader(); break;
+            case 'attendance': if (typeof _attendanceSectionLoader === 'function') _attendanceSectionLoader(); break;
+            case 'tracking': if (typeof _trackingSectionLoader === 'function') _trackingSectionLoader(); break;
+            case 'apk': if (typeof _apkSectionLoader === 'function') _apkSectionLoader(); break;
+            case 'orgchart': if (typeof _orgchartSectionLoader === 'function') _orgchartSectionLoader(); break;
+            case 'activity': if (typeof _activitySectionLoader === 'function') _activitySectionLoader(); break;
         }
     }
 

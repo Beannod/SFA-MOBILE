@@ -8,6 +8,8 @@ var API_BASE_URL =
   var LOGIN_ROUTE = 'login';
   var DEFAULT_ROUTE = 'dashboard';
   var ORGCHART_ROUTE = 'orgchart';
+  var APP_SHELL_PAGE = 'app.html';
+  var ORGCHART_PAGE = 'orgchart.html';
   var APP_PROTECTED_ROUTES = {
     dashboard: true,
     config: true,
@@ -105,8 +107,13 @@ var API_BASE_URL =
 
   function getAppShellUrl(routeName) {
     var route = normaliseRoute(routeName);
-    var basePath = getPathName().replace(/\/[^\/]*$/, '/app.html') || '/app.html';
-    return basePath + '#' + (route || DEFAULT_ROUTE);
+    var appUrl = new URL(APP_SHELL_PAGE, window.location.href);
+    appUrl.hash = route || DEFAULT_ROUTE;
+    return appUrl.toString();
+  }
+
+  function getOrgChartUrl() {
+    return new URL(ORGCHART_PAGE, window.location.href).toString();
   }
 
   function replaceHash(routeName) {
@@ -231,7 +238,7 @@ var API_BASE_URL =
     unlockAfterAuth();
     var targetRoute = isOrgChartPage() ? ORGCHART_ROUTE : getPendingRoute();
     var redirectUrl = isOrgChartPage()
-      ? window.location.pathname + window.location.search
+      ? getOrgChartUrl()
       : getAppShellUrl(targetRoute);
     try { sessionStorage.removeItem(PENDING_ROUTE_KEY); } catch (e) {}
     window.location.replace(redirectUrl);
@@ -268,7 +275,13 @@ var API_BASE_URL =
 
       if (!response.ok || !isValidUser(payload)) {
         clearSession(false);
-        setMessage('error', (payload && payload.error) || 'Login failed. Please verify your credentials.');
+        var errorMessage = (payload && payload.error) || '';
+        if (!errorMessage) {
+          errorMessage = response.status >= 500
+            ? 'Server error occurred. Please try again.'
+            : 'Login failed. Please verify your credentials.';
+        }
+        setMessage('error', errorMessage);
         return;
       }
 
