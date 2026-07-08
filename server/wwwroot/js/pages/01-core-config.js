@@ -93,6 +93,13 @@
     };
 
     function showSection(name) {
+        if (typeof window.sfaRouteRequiresAuth === 'function' &&
+            window.sfaRouteRequiresAuth(name) &&
+            typeof window.sfaRequireAuth === 'function' &&
+            !window.sfaRequireAuth(name)) {
+            return false;
+        }
+
         // Hide all sections
         document.querySelectorAll('.spa-section').forEach(function(s) { s.classList.remove('active'); });
 
@@ -123,6 +130,7 @@
         // Trigger section loader
         _currentSection = name;
         if (typeof _sectionLoaders[name] === 'function') _sectionLoaders[name]();
+        return true;
     }
 
     function registerSection(name, loaderFn) {
@@ -153,6 +161,11 @@
        INIT
     ══════════════════════════════════════════════════════════ */
     document.addEventListener('DOMContentLoaded', function() {
+        var requestedSection = window.location.hash ? window.location.hash.slice(1) : 'dashboard';
+        if (typeof window.sfaRequireAuth === 'function' && !window.sfaRequireAuth(requestedSection)) {
+            return;
+        }
+
         var cu = getCurrentUser();
         var appName = getAppName();
         document.getElementById('appHeaderTitle').textContent = appName;
@@ -184,6 +197,13 @@
         showSection(startSection || 'dashboard');
         // Pre-load product config from DB so dropdowns are ready
         if (typeof cfgLoadProductConfigFromDb === 'function') cfgLoadProductConfigFromDb();
+    });
+
+    window.addEventListener('hashchange', function() {
+        var nextSection = window.location.hash ? window.location.hash.slice(1) : '';
+        if (!nextSection || nextSection === 'login') return;
+        if (nextSection === _currentSection) return;
+        showSection(nextSection);
     });
 
     document.addEventListener('click', function(e) {
@@ -1533,4 +1553,3 @@
                 cfgSaveProductConfigToDb(cfg);
             }
         };
-
