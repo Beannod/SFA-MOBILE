@@ -17,6 +17,10 @@ mobile/build/
 *.keystore
 *.jks
 
+# Allow the server APK to be included in the repo so Render can serve it from
+# `server/wwwroot/apk/app-debug.apk` during deployment.
+!server/wwwroot/apk/app-debug.apk
+
 # Python
 .venv/
 __pycache__/
