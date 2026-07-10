@@ -125,7 +125,16 @@ function shortDesig(d){
     .replace('Zonal Manager','Zonal Mgr');
 }
 
-var treeData=null, nodeMap={}, collapsed={}, searchTerm='';
+  var treeData=null, nodeMap={}, collapsed={}, searchTerm='';
+  var orgChartDebug = document.createElement('div');
+  orgChartDebug.style.cssText = 'position:fixed;left:14px;top:78px;z-index:9999;background:rgba(255,255,255,0.92);border:1px solid var(--gray-200);padding:10px 12px;border-radius:12px;max-width:520px;font-size:12px;display:none;white-space:pre-wrap;color:var(--gray-700)';
+  orgChartDebug.id = 'orgchart-debug';
+  document.body.appendChild(orgChartDebug);
+  function dbg(s){
+    orgChartDebug.style.display = 'block';
+    orgChartDebug.textContent = s;
+  }
+
 var tx=40,ty=40,scale=1,dragging=false,lastX,lastY;
 var wrap=document.getElementById('chart-wrap');
 var canvas=document.getElementById('canvas');
