@@ -9,6 +9,7 @@
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="vendor/chartjs/chart.umd.min.js"></script>
     <link rel="stylesheet" href="css/app.css?v=20260511-2" />
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -1193,14 +1194,23 @@
                         You may need to allow installation from unknown sources in <em>Settings → Apps → Special Access</em>.
                     </div>
                 </div>
-                <div class="section-title" style="margin-top:0">Direct Link</div>
-                <div style="display:flex;align-items:center;gap:8px;padding:4px 0 8px">
+                    <div class="section-title" style="margin-top:0">Direct Link</div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:4px 0 8px">
                     <input id="apk-linkInput" type="text" readonly
                            style="flex:1;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:0.88em;color:var(--gray-700);background:var(--gray-50);cursor:pointer"
                            onclick="this.select()" value="">
                     <button class="btn btn-secondary" onclick="apkCopyLink()" style="white-space:nowrap">📋 Copy</button>
                 </div>
                 <div id="apk-copyMsg" style="font-size:0.82em;color:#22c55e;min-height:18px"></div>
+
+                <div class="section-title" style="margin-top:18px">QR Code</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;padding:6px 0 0">
+                    <div style="background:var(--gray-50);border:1.5px dashed var(--gray-200);border-radius:12px;padding:14px">
+                        <div style="font-size:0.82em;color:var(--gray-500);text-align:center;margin-bottom:8px">Scan to download</div>
+                        <canvas id="apk-qrCanvas" width="180" height="180" style="display:block"></canvas>
+                        <div id="apk-qrStatus" style="font-size:0.78em;color:var(--gray-500);text-align:center;margin-top:8px">Loading QR…</div>
+                    </div>
+                </div>
             </div>
         </div>
 
