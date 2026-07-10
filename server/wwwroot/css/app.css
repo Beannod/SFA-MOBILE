@@ -76,21 +76,23 @@
         /* ══ Container ══ */
         .container { max-width: 1440px; margin: 0 auto; padding: 24px 22px 40px; }
 
-        .cfg-subnav-wrap {
+.cfg-subnav-wrap {
             position: sticky;
             top: 72px;
             z-index: 120;
             display: flex;
+            flex-direction: column;
             gap: 8px;
-            flex-wrap: wrap;
-            padding: 10px 12px;
+            padding: 12px;
             margin: 0 0 14px;
             border: 1px solid var(--line);
-            border-radius: 8px;
-            background: rgba(255,255,255,.94);
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(37,99,235,.12), rgba(15,118,110,.10));
             backdrop-filter: blur(14px);
             box-shadow: var(--shadow-sm);
+            width: 240px;
         }
+
         .cfg-subnav-btn {
             border: 1px solid var(--gray-200);
             background: #fff;
