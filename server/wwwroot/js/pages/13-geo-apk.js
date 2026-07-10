@@ -101,9 +101,32 @@
     registerSection('apk', function() {
         var base = window.location.origin;
         var apkUrl = base + '/api/update/apk';
+
         // Set direct link
         var linkEl = document.getElementById('apk-linkInput');
         if (linkEl) linkEl.value = apkUrl;
+
+        // Generate QR
+        var canvas = document.getElementById('apk-qrCanvas');
+        var status = document.getElementById('apk-qrStatus');
+        if (status) status.textContent = 'Generating QR…';
+
+        // The qrcode CDN script might be blocked by tracking prevention.
+        // If QR lib isn't available, show a helpful message (still direct link works).
+        if (!canvas || typeof window.QRCode === 'undefined') {
+            if (status) status.textContent = 'QR unavailable — use Direct Link instead';
+        } else {
+            window.QRCode.toCanvas(canvas, apkUrl, {
+                errorCorrectionLevel: 'M',
+                margin: 1,
+                scale: 6
+            }).then(function() {
+                if (status) status.textContent = 'Scan to download';
+            }).catch(function(err) {
+                if (status) status.textContent = 'QR failed — use Direct Link instead';
+            });
+        }
+
         // Fetch version info
         fetch(base + '/api/update/version')
             .then(function(r) { return r.json(); })
@@ -118,6 +141,7 @@
                 if (lbl) lbl.textContent = 'SFA Mobile — latest build';
             });
     });
+
 
     function apkCopyLink() {
         var inp = document.getElementById('apk-linkInput');
