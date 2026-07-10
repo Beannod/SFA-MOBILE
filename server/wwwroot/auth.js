@@ -36,6 +36,7 @@ var API_BASE_URL =
     return /\/orgchart\.html$/.test(getPathName());
   }
 
+
   function isProtectedPage() {
     return isAppShellPage() || isOrgChartPage();
   }
@@ -45,8 +46,10 @@ var API_BASE_URL =
   }
 
   function routeRequiresAuth(routeName) {
-    if (isOrgChartPage()) return true;
+    // Org chart should be publicly viewable (no login overlay).
+    if (isOrgChartPage()) return false;
     if (!isAppShellPage()) return false;
+
     var route = normaliseRoute(routeName);
     if (route === LOGIN_ROUTE) return false;
     return !!APP_PROTECTED_ROUTES[route || DEFAULT_ROUTE];
