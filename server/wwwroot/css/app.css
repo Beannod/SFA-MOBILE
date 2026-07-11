@@ -227,6 +227,14 @@
         /* ══ Misc ══ */
         .empty { text-align: center; color: var(--gray-500); padding: 36px; }
         .loading { text-align: center; padding: 20px; color: var(--gray-500); }
+        .ord-response-meta { display:flex; justify-content:flex-end; align-items:center; gap:9px; min-height:34px; margin:-3px 0 8px; color:var(--gray-500); font-size:.78em; }
+        .ord-skeleton { overflow:hidden; border:1px solid var(--gray-100); border-radius:9px; background:#fff; }
+        .ord-skeleton-row { display:grid; grid-template-columns:.45fr 1.1fr 1.4fr .65fr .8fr .75fr .9fr; gap:16px; padding:15px 18px; border-bottom:1px solid var(--gray-100); }
+        .ord-skeleton-row:last-child { border-bottom:0; }
+        .ord-skeleton-cell { height:13px; border-radius:999px; background:linear-gradient(90deg,#eef2f7 25%,#f8fafc 50%,#eef2f7 75%); background-size:200% 100%; animation:ord-skeleton-shimmer 1.3s infinite; }
+        .ord-skeleton-cell:nth-child(2n) { width:76%; }
+        @keyframes ord-skeleton-shimmer { to { background-position:-200% 0; } }
+        @media (prefers-reduced-motion: reduce) { .ord-skeleton-cell { animation:none; } }
         code { background: var(--primary-light); color: var(--primary-dark); padding: 2px 7px; border-radius: 5px; font-size: 0.82em; font-family: monospace; }
 
         /* ══ Team Banner ══ */

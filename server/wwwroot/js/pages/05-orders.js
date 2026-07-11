@@ -75,7 +75,9 @@
 
         window.ordLoadOrders = async function(managerId) {
             var container = document.getElementById('ord-orderTable');
-            container.innerHTML = '<div class="loading">Loading...</div>';
+            var updated = document.getElementById('ord-lastUpdated');
+            container.setAttribute('aria-busy', 'true');
+            container.innerHTML = ordLoadingSkeleton();
             try {
                 var url;
                 var role = (ordCurrentUser && ordCurrentUser.role || '').toLowerCase();
@@ -89,8 +91,21 @@
                 ordAllOrders = await res.json();
                 ordUpdateStats();
                 ordRenderTable();
-            } catch(err) { container.innerHTML='<div class="message error">Error loading orders: '+err.message+'</div>'; }
+                if (updated) updated.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } catch(err) {
+                container.innerHTML = '<div class="message error">Could not load orders. <button class="btn btn-secondary btn-sm" type="button" onclick="ordLoadOrders(ordActiveManagerId||null)">Retry</button></div>';
+                if (updated) updated.textContent = 'Update failed';
+            } finally {
+                container.removeAttribute('aria-busy');
+            }
         };
+
+        function ordLoadingSkeleton() {
+            var row = '<div class="ord-skeleton-row">'+
+                '<span class="ord-skeleton-cell"></span><span class="ord-skeleton-cell"></span><span class="ord-skeleton-cell"></span><span class="ord-skeleton-cell"></span><span class="ord-skeleton-cell"></span><span class="ord-skeleton-cell"></span><span class="ord-skeleton-cell"></span>'+
+                '</div>';
+            return '<div class="ord-skeleton" role="status" aria-label="Loading orders">' + row.repeat(6) + '</div>';
+        }
 
         function ordUpdateStats() {
             var bar = document.getElementById('ord-statsBar');
