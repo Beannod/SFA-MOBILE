@@ -41,6 +41,9 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Product Catalog Screen
@@ -138,6 +141,15 @@ fun ProductListScreen(
     val lazyProducts  = vm.pagedProducts.collectAsLazyPagingItems()
     val isRefreshing  = lazyProducts.loadState.refresh is LoadState.Loading
     val isLoadingMore = lazyProducts.loadState.append  is LoadState.Loading
+    val refreshError  = lazyProducts.loadState.refresh as? LoadState.Error
+    val appendError   = lazyProducts.loadState.append as? LoadState.Error
+    val lastUpdated   = remember { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(lazyProducts.loadState.refresh) {
+        if (lazyProducts.loadState.refresh is LoadState.NotLoading) {
+            lastUpdated.value = System.currentTimeMillis()
+        }
+    }
 
     val isOnline      by vm.isOnline.collectAsStateWithLifecycle()
     val pendingCount  by vm.pendingSyncCount.collectAsStateWithLifecycle()
@@ -284,7 +296,21 @@ fun ProductListScreen(
             )
         }
 
-        if (isRefreshing && lazyProducts.itemCount == 0) {
+        lastUpdated.value?.let { ts ->
+            Text(
+                "Last synced at ${DateFormat.getTimeInstance(DateFormat.SHORT, Locale.getDefault()).format(Date(ts))}",
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.caption,
+                color = Color.Gray
+            )
+        }
+
+        if (refreshError != null && lazyProducts.itemCount == 0) {
+            ErrorRetryColumn(
+                message = refreshError.error.localizedMessage ?: "Couldn't load products",
+                onRetry = { lazyProducts.retry() }
+            )
+        } else if (isRefreshing && lazyProducts.itemCount == 0) {
             SkeletonList()
         } else if (!isRefreshing && lazyProducts.itemCount == 0) {
             Column(
@@ -307,6 +333,26 @@ fun ProductListScreen(
                         Box(modifier = Modifier.fillMaxWidth().padding(16.dp),
                             contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
+                if (appendError != null) {
+                    item {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color(0xFFFFEBEE)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Could not load more products", color = Color(0xFFD32F2F), style = MaterialTheme.typography.body2)
+                                TextButton(onClick = { lazyProducts.retry() }) { Text("Retry") }
+                            }
                         }
                     }
                 }

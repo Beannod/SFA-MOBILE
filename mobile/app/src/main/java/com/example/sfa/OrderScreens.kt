@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
+import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -44,6 +45,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Order sub-navigation
@@ -204,9 +208,19 @@ fun OrderListScreen(
         )
     }
 
+    val context = LocalContext.current
     val lazyOrders    = vm.pagedOrders.collectAsLazyPagingItems()
     val isRefreshing  = lazyOrders.loadState.refresh is LoadState.Loading
     val isLoadingMore = lazyOrders.loadState.append  is LoadState.Loading
+    val refreshError  = lazyOrders.loadState.refresh as? LoadState.Error
+    val appendError   = lazyOrders.loadState.append as? LoadState.Error
+    val lastUpdated   = remember { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(lazyOrders.loadState.refresh) {
+        if (lazyOrders.loadState.refresh is LoadState.NotLoading) {
+            lastUpdated.value = System.currentTimeMillis()
+        }
+    }
 
     val filterStatus      by vm.statusFilter.collectAsStateWithLifecycle()
     val isOnline          by vm.isOnline.collectAsStateWithLifecycle()
@@ -396,9 +410,48 @@ fun OrderListScreen(
             }
         }
 
+        lastUpdated.value?.let { ts ->
+            Text(
+                "Last synced at ${DateFormat.getTimeInstance(DateFormat.SHORT, Locale.getDefault()).format(Date(ts))}",
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.caption,
+                color = Color.Gray
+            )
+        }
+
+        if (refreshError != null && lazyOrders.itemCount > 0) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFFFFEBEE)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Failed to refresh orders", color = Color(0xFFD32F2F), fontWeight = FontWeight.Bold)
+                        Text(refreshError.error.localizedMessage ?: "Tap retry to try again.",
+                            style = MaterialTheme.typography.caption, color = Color(0xFFB71C1C))
+                    }
+                    TextButton(onClick = { lazyOrders.retry() }) {
+                        Text("Retry")
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (isRefreshing && lazyOrders.itemCount == 0) {
+        if (refreshError != null && lazyOrders.itemCount == 0) {
+            ErrorRetryColumn(
+                message = refreshError.error.localizedMessage ?: "Couldn't load orders",
+                onRetry = { lazyOrders.retry() }
+            )
+        } else if (isRefreshing && lazyOrders.itemCount == 0) {
             SkeletonList()
         } else if (!isRefreshing && lazyOrders.itemCount == 0) {
             Surface(
@@ -431,16 +484,26 @@ fun OrderListScreen(
                         onApprove = if (showTeamView.value && canApprove && order.status == "Pending") {
                             {
                                 scope.launch {
-                                    updateOrderStatus(order.id, "Approved", user.id)
-                                    vm.refresh()
+                                    val success = updateOrderStatus(order.id, "Approved", user.id)
+                                    if (success) {
+                                        Toast.makeText(context, "Order approved", Toast.LENGTH_SHORT).show()
+                                        vm.refresh()
+                                    } else {
+                                        Toast.makeText(context, "Failed to approve order", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             }
                         } else null,
                         onReject = if (showTeamView.value && canApprove && order.status == "Pending") {
                             {
                                 scope.launch {
-                                    updateOrderStatus(order.id, "Rejected", user.id)
-                                    vm.refresh()
+                                    val success = updateOrderStatus(order.id, "Rejected", user.id)
+                                    if (success) {
+                                        Toast.makeText(context, "Order rejected", Toast.LENGTH_SHORT).show()
+                                        vm.refresh()
+                                    } else {
+                                        Toast.makeText(context, "Failed to reject order", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             }
                         } else null

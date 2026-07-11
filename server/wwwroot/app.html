@@ -4,13 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SFA Admin Panel</title>
-    <script src="auth.js?v=20260511-2"></script>
+    <script src="auth.js?v=20260511-2" defer></script>
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-    <script src="vendor/leaflet/leaflet.js"></script>
-    <script src="vendor/chartjs/chart.umd.min.js"></script>
     <link rel="stylesheet" href="css/app.css?v=20260511-2" />
-    <!-- QR lib: local (no CDN). -->
-    <script src="js/vendor/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -210,7 +206,7 @@
                     <div id="cfg-hierarchyTable" class="table-wrap"><div class="loading">Loading…</div></div>
                 </div>
                 <div id="cfg-tab-org" class="tab-pane">
-                    <iframe id="cfg-orgchart-frame" src="" style="width:100%;height:calc(100vh - 180px);min-height:500px;border:none;display:block;border-radius:0 0 10px 10px;" sandbox="allow-scripts allow-forms"></iframe>
+                    <iframe id="cfg-orgchart-frame" src="" loading="lazy" style="width:100%;height:calc(100vh - 180px);min-height:500px;border:none;display:block;border-radius:0 0 10px 10px;" sandbox="allow-scripts allow-forms"></iframe>
                 </div>
                 </div>
             </div>
@@ -1218,7 +1214,7 @@
 
         <!-- ══ SECTION: ORG CHART ══ -->
         <div id="section-orgchart" class="spa-section">
-            <iframe id="orgchart-frame" src="" style="width:100%;height:calc(100vh - 114px);border:none;display:block" sandbox="allow-scripts allow-forms"></iframe>
+            <iframe id="orgchart-frame" src="" loading="lazy" style="width:100%;height:calc(100vh - 114px);border:none;display:block" sandbox="allow-scripts allow-forms"></iframe>
         </div>
 
         <!-- ══ SECTION: ACTIVITY LOG ══ -->
@@ -1440,21 +1436,21 @@
             </div>
         </div>
     </div>
-    <!-- App scripts: keep this order because section modules register global handlers. -->
+    <!-- App scripts: main loader plus page-specific modules loaded on demand for faster first paint. -->
     <script src="js/pages/01-core-config.js?v=20260511-2"></script>
-    <script src="js/pages/02-nepal-places.js?v=20260511-2"></script>
-    <script src="js/pages/03-customers.js?v=20260511-2"></script>
-    <script src="js/pages/04-shared-address-org.js?v=20260511-2"></script>
-    <script src="js/pages/05-orders.js?v=20260511-2"></script>
-    <script src="js/pages/06-products.js?v=20260511-2"></script>
-    <script src="js/pages/07-stock.js?v=20260511-2"></script>
-    <script src="js/pages/08-attendance.js?v=20260511-2"></script>
-    <script src="js/pages/09-tracking.js?v=20260511-2"></script>
-    <script src="js/pages/10-dashboard.js?v=20260511-2"></script>
-    <script src="js/pages/11-analytics.js?v=20260511-2"></script>
-    <script src="js/pages/12-cross-section.js?v=20260511-2"></script>
-    <script src="js/pages/13-geo-apk.js?v=20260511-2"></script>
-    <script src="js/pages/14-activity-log.js?v=20260511-2"></script>
+    <script src="js/pages/02-nepal-places.js?v=20260511-2" defer></script>
+    <script src="js/pages/03-customers.js?v=20260511-2" defer></script>
+    <script src="js/pages/04-shared-address-org.js?v=20260511-2" defer></script>
+    <script src="js/pages/05-orders.js?v=20260511-2" defer></script>
+    <script src="js/pages/06-products.js?v=20260511-2" defer></script>
+    <script src="js/pages/07-stock.js?v=20260511-2" defer></script>
+    <script src="js/pages/08-attendance.js?v=20260511-2" defer></script>
+    <script src="js/pages/09-tracking.js?v=20260511-2" defer></script>
+    <script src="js/pages/10-dashboard.js?v=20260511-2" defer></script>
+    <script src="js/pages/11-analytics.js?v=20260511-2" defer></script>
+    <script src="js/pages/12-cross-section.js?v=20260511-2" defer></script>
+    <script src="js/pages/13-geo-apk.js?v=20260511-2" defer></script>
+    <script src="js/pages/14-activity-log.js?v=20260511-2" defer></script>
     <script>
         (function() {
             function getOpenModals() {

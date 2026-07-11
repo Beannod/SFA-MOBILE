@@ -140,17 +140,24 @@ fun UserListScreen(
     onViewProfile: (SfaUser) -> Unit,
     onEditProfile: (SfaUser) -> Unit
 ) {
-    val users     = remember { mutableStateListOf<SfaUser>() }
-    val isLoading = remember { mutableStateOf(true) }
-    val search    = remember { mutableStateOf("") }
-    val isAdmin   = loggedInUser.role == "Admin"
+    val users      = remember { mutableStateListOf<SfaUser>() }
+    val isLoading  = remember { mutableStateOf(true) }
+    val loadError  = remember { mutableStateOf<String?>(null) }
+    val search     = remember { mutableStateOf("") }
+    val isAdmin    = loggedInUser.role == "Admin"
+    val localRetry = remember { mutableStateOf(0) }
 
-    LaunchedEffect(refreshTrigger) {
+    LaunchedEffect(refreshTrigger, localRetry.value) {
         isLoading.value = true
+        loadError.value = null
         val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
-        val fetched = fetchSubtreeUsers(base, loggedInUser.id)
-        users.clear()
-        users.addAll(fetched)
+        try {
+            val fetched = fetchSubtreeUsers(base, loggedInUser.id)
+            users.clear()
+            users.addAll(fetched)
+        } catch (e: Exception) {
+            loadError.value = e.localizedMessage ?: "Unable to load team members"
+        }
         isLoading.value = false
     }
 
@@ -195,6 +202,20 @@ fun UserListScreen(
         if (isLoading.value) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
+            }
+        } else if (loadError.value != null) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(32.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))
+                Spacer(Modifier.height(12.dp))
+                Text(loadError.value ?: "Unable to load team members", color = Color.Gray, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = { localRetry.value++ }) {
+                    Text("Retry")
+                }
             }
         } else {
             val filtered = users.filter {

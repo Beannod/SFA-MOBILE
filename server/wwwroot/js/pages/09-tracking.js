@@ -143,13 +143,27 @@
                 trkLoadHistUsers();
                 document.getElementById('trk-histDate').valueAsDate = new Date();
             }
-            // Init map after section is visible
-            setTimeout(function() {
-                trkInitMap();
-                trkRefreshData();
-                if (trkRefreshTimer) clearInterval(trkRefreshTimer);
-                trkRefreshTimer = setInterval(trkRefreshData, 15000);
-            }, 100);
+            var initTracking = function() {
+                setTimeout(function() {
+                    trkInitMap();
+                    trkRefreshData();
+                    if (trkRefreshTimer) clearInterval(trkRefreshTimer);
+                    trkRefreshTimer = setInterval(trkRefreshData, 15000);
+                }, 100);
+            };
+            if (typeof window.L === 'undefined' && typeof window.lazyLoadScript === 'function') {
+                var styleLoad = (typeof window.lazyLoadStyle === 'function')
+                    ? lazyLoadStyle('vendor/leaflet/leaflet.css')
+                    : Promise.resolve();
+                Promise.all([styleLoad, lazyLoadScript('vendor/leaflet/leaflet.js')])
+                    .then(initTracking)
+                    .catch(function(e) {
+                        console.warn('Failed to load Leaflet resources:', e);
+                        initTracking();
+                    });
+            } else {
+                initTracking();
+            }
         });
 
         // ══════════════════════════════════════════════════════

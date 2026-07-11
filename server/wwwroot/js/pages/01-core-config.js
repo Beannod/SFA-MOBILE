@@ -80,6 +80,35 @@
         document.body.classList.toggle('modal-open', getOpenModals().length > 0);
     }
 
+    var _lazyScriptCache = {};
+    function lazyLoadScript(src) {
+        if (_lazyScriptCache[src]) return _lazyScriptCache[src];
+        _lazyScriptCache[src] = new Promise(function(resolve, reject) {
+            var script = document.createElement('script');
+            script.src = src;
+            script.async = true;
+            script.onload = function() { resolve(); };
+            script.onerror = function(e) { reject(new Error('Failed to load script: ' + src)); };
+            document.head.appendChild(script);
+        });
+        return _lazyScriptCache[src];
+    }
+    var _lazyStyleCache = {};
+    function lazyLoadStyle(href) {
+        if (_lazyStyleCache[href]) return _lazyStyleCache[href];
+        _lazyStyleCache[href] = new Promise(function(resolve, reject) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            link.onload = function() { resolve(); };
+            link.onerror = function(e) { reject(new Error('Failed to load stylesheet: ' + href)); };
+            document.head.appendChild(link);
+        });
+        return _lazyStyleCache[href];
+    }
+    window.lazyLoadScript = lazyLoadScript;
+    window.lazyLoadStyle = lazyLoadStyle;
+
     window.openModal = function(target) {
         var modal = getModalElement(target);
         if (!modal) return null;
@@ -1233,6 +1262,12 @@
             var f = document.getElementById('cfg-orgchart-frame');
             if (f && !f.src) { f.src = '/orgchart.html'; }
         };
+        registerSection('orgchart', function() {
+            var f = document.getElementById('orgchart-frame');
+            if (f && !f.src) {
+                f.src = '/orgchart.html';
+            }
+        });
         function cfgBuildOrgNode(){} // kept for compatibility
         window.cfgToggleOrgNode = function(){};
 

@@ -228,7 +228,15 @@
 
         registerSection('dashboard', function() {
             dashMemberListLoaded = false; // refresh member list on re-enter
-            dashLoad();
+            var loadChart = (typeof Chart === 'undefined' && typeof window.lazyLoadScript === 'function')
+                ? lazyLoadScript('vendor/chartjs/chart.umd.min.js')
+                : Promise.resolve();
+            loadChart.then(function() {
+                dashLoad();
+            }).catch(function(e) {
+                console.warn('Failed to load Chart.js:', e);
+                dashLoad();
+            });
         });
     })(); // end dashboard IIFE
 

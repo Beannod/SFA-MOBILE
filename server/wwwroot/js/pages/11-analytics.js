@@ -48,6 +48,18 @@
                 data:{labels:typeEntries.map(function(e){return e[0];}),datasets:[{data:typeEntries.map(function(e){return e[1];}),backgroundColor:COLORS,borderWidth:2}]},
                 options:{plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}},cutout:'55%',maintainAspectRatio:false}
             });
+        } else if (el && typeof window.lazyLoadScript === 'function') {
+            lazyLoadScript('vendor/chartjs/chart.umd.min.js')
+                .then(function() {
+                    if (typeof Chart !== 'undefined') {
+                        custAnalyticsCharts['custA-typeChart'] = new Chart(el, {
+                            type:'doughnut',
+                            data:{labels:typeEntries.map(function(e){return e[0];}),datasets:[{data:typeEntries.map(function(e){return e[1];}),backgroundColor:COLORS,borderWidth:2}]},
+                            options:{plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}},cutout:'55%',maintainAspectRatio:false}
+                        });
+                    }
+                })
+                .catch(function(e) { console.warn('Failed to load Chart.js:', e); });
         }
     };
 
@@ -104,6 +116,18 @@
                 data:{labels:typeEntries.map(function(e){return e[0];}),datasets:[{data:typeEntries.map(function(e){return e[1];}),backgroundColor:COLORS,borderWidth:2}]},
                 options:{plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}},cutout:'55%',maintainAspectRatio:false}
             });
+        } else if (typeEl && typeof window.lazyLoadScript === 'function' && typeEntries.length) {
+            lazyLoadScript('vendor/chartjs/chart.umd.min.js')
+                .then(function() {
+                    if (typeof Chart !== 'undefined') {
+                        prodAnalyticsCharts['prodA-typeChart'] = new Chart(typeEl, {
+                            type:'doughnut',
+                            data:{labels:typeEntries.map(function(e){return e[0];}),datasets:[{data:typeEntries.map(function(e){return e[1];}),backgroundColor:COLORS,borderWidth:2}]},
+                            options:{plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}},cutout:'55%',maintainAspectRatio:false}
+                        });
+                    }
+                })
+                .catch(function(e) { console.warn('Failed to load Chart.js:', e); });
         }
     };
 

@@ -106,25 +106,35 @@
         var linkEl = document.getElementById('apk-linkInput');
         if (linkEl) linkEl.value = apkUrl;
 
-        // Generate QR
         var canvas = document.getElementById('apk-qrCanvas');
         var status = document.getElementById('apk-qrStatus');
         if (status) status.textContent = 'Generating QR…';
 
-        // The qrcode CDN script might be blocked by tracking prevention.
-        // If QR lib isn't available, show a helpful message (still direct link works).
-        if (!canvas || typeof window.QRCode === 'undefined') {
-            if (status) status.textContent = 'QR unavailable — use Direct Link instead';
-        } else {
+        function renderQr() {
+            if (!canvas || typeof window.QRCode === 'undefined') {
+                if (status) status.textContent = 'QR unavailable — use Direct Link instead';
+                return;
+            }
             window.QRCode.toCanvas(canvas, apkUrl, {
                 errorCorrectionLevel: 'M',
                 margin: 1,
                 scale: 6
             }).then(function() {
                 if (status) status.textContent = 'Scan to download';
-            }).catch(function(err) {
+            }).catch(function() {
                 if (status) status.textContent = 'QR failed — use Direct Link instead';
             });
+        }
+
+        if (canvas && typeof window.QRCode === 'undefined' && typeof window.lazyLoadScript === 'function') {
+            lazyLoadScript('js/vendor/qrcode.min.js')
+                .then(renderQr)
+                .catch(function(e) {
+                    console.warn('Failed to load QRCode library:', e);
+                    renderQr();
+                });
+        } else {
+            renderQr();
         }
 
         // Fetch version info
