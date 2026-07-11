@@ -1,6 +1,64 @@
 ﻿    (function() {
         var PROD_API = BASE + '/api/products';
         var prodAllProducts = [], prodSectionLoaded = false, prodCurrentUser = null;
+        var prodRenderTimer = null;
+        var prodRenderChunkSize = 30;
+
+        function prodShowTableLoading() {
+            var c = document.getElementById('prod-prodTable');
+            if (c) {
+                c.innerHTML = '<div class="loading">Loading products…</div>';
+            }
+        }
+
+        function prodRenderTableChunked(filtered, isAdmin) {
+            var c = document.getElementById('prod-prodTable');
+            if (!c) return;
+            var header = '<div class="table-wrap"><table><thead><tr>' +
+                (isAdmin ? '<th>Actions</th>' : '') +
+                '<th>Item No.</th><th>Item Description</th><th>Quality</th><th>Series</th><th>Size</th><th>WT</th><th>Box Sqr.Mtr</th><th>KG/Box</th><th>Rate/SQM</th><th>Code</th><th>Remarks</th><th>Status</th></tr></thead><tbody id="prod-tableBody"></tbody></table></div>';
+            c.innerHTML = header;
+            var tbody = document.getElementById('prod-tableBody');
+            if (!tbody) return;
+
+            var idx = 0;
+            if (prodRenderTimer) {
+                clearTimeout(prodRenderTimer);
+                prodRenderTimer = null;
+            }
+
+            function renderBatch() {
+                var html = '';
+                for (var i = 0; i < prodRenderChunkSize && idx < filtered.length; i++, idx++) {
+                    var p = filtered[idx];
+                    html += '<tr>' +
+                        (isAdmin ? '<td class="actions">' +
+                            '<button class="btn btn-edit btn-sm" onclick="prodEditProduct(' + p.id + ')">Edit</button> ' +
+                            '<button class="btn btn-danger btn-sm" onclick="prodDeleteProduct(' + p.id + ')">Del</button> ' +
+                            '<button class="btn btn-secondary btn-sm" onclick="showEntityLog(\'Product\',' + p.id + ',\'' + esc(p.name).replace(/'/g, "\\'") + '\')">Log</button>' +
+                            '</td>' : '') +
+                        '<td>' + esc(p.itemNo || '—') + '</td>' +
+                        '<td><strong>' + esc(p.name) + '</strong></td>' +
+                        '<td>' + esc(p.quality || '—') + '</td>' +
+                        '<td>' + esc(p.category || '—') + '</td>' +
+                        '<td>' + esc(p.size || '—') + '</td>' +
+                        '<td>' + (p.weight || '—') + '</td>' +
+                        '<td>' + (p.boxCoverage || '—') + '</td>' +
+                        '<td>' + (p.kgPerBox || '—') + '</td>' +
+                        '<td>' + (p.ratePerSqm != null ? p.ratePerSqm : '—') + '</td>' +
+                        '<td><code>' + esc(p.code || '—') + '</code></td>' +
+                        '<td>' + esc(p.remarks || '—') + '</td>' +
+                        '<td>' + (p.isActive ? '<span class="badge badge-active">Active</span>' : '<span class="badge badge-inactive">Inactive</span>') + '</td>' +
+                        '</tr>';
+                }
+                if (html) tbody.insertAdjacentHTML('beforeend', html);
+                if (idx < filtered.length) {
+                    prodRenderTimer = setTimeout(renderBatch, 16);
+                }
+            }
+
+            renderBatch();
+        }
 
         window.prodDownloadTemplate = function() {
             var link = document.createElement('a');
@@ -101,13 +159,17 @@
         }
 
         window.prodLoadProducts = async function() {
+            prodShowTableLoading();
             try {
                 var res = await fetch(PROD_API);
                 prodAllProducts = await res.json();
                 if (typeof cfgSyncProductCfgFromProducts === 'function') cfgSyncProductCfgFromProducts(prodAllProducts);
                 prodSyncCategoryFilterOptions();
                 prodUpdateStats(); prodRenderTable();
-            } catch(e) { document.getElementById('prod-prodTable').innerHTML='<div class="message error">'+e.message+'</div>'; }
+            } catch(e) {
+                var c = document.getElementById('prod-prodTable');
+                if (c) c.innerHTML = '<div class="message error">' + esc(e.message || 'Failed to load products') + '</div>';
+            }
         };
 
         function prodUpdateStats() {
@@ -135,44 +197,12 @@
                 return ms&&mc&&mt&&mst;
             });
             document.getElementById('prod-filterCount').textContent = filtered.length+' of '+prodAllProducts.length+' products';
-            if (!filtered.length) { c.innerHTML='<div class="empty">No products found.</div>'; return; }
+            if (!filtered.length) {
+                if (c) c.innerHTML = '<div class="empty">No products found.</div>';
+                return;
+            }
             var isAdmin = prodCurrentUser && (prodCurrentUser.role||'').toLowerCase() === 'admin';
-            var h='<div class="table-wrap"><table><thead><tr>'+(isAdmin?'<th>Actions</th>':'')+'<th>Item No.</th><th>Item Description</th><th>Quality</th><th>Series</th><th>Size</th><th>WT</th><th>Box Sqr.Mtr</th><th>KG/Box</th><th>Rate/SQM</th><th>Code</th><th>Remarks</th><th>Status</th></tr></thead><tbody>';
-            filtered.forEach(function(p) {
-                h+='<tr>'+
-                    (isAdmin?'<td class="actions">'+
-                    '<button class="btn btn-edit btn-sm" onclick="prodEditProduct('+p.id+')">Edit</button> '+
-                    '<button class="btn btn-danger btn-sm" onclick="prodDeleteProduct('+p.id+')">Del</button> '+
-                    '<button class="btn btn-secondary btn-sm" onclick="showEntityLog(\'Product\','+p.id+',\''+esc(p.name).replace(/'/g,"\\'")+'\')">Log</button>'+
-                    '</td>':'')+
-                    '<td>'+esc(p.itemNo||'—')+'</td>'+
-                    '<td><strong>'+esc(p.name)+'</strong></td>'+
-                    '<td>'+esc(p.quality||'—')+'</td>'+
-                    '<td>'+esc(p.category||'—')+'</td>'+
-                    '<td>'+esc(p.size||'—')+'</td>'+
-                    '<td>'+(p.weight||'—')+'</td>'+
-                    '<td>'+(p.boxCoverage||'—')+'</td>'+
-                    '<td>'+(p.kgPerBox||'—')+'</td>'+
-                    '<td>'+(p.ratePerSqm!=null?p.ratePerSqm:'—')+'</td>'+
-                    '<td><code>'+esc(p.code||'—')+'</code></td>'+
-                    '<td>'+esc(p.remarks||'—')+'</td>'+
-                    '<td>'+(p.isActive?'<span class="badge badge-active">Active</span>':'<span class="badge badge-inactive">Inactive</span>')+'</td>'+
-                    '</tr>';
-            });
-            h+='</tbody></table></div>'; c.innerHTML=h;
-        };
-
-        window.prodSaveProduct = async function(e) {
-            e.preventDefault();
-            var msg=document.getElementById('prod-message'), btn=document.getElementById('prod-submitBtn');
-            var editId=document.getElementById('prod-editId').value;
-            var body = {
-                itemNo:val('prod-itemNo')||null, name:val('prod-name'),
-                quality:prodGetFieldValue('quality')||null,
-                category:prodGetFieldValue('category'),
-                size:prodGetFieldValue('size')||null,
-                weight:parseFloat(val('prod-weight'))||null,
-                boxCoverage:parseFloat(val('prod-boxCoverage'))||null,
+            prodRenderTableChunked(filtered, isAdmin);
                 kgPerBox:parseFloat(val('prod-kgPerBox'))||null,
                 ratePerSqm:parseFloat(val('prod-ratePerSqm'))||null,
                 code:val('prod-code')||null, remarks:val('prod-remarks')||null,

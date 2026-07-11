@@ -37,6 +37,34 @@
         if (dur !== false) setTimeout(function() { if (el) el.innerHTML = ''; }, dur || 4000);
     }
 
+    function setWebAppVersion(versionInfo) {
+        var el = document.getElementById('headerAppVersion');
+        if (!el) return;
+        if (!versionInfo || (!versionInfo.versionName && !versionInfo.versionCode)) {
+            el.textContent = 'v?';
+            el.title = 'Web UI version unavailable';
+            return;
+        }
+        var text = 'v' + (versionInfo.versionName || '?.?');
+        if (versionInfo.versionCode != null) text += ' (' + versionInfo.versionCode + ')';
+        el.textContent = text;
+        el.title = 'Current app version: ' + text;
+    }
+
+    function loadWebAppVersion() {
+        fetch(BASE + '/api/update/version')
+            .then(function(response) {
+                if (!response.ok) throw new Error('Version info unavailable');
+                return response.json();
+            })
+            .then(function(data) {
+                setWebAppVersion(data);
+            })
+            .catch(function() {
+                setWebAppVersion(null);
+            });
+    }
+
     /* ══════════════════════════════════════════════════════════
        SPA NAVIGATION
     ══════════════════════════════════════════════════════════ */
@@ -237,6 +265,7 @@
             document.getElementById('headerUserBadge').textContent =
                 '👤 ' + (cu.fullName || cu.username) + ' · ' + (cu.role || '');
         }
+        loadWebAppVersion();
         // Build nav visibility from user_web_perm_sfa columns stored in session
         var webPerms = (cu && Array.isArray(cu.webPermissions)) ? cu.webPermissions : [];
         var isAdmin = cu && (cu.role||'').toLowerCase() === 'admin';
