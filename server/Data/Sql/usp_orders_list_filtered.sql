@@ -17,26 +17,21 @@ BEGIN
     SET NOCOUNT ON;
 
     ;WITH subtree AS (
-        -- Build manager subtree using recursive CTE
-        SELECT u.Id
+        -- Build manager subtree using a cycle-safe recursive CTE.
+        SELECT
+            u.Id,
+            CAST('/' + CONVERT(VARCHAR(11), u.Id) + '/' AS VARCHAR(MAX)) AS Path
         FROM user_sfa u
         WHERE @ManagerId IS NOT NULL AND u.Id = @ManagerId
 
         UNION ALL
 
-        SELECT c.Id
+        SELECT
+            c.Id,
+            CAST(s.Path + CONVERT(VARCHAR(11), c.Id) + '/' AS VARCHAR(MAX))
         FROM user_sfa c
         INNER JOIN subtree s ON c.ReportsToId = s.Id
-    ),
-    filter_users AS (
-        SELECT NULL AS UserId
-        WHERE @ManagerId IS NULL
-
-        UNION ALL
-
-        SELECT s.Id AS UserId
-        FROM subtree s
-        WHERE @ManagerId IS NOT NULL
+        WHERE s.Path NOT LIKE '%/' + CONVERT(VARCHAR(11), c.Id) + '/%'
     ),
     orders_base AS (
         SELECT
@@ -65,12 +60,13 @@ BEGIN
                 AND (@CreatedByUserId IS NULL OR o.CreatedByUserId = @CreatedByUserId)
               OR
                 @ManagerId IS NOT NULL
-                AND o.CreatedByUserId IN (SELECT UserId FROM subtree)
+                AND o.CreatedByUserId IN (SELECT Id FROM subtree)
               )
     )
     SELECT *
     FROM orders_base
-    ORDER BY OrderDate DESC;
+    ORDER BY OrderDate DESC
+    OPTION (MAXRECURSION 0);
 END
 GO
 

@@ -39,7 +39,7 @@ Test "GET /api/health" $h.code @(200) ($h.body)
 
 # ── AUTH ─────────────────────────────────────────────────────────────────────
 Write-Host "`n=== AUTH ===" -ForegroundColor Cyan
-$loginOk = Post "/api/auth/login" '{"username":"admin","password":"admin"}'
+$loginOk = Post "/api/auth/login" '{"username":"admin","password":"user"}'
 Test "POST /api/auth/login (valid)" $loginOk.code @(200)
 if($loginOk.code -eq 200){
     $u=$loginOk.body|ConvertFrom-Json
