@@ -55,7 +55,7 @@ fun ApprovalsScreen(user: LoggedInUser) {
             loadFailed.value = false
             val base = BuildConfig.SFA_API_BASE_URL.trimEnd('/')
             try {
-                val url = "${base}/api/orders?managerId=${user.id}&status=Pending"
+                val url = "${base}/api/orders?managerId=${user.id}&status=Pending&page=1&pageSize=50"
                 val conn = URL(url).openConnection() as HttpURLConnection
                 conn.connectTimeout = 8000; conn.readTimeout = 8000
                 val code = conn.responseCode
@@ -63,7 +63,7 @@ fun ApprovalsScreen(user: LoggedInUser) {
                 val body = conn.inputStream.bufferedReader().readText()
                 conn.disconnect()
                 if (body.isBlank()) { orders.clear(); isLoading.value = false; return@launch }
-                val arr = JSONArray(body)
+                val arr = if (body.trimStart().startsWith("[")) JSONArray(body) else JSONObject(body).optJSONArray("items") ?: JSONArray()
                 val list = mutableListOf<Map<String, Any>>()
                 for (i in 0 until arr.length()) {
                     val o = arr.getJSONObject(i)

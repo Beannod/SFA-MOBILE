@@ -173,22 +173,27 @@ namespace SfaApi.Controllers
 		/// <summary>Recursively collects all user IDs under rootId (including rootId itself).</summary>
 		public static async Task<HashSet<int>> GetSubtreeIds(AppDbContext db, int rootId)
 		{
-			var allLinks = await db.Users
-				.Select(u => new { u.Id, u.ReportsToId })
-				.ToListAsync();
+			// Use stored procedure to get subtree rows (returns Id, FullName, ...)
+			var conn = db.Database.GetDbConnection();
+			var ids = new HashSet<int>();
+			await conn.OpenAsync();
+			await using var cmd = conn.CreateCommand();
+			cmd.CommandText = "usp_users_subtree";
+			cmd.CommandType = System.Data.CommandType.StoredProcedure;
+			var p = cmd.CreateParameter();
+			p.ParameterName = "@rootUserId";
+			p.Value = rootId;
+			cmd.Parameters.Add(p);
 
-			var result = new HashSet<int>();
-			var queue = new Queue<int>();
-			queue.Enqueue(rootId);
-
-			while (queue.Count > 0)
+			await using var reader = await cmd.ExecuteReaderAsync();
+			while (await reader.ReadAsync())
 			{
-				var current = queue.Dequeue();
-				if (!result.Add(current)) continue; // already visited
-				foreach (var u in allLinks.Where(u => u.ReportsToId == current))
-					queue.Enqueue(u.Id);
+				if (!reader.IsDBNull(reader.GetOrdinal("Id")))
+				{
+					ids.Add(reader.GetInt32(reader.GetOrdinal("Id")));
+				}
 			}
-			return result;
+			return ids;
 		}
 
 		// ── GET /api/users/{id}/team — direct reports ──

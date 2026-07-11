@@ -12,7 +12,8 @@ namespace SfaApi.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly AppDbContext _db;
-        public OrdersController(AppDbContext db) => _db = db;
+        private readonly SfaApi.Services.SqlRunner _sqlRunner;
+        public OrdersController(AppDbContext db, SfaApi.Services.SqlRunner sqlRunner) { _db = db; _sqlRunner = sqlRunner; }
 
         // ── Helpers ──────────────────────────────────────────────────────────
         private string GenerateOrderNumber()
@@ -47,68 +48,89 @@ namespace SfaApi.Controllers
 
         // ── GET /api/orders ──────────────────────────────────────────────────
         // Optional filters: ?customerId=1&createdByUserId=2&status=Pending
-		// ?managerId=2       → all orders placed by anyone in that manager's downline
-		[HttpGet]
-		public async Task<IActionResult> GetAll(
-			[FromQuery] int? customerId,
-			[FromQuery] int? createdByUserId,
-			[FromQuery] string? status,
-			[FromQuery] int? managerId)
-		{
-            // Use stored procedure to avoid heavy Includes + C# subtree filtering.
-            // IMPORTANT: Use ADO.NET (SqlCommand) so EF Core doesn't attempt to compose over `EXEC ...`.
-            // NOTE: This code requires stored procedure usp_orders_list_filtered to be present in SQL Server.
+        // ?managerId=2       → all orders placed by anyone in that manager's downline
+        // Pagination (backwards-compatible): supports `skip`/`take` OR `page`/`pageSize`.
+        [HttpGet]
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int? customerId,
+            [FromQuery] int? createdByUserId,
+            [FromQuery] string? status,
+            [FromQuery] int? managerId,
+            [FromQuery] string? search,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate,
+            [FromQuery] int? skip = null,
+            [FromQuery] int? take = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 100)
+        {
+            // Normalize pagination: if skip/take provided, prefer them; otherwise use page/pageSize
+            var safePage = Math.Max(1, page);
+            var safePageSize = Math.Clamp(pageSize, 1, 1000);
 
-            var result = new List<object>();
-            var conn = _db.Database.GetDbConnection();
-            await conn.OpenAsync();
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "usp_orders_list_filtered";
-            cmd.CommandType = System.Data.CommandType.StoredProcedure;
+            var computedSkip = skip ?? ((safePage - 1) * safePageSize);
+            var computedTake = take ?? safePageSize;
 
-            void AddParam(string name, object? val)
+            var items = (await _sqlRunner.QueryAsync<SfaApi.Models.Dto.OrderListDto>(
+                "usp_orders_list_filtered",
+                new { CustomerId = customerId, CreatedByUserId = createdByUserId, Status = status, ManagerId = managerId, Search = search, FromDate = fromDate?.Date, ToDate = toDate?.Date, skip = computedSkip, take = computedTake }
+            )).ToList();
+
+            // If stored proc did not populate TotalCount (e.g., older version), fall back to EF for total and paging
+            var total = items.FirstOrDefault()?.TotalCount ?? 0;
+            if (total == 0)
             {
-                var p = cmd.CreateParameter();
-                p.ParameterName = name;
-                p.Value = val ?? DBNull.Value;
-                cmd.Parameters.Add(p);
-            }
+                // Build EF query with same filters
+                var q = _db.Orders.AsNoTracking()
+                    .Include(o => o.Customer)
+                    .Where(o => !o.IsArchived)
+                    .AsQueryable();
 
-            AddParam("@CustomerId", customerId);
-            AddParam("@CreatedByUserId", createdByUserId);
-            AddParam("@Status", status);
-            AddParam("@ManagerId", managerId);
-
-            await using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                var id = reader.GetInt32(reader.GetOrdinal("Id"));
-                string? customerNameVal = reader.IsDBNull(reader.GetOrdinal("CustomerName")) ? null : reader.GetString(reader.GetOrdinal("CustomerName"));
-                int itemCountVal = 0;
-                var oc = "ItemCount";
-                if (HasColumn(reader, oc))
-                    itemCountVal = reader.IsDBNull(reader.GetOrdinal(oc)) ? 0 : reader.GetInt32(reader.GetOrdinal(oc));
-
-                result.Add(new
+                if (customerId.HasValue) q = q.Where(o => o.CustomerId == customerId.Value);
+                if (status != null) q = q.Where(o => o.Status == status);
+                if (!string.IsNullOrWhiteSpace(search)) q = q.Where(o => o.OrderNumber.Contains(search) || o.Customer!.Name.Contains(search));
+                if (fromDate.HasValue) q = q.Where(o => o.OrderDate >= fromDate.Value.Date);
+                if (toDate.HasValue) q = q.Where(o => o.OrderDate < toDate.Value.Date.AddDays(1));
+                if (managerId.HasValue)
                 {
-                    id,
-                    orderNumber = reader.IsDBNull(reader.GetOrdinal("OrderNumber")) ? null : reader.GetString(reader.GetOrdinal("OrderNumber")),
-                    customerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
-                    customerName = customerNameVal,
-                    createdByUserId = reader.GetInt32(reader.GetOrdinal("CreatedByUserId")),
-                    status = reader.IsDBNull(reader.GetOrdinal("Status")) ? null : reader.GetString(reader.GetOrdinal("Status")),
-                    subTotal = reader.IsDBNull(reader.GetOrdinal("SubTotal")) ? 0m : reader.GetDecimal(reader.GetOrdinal("SubTotal")),
-                    discountPercent = reader.IsDBNull(reader.GetOrdinal("DiscountPercent")) ? 0m : reader.GetDecimal(reader.GetOrdinal("DiscountPercent")),
-                    discountAmount = reader.IsDBNull(reader.GetOrdinal("DiscountAmount")) ? 0m : reader.GetDecimal(reader.GetOrdinal("DiscountAmount")),
-                    totalAmount = reader.IsDBNull(reader.GetOrdinal("TotalAmount")) ? 0m : reader.GetDecimal(reader.GetOrdinal("TotalAmount")),
-                    remarks = reader.IsDBNull(reader.GetOrdinal("Remarks")) ? null : reader.GetString(reader.GetOrdinal("Remarks")),
-                    orderDate = reader.IsDBNull(reader.GetOrdinal("OrderDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("OrderDate")),
-                    createdAt = reader.IsDBNull(reader.GetOrdinal("CreatedAt")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
-                    itemCount = itemCountVal
-                });
+                    var subtree = await UsersController.GetSubtreeIds(_db, managerId.Value);
+                    q = q.Where(o => subtree.Contains(o.CreatedByUserId));
+                }
+                else if (createdByUserId.HasValue)
+                {
+                    q = q.Where(o => o.CreatedByUserId == createdByUserId.Value);
+                }
+
+                total = await q.CountAsync();
+
+                var efItems = await q
+                    .OrderByDescending(o => o.OrderDate)
+                    .Skip(computedSkip)
+                    .Take(computedTake)
+                    .Select(o => new SfaApi.Models.Dto.OrderListDto
+                    {
+                        Id = o.Id,
+                        OrderNumber = o.OrderNumber,
+                        CustomerId = o.CustomerId,
+                        CustomerName = o.Customer != null ? o.Customer.Name : null,
+                        CreatedByUserId = o.CreatedByUserId,
+                        Status = o.Status,
+                        SubTotal = o.SubTotal,
+                        DiscountPercent = o.DiscountPercent,
+                        DiscountAmount = o.DiscountAmount,
+                        TotalAmount = o.TotalAmount,
+                        Remarks = o.Remarks,
+                        OrderDate = o.OrderDate,
+                        CreatedAt = o.CreatedAt,
+                        ItemCount = _db.OrderItems.Count(i => i.OrderId == o.Id),
+                        TotalCount = total
+                    })
+                    .ToListAsync();
+
+                return Ok(new { items = efItems, total, page = safePage, pageSize = computedTake });
             }
 
-            return Ok(result);
+            return Ok(new { items, total, page = safePage, pageSize = computedTake });
         }
 
         private static bool HasColumn(System.Data.Common.DbDataReader reader, string columnName)

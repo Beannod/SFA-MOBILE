@@ -352,12 +352,58 @@ fun CustomerCard(customer: Customer, onClick: () -> Unit) {
         elevation = 2.dp,
         shape = RoundedCornerShape(12.dp)
     ) {
-        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(customer.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.subtitle1)
-                Text(customer.customerType, style = MaterialTheme.typography.caption, color = Color.Gray)
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(customer.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.subtitle1)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (customer.code.isNotBlank()) {
+                            Text(customer.code, style = MaterialTheme.typography.caption, color = Color.Gray)
+                        }
+                        if (customer.assignedUserName.isNotBlank()) {
+                            if (customer.code.isNotBlank()) Spacer(modifier = Modifier.width(10.dp))
+                            Text("Assigned to ${customer.assignedUserName}", style = MaterialTheme.typography.caption, color = Color.Gray)
+                        }
+                    }
+                    if (customer.territory.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(customer.territory, style = MaterialTheme.typography.caption, color = Color.Gray)
+                    }
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Rs. %.0f".format(customer.outstandingBalance), color = if (customer.outstandingBalance > 0) Color.Red else Color.Gray)
+                    Text(customer.customerType, style = MaterialTheme.typography.caption, color = Color.Gray)
+                }
             }
-            Text("Rs. %.0f".format(customer.outstandingBalance), color = if (customer.outstandingBalance > 0) Color.Red else Color.Gray)
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (customer.approvalStatus.isNotBlank()) {
+                    Surface(
+                        color = when (customer.approvalStatus) {
+                            "Approved" -> Color(0xFFE8F5E9)
+                            "Rejected" -> Color(0xFFFFEBEE)
+                            else -> Color(0xFFFFF8E1)
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            customer.approvalStatus,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            color = when (customer.approvalStatus) {
+                                "Approved" -> Color(0xFF388E3C)
+                                "Rejected" -> Color(0xFFD32F2F)
+                                else -> Color(0xFFF57C00)
+                            },
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                if (customer.phone.isNotBlank()) {
+                    Text(customer.phone, style = MaterialTheme.typography.caption, color = Color.Gray)
+                }
+            }
         }
     }
 }
@@ -758,6 +804,7 @@ fun CustomerDetailScreen(customerId: Int, user: LoggedInUser, onBack: () -> Unit
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(12.dp))
+                                DetailRow("Customer Code", c.code)
                                 DetailRow("Contact", c.contactPerson)
                                 DetailRow("Phone", c.phone)
                                 DetailRow("Email", c.email)

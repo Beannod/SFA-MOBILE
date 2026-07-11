@@ -717,7 +717,7 @@
                         <button class="clear-btn" onclick="ordClearManagerFilter()">✕ Show All</button>
                     </div>
                     <div id="ord-statsBar" class="stats"></div>
-                    <div class="ord-response-meta"><span id="ord-lastUpdated" aria-live="polite"></span><button class="btn btn-secondary btn-sm" type="button" onclick="ordLoadOrders(ordActiveManagerId||null)">↻ Refresh</button></div>
+                    <div class="ord-response-meta"><span id="ord-lastUpdated" aria-live="polite"></span><button class="btn btn-secondary btn-sm" type="button" onclick="ordLoadOrders(ordActiveManagerId||null, ordCurrentPage)">↻ Refresh</button></div>
                     <div class="filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
                         <button id="ord-fltr-today" class="btn btn-sm" style="border:1.5px solid var(--primary);color:var(--primary);background:#fff;border-radius:8px" onclick="ordSetDateFilter('today')">📅 Today</button>
                         <button id="ord-fltr-yest" class="btn btn-sm" style="border:1.5px solid var(--gray-300);color:var(--gray-600);background:#fff;border-radius:8px" onclick="ordSetDateFilter('yesterday')">🗓 Yesterday</button>
@@ -725,8 +725,8 @@
                         <button id="ord-fltr-clear" class="btn btn-sm" style="border:1.5px solid var(--gray-200);color:var(--gray-500);background:#fff;border-radius:8px;display:none" onclick="ordSetDateFilter('')">✕ Clear Date</button>
                     </div>
                     <div class="filter-bar">
-                        <input type="text" id="ord-searchBox" placeholder="Search by order #, customer..." oninput="ordRenderTable()">
-                        <select id="ord-filterStatus" onchange="ordRenderTable()">
+                        <input type="text" id="ord-searchBox" placeholder="Search by order #, customer..." oninput="ordLoadOrders(ordActiveManagerId||null, 1)">
+                        <select id="ord-filterStatus" onchange="ordLoadOrders(ordActiveManagerId||null, 1)">
                             <option value="">All Status</option>
                             <option value="Pending">Pending</option>
                             <option value="Approved">Approved</option>

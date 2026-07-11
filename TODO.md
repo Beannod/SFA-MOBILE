@@ -17,3 +17,10 @@
 - [ ] Keep the previous list visible while a refresh is in progress.
 - [ ] Add matching skeleton and retry states to the org chart and products list.
 - [ ] Add toast notifications for successful and failed actions.
+
+## Mobile UI Improvements
+
+- [ ] Add customer list card metadata: code, assigned user, territory, approval status, and outstanding balance.
+- [ ] Add customer detail metadata: customer code, assigned user, approval status, contact, and financial summary.
+- [ ] Improve order cards to show customer name, order date, item count, total amount, and status clearly.
+- [ ] Verify the mobile customer/order screens match the web customer/order field set.

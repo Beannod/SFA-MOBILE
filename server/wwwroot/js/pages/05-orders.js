@@ -6,11 +6,12 @@
         var ordAllOrders = [], ordAllCustomers = [], ordAllUsers = [], ordAllProducts = [];
         var ordLineItemCount = 0, ordActiveManagerId = null;
         var ordCurrentUser = null, ordSectionLoaded = false;
+        var ordCurrentPage = 1, ordPageSize = 200, ordTotalOrders = 0;
 
         // Cross-section helpers
         window.ordersFilterByCustomer = function(custId, custName) {
             document.getElementById('ord-searchBox').value = custName || '';
-            ordRenderTable();
+            ordLoadOrders(ordActiveManagerId||null, 1);
         };
         window.ordersOpenCreateForCustomer = function(custId, custName) {
             ordOpenCreateModal();
@@ -73,27 +74,52 @@
             closeModal('ord-createModal');
         };
 
-        window.ordLoadOrders = async function(managerId) {
+        window.ordLoadOrders = async function(managerId, page) {
             var container = document.getElementById('ord-orderTable');
             var updated = document.getElementById('ord-lastUpdated');
             container.setAttribute('aria-busy', 'true');
             container.innerHTML = ordLoadingSkeleton();
+            if (!page || page < 1) page = ordCurrentPage || 1;
+            ordCurrentPage = page;
             try {
                 var url;
                 var role = (ordCurrentUser && ordCurrentUser.role || '').toLowerCase();
-                if (managerId) { url = ORD_API + '?managerId=' + managerId; }
+                var qsBase = '';
+                if (managerId) qsBase = 'managerId=' + managerId;
                 else if (ordCurrentUser && role !== 'admin') {
                     var lvl = ordCurrentUser.designationLevel || 99;
-                    url = lvl >= 6 ? ORD_API + '?createdByUserId=' + ordCurrentUser.id : ORD_API + '?managerId=' + ordCurrentUser.id;
-                } else { url = ORD_API; }
+                    qsBase = lvl >= 6 ? 'createdByUserId=' + ordCurrentUser.id : 'managerId=' + ordCurrentUser.id;
+                }
+                var qs = '';
+                if (qsBase) qs += qsBase + '&';
+                // Move client filters into API query params
+                var searchVal = (document.getElementById('ord-searchBox')||{}).value || '';
+                var statusVal = (document.getElementById('ord-filterStatus')||{}).value || '';
+                var fromDate = null, toDate = null;
+                if (ordActiveDateFilter === 'today') { var d = new Date().toISOString().slice(0,10); fromDate = d; toDate = d; }
+                else if (ordActiveDateFilter === 'yesterday') { var yd = new Date(); yd.setDate(yd.getDate()-1); var d2 = yd.toISOString().slice(0,10); fromDate = d2; toDate = d2; }
+                else if (ordActiveDateFilter === 'custom') { var cd = (document.getElementById('ord-filterDate')||{}).value || ''; if (cd) { fromDate = cd; toDate = cd; } }
+                if (searchVal) qs += 'search=' + encodeURIComponent(searchVal) + '&';
+                if (statusVal) qs += 'status=' + encodeURIComponent(statusVal) + '&';
+                if (fromDate) qs += 'fromDate=' + encodeURIComponent(fromDate) + '&toDate=' + encodeURIComponent(toDate) + '&';
+                qs += 'page=' + ordCurrentPage + '&pageSize=' + ordPageSize;
+                url = ORD_API + '?' + qs;
                 var res = await fetch(url);
                 if (!res.ok) throw new Error('Server error ' + res.status);
-                ordAllOrders = await res.json();
+                var parsed = await res.json();
+                if (Array.isArray(parsed)) {
+                    ordAllOrders = parsed;
+                    ordTotalOrders = parsed.length;
+                } else {
+                    ordAllOrders = parsed.items || [];
+                    ordTotalOrders = parsed.total || ordAllOrders.length || 0;
+                }
                 ordUpdateStats();
                 ordRenderTable();
+                ordRenderPagination();
                 if (updated) updated.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             } catch(err) {
-                container.innerHTML = '<div class="message error">Could not load orders. <button class="btn btn-secondary btn-sm" type="button" onclick="ordLoadOrders(ordActiveManagerId||null)">Retry</button></div>';
+                container.innerHTML = '<div class="message error">Could not load orders. <button class="btn btn-secondary btn-sm" type="button" onclick="ordLoadOrders(ordActiveManagerId||null, ordCurrentPage)">Retry</button></div>';
                 if (updated) updated.textContent = 'Update failed';
             } finally {
                 container.removeAttribute('aria-busy');
@@ -114,26 +140,14 @@
             bar.innerHTML = '<span class="stat-chip" style="background:#eef2ff;color:#4361ee">Total: '+total+'</span>';
             Object.keys(colors).forEach(function(s) {
                 var cnt = ordAllOrders.filter(function(o){return o.status===s;}).length;
-                if (cnt > 0) bar.innerHTML += '<span class="stat-chip" style="background:'+colors[s]+'" onclick="document.getElementById(\'ord-filterStatus\').value=\''+s+'\';ordRenderTable()">'+s+': '+cnt+'</span>';
+                if (cnt > 0) bar.innerHTML += '<span class="stat-chip" style="background:'+colors[s]+'" onclick="document.getElementById(\'ord-filterStatus\').value=\''+s+'\';ordLoadOrders(ordActiveManagerId||null,1)">'+s+': '+cnt+'</span>';
             });
         }
 
         window.ordRenderTable = function() {
             var container = document.getElementById('ord-orderTable');
-            var search = (document.getElementById('ord-searchBox').value||'').toLowerCase();
-            var statusF = document.getElementById('ord-filterStatus').value;
-            var customDate = (document.getElementById('ord-filterDate') && document.getElementById('ord-filterDate').value) || '';
-            var todayStr = new Date().toISOString().slice(0,10);
-            var yd = new Date(); yd.setDate(yd.getDate()-1); var yesterStr = yd.toISOString().slice(0,10);
-            var filtered = ordAllOrders.filter(function(o) {
-                var ms = !search||(o.orderNumber||'').toLowerCase().includes(search)||(o.customerName||'').toLowerCase().includes(search);
-                var ss = !statusF||(o.status||'')===statusF;
-                var dateMatch = true;
-                if (ordActiveDateFilter === 'today') dateMatch = o.orderDate && o.orderDate.slice(0,10) === todayStr;
-                else if (ordActiveDateFilter === 'yesterday') dateMatch = o.orderDate && o.orderDate.slice(0,10) === yesterStr;
-                else if (ordActiveDateFilter === 'custom' && customDate) dateMatch = o.orderDate && o.orderDate.slice(0,10) === customDate;
-                return ms && ss && dateMatch;
-            });
+            // Server provides filtered results; render what we received
+            var filtered = ordAllOrders || [];
             if (!filtered.length) { container.innerHTML='<div class="empty">No orders found.</div>'; return; }
             var selectedCount = document.querySelectorAll('input[name="ord-select"]:checked').length;
             var toolbar = '';
@@ -168,6 +182,35 @@
             });
             html += '</tbody></table></div>';
             container.innerHTML = html;
+            // Render pagination controls below table
+            var pagWrap = document.getElementById('ord-paginationWrap');
+            if (!pagWrap) {
+                pagWrap = document.createElement('div');
+                pagWrap.id = 'ord-paginationWrap';
+                pagWrap.style.padding = '12px 0';
+                container.parentNode.appendChild(pagWrap);
+            }
+            ordRenderPagination();
+        };
+
+        window.ordRenderPagination = function() {
+            var wrap = document.getElementById('ord-paginationWrap');
+            if (!wrap) return;
+            var total = ordTotalOrders || 0;
+            var pageSize = ordPageSize || 50;
+            var current = ordCurrentPage || 1;
+            var pages = Math.max(1, Math.ceil(total / pageSize));
+            wrap.innerHTML = '';
+            var left = document.createElement('div');
+            left.style.display = 'inline-block';
+            left.style.marginRight = '12px';
+            var prev = document.createElement('button'); prev.className = 'btn btn-sm'; prev.textContent = '◀ Prev';
+            prev.disabled = current <= 1; prev.onclick = function(){ ordLoadOrders(ordActiveManagerId||null, current-1); };
+            var next = document.createElement('button'); next.className = 'btn btn-sm'; next.textContent = 'Next ▶';
+            next.style.marginLeft = '8px'; next.disabled = current >= pages; next.onclick = function(){ ordLoadOrders(ordActiveManagerId||null, current+1); };
+            left.appendChild(prev); left.appendChild(next);
+            var info = document.createElement('span'); info.style.marginLeft = '8px'; info.textContent = ' Page ' + current + ' of ' + pages + ' (' + total + ' total)';
+            wrap.appendChild(left); wrap.appendChild(info);
         };
 
         // ── Bulk Selection Functions ──
@@ -417,7 +460,7 @@
                 if (!res.ok) throw new Error(await res.text()||'Error '+res.status);
                 var result = await res.json();
                 showMsg('ord-pageMsg','Order '+esc(result.orderNumber||'')+' '+(editId?'updated':'created')+'!','success');
-                ordCancelEdit(); ordLoadOrders(ordActiveManagerId||null);
+                ordCancelEdit(); ordLoadOrders(ordActiveManagerId||null, ordCurrentPage);
             } catch(err) { msgDiv.innerHTML='<div class="message error">'+err.message+'</div>'; }
             finally { btn.disabled=false; btn.textContent=editId?'Update Order':'Submit Order'; }
         };
@@ -579,7 +622,7 @@
                 var res = await fetch(ORD_API+'/'+id+'/status', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:newStatus,changedByUserId:ordCurrentUser?ordCurrentUser.id:null})});
                 if (!res.ok) throw new Error(await res.text()||'Status update failed');
                 showMsg('ord-pageMsg','Order status changed to '+newStatus+'.','success');
-                ordLoadOrders(ordActiveManagerId||null);
+                ordLoadOrders(ordActiveManagerId||null, ordCurrentPage);
             } catch(err) { showMsg('ord-pageMsg',err.message,'error'); }
         };
 
@@ -702,13 +745,13 @@
                 document.getElementById('ord-teamBannerCount').textContent = info.totalMembers+' team member'+(info.totalMembers!==1?'s':'');
                 document.getElementById('ord-teamBanner').style.display = 'flex';
             } catch(e) {}
-            ordLoadOrders(mid);
+            ordLoadOrders(mid, ordCurrentPage);
         };
         window.ordClearManagerFilter = function() {
             ordActiveManagerId = null;
             document.getElementById('ord-managerFilter').value = '';
             document.getElementById('ord-teamBanner').style.display = 'none';
-            ordLoadOrders();
+            ordLoadOrders(null, ordCurrentPage);
         };
 
         document.addEventListener('click', function(e) {
@@ -756,7 +799,7 @@
                     }
                 }).catch(function(e){ console.error('Orders data load failed:', e); });
             }
-            ordLoadOrders();
+            ordLoadOrders(null, ordCurrentPage);
         };
 
         registerSection('orders', function() {

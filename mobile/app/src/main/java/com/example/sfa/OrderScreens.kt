@@ -518,6 +518,31 @@ fun OrderListScreen(
                     }
                 }
             } // end LazyColumn
+
+            // Pagination controls: Next / Prev that jump by page size
+            val pageSize = 25
+            val firstVisible = listState.firstVisibleItemIndex
+            val currentPage = (firstVisible / pageSize) + 1
+            val totalPages = maxOf(1, (totalOrderCount + pageSize - 1) / pageSize)
+
+            Row(modifier = Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row {
+                    Button(onClick = {
+                        scope.launch {
+                            val target = maxOf(0, firstVisible - pageSize)
+                            listState.animateScrollToItem(target)
+                        }
+                    }, enabled = firstVisible > 0) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null); Spacer(Modifier.width(6.dp)); Text("Prev") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = {
+                        scope.launch {
+                            val target = minOf((totalPages-1)*pageSize, firstVisible + pageSize)
+                            listState.animateScrollToItem(target)
+                        }
+                    }, enabled = firstVisible + 1 < totalOrderCount) { Text("Next"); Spacer(Modifier.width(6.dp)); Icon(Icons.AutoMirrored.Filled.ArrowForward, null) }
+                }
+                Text("Page $currentPage of $totalPages", modifier = Modifier.align(Alignment.CenterVertically))
+            }
         }
     } // end Column
     }
@@ -590,6 +615,9 @@ fun OrderCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(order.customerName, style = MaterialTheme.typography.body2)
                     Text("${order.itemCount} items", style = MaterialTheme.typography.caption, color = Color.Gray)
+                    if (order.createdByUserId > 0) {
+                        Text("By user ${order.createdByUserId}", style = MaterialTheme.typography.caption, color = Color.Gray)
+                    }
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Rs. %.0f".format(order.totalAmount), fontWeight = FontWeight.Bold, color = Color(0xFF1976D2), fontSize = 16.sp)
@@ -2559,20 +2587,31 @@ fun OrderStatusLogCard(log: JSONObject) {
 }
 // ═══════════════════════════════════════════════════════════════════════════════
 
-suspend fun fetchOrders(baseUrl: String, createdByUserId: Int? = null, managerId: Int? = null): List<Order>? {
+suspend fun fetchOrders(baseUrl: String, createdByUserId: Int? = null, managerId: Int? = null, search: String? = null, status: String? = null, fromDate: String? = null, toDate: String? = null, page: Int = 1, pageSize: Int = 100): List<Order>? {
     return withContext(Dispatchers.IO) {
         try {
-            val url = when {
-                managerId != null      -> "${baseUrl}/api/orders?managerId=$managerId"
-                createdByUserId != null -> "${baseUrl}/api/orders?createdByUserId=$createdByUserId"
-                else                    -> "${baseUrl}/api/orders"
+            val baseQs = when {
+                managerId != null      -> "managerId=$managerId"
+                createdByUserId != null -> "createdByUserId=$createdByUserId"
+                else                    -> ""
             }
+            val params = mutableListOf<String>()
+            if (baseQs.isNotBlank()) params.add(baseQs)
+            if (!search.isNullOrBlank()) params.add("search=${java.net.URLEncoder.encode(search, "UTF-8")}")
+            if (!status.isNullOrBlank()) params.add("status=${java.net.URLEncoder.encode(status, "UTF-8")}")
+            if (!fromDate.isNullOrBlank()) params.add("fromDate=${java.net.URLEncoder.encode(fromDate, "UTF-8")}")
+            if (!toDate.isNullOrBlank()) params.add("toDate=${java.net.URLEncoder.encode(toDate, "UTF-8")}")
+            params.add("page=$page")
+            params.add("pageSize=$pageSize")
+            val qs = if (params.isNotEmpty()) "?" + params.joinToString("&") else ""
+            val url = "${baseUrl}/api/orders$qs"
             val conn = URL(url).openConnection() as HttpURLConnection
             conn.connectTimeout = 5000; conn.readTimeout = 5000
             if (conn.responseCode !in 200..299) return@withContext null
             val body = conn.inputStream.bufferedReader().readText()
             conn.disconnect()
-            val arr = JSONArray(body)
+            val arr = if (body.trimStart().startsWith("[")) JSONArray(body) else JSONObject(body).optJSONArray("items")
+                ?: JSONArray()
             val list = mutableListOf<Order>()
             for (i in 0 until arr.length()) {
                 val obj = arr.getJSONObject(i)

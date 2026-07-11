@@ -11,7 +11,8 @@ namespace SfaApi.Controllers
     public class LocationController : ControllerBase
     {
         private readonly AppDbContext _db;
-        public LocationController(AppDbContext db) { _db = db; }
+        private readonly SfaApi.Services.SqlRunner _sqlRunner;
+        public LocationController(AppDbContext db, SfaApi.Services.SqlRunner sqlRunner) { _db = db; _sqlRunner = sqlRunner; }
 
         // ─────────────────────────────────────────────────────────────────────
         // POST /api/location
@@ -74,41 +75,27 @@ namespace SfaApi.Controllers
         // Returns the single most-recent ping per user — used by the live map.
         // ─────────────────────────────────────────────────────────────────────
         [HttpGet("latest")]
-        public async Task<IActionResult> GetLatestLocations()
+        public async Task<IActionResult> GetLatestLocations([FromQuery] string? territory)
         {
-            // Subquery: max RecordedAt per user, then join back
-            var maxPerUser = await _db.LocationLogs
-                .AsNoTracking()
-                .GroupBy(l => l.UserId)
-                .Select(g => new { UserId = g.Key, MaxTime = g.Max(l => l.RecordedAt) })
-                .ToListAsync();
+            // Use stored proc to get latest per user
+            var rows = (await _sqlRunner.QueryAsync<SfaApi.Models.Dto.LocationLatestDto>("usp_location_latest_per_user", new { territory = territory })).ToList();
 
-            var result = new List<object>();
-            foreach (var m in maxPerUser)
+            var userIds = rows.Select(r => r.UserId).Distinct().ToList();
+            var users = await _db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToListAsync();
+            var userMap = users.ToDictionary(u => u.Id, u => u);
+
+            var result = rows.Select(l => new
             {
-                var l = await _db.LocationLogs
-                    .Include(x => x.User)
-                    .AsNoTracking()
-                    .Where(x => x.UserId == m.UserId && x.RecordedAt == m.MaxTime)
-                    .FirstOrDefaultAsync();
-                if (l == null) continue;
-                result.Add(new
-                {
-                    l.Id,
-                    l.UserId,
-                    userName    = l.User != null ? (l.User.FullName ?? l.User.Username) : $"User {l.UserId}",
-                    userRole    = l.User != null ? l.User.Role : "",
-                    l.Latitude,
-                    l.Longitude,
-                    l.Accuracy,
-                    l.Speed,
-                    l.BatteryLevel,
-                    l.Status,
-                    l.Address,
-                    l.RecordedAt,
-                    minutesAgo  = (int)Math.Round((NepalTime.Now - l.RecordedAt).TotalMinutes)
-                });
-            }
+                l.Id,
+                l.UserId,
+                userName = userMap.TryGetValue(l.UserId, out var u) ? (u.FullName ?? u.Username) : $"User {l.UserId}",
+                userRole = userMap.TryGetValue(l.UserId, out var u2) ? u2.Role : "",
+                l.Latitude,
+                l.Longitude,
+                l.RecordedAt,
+                minutesAgo = (int)Math.Round((NepalTime.Now - l.RecordedAt).TotalMinutes)
+            });
+
             return Ok(result);
         }
 
@@ -116,7 +103,7 @@ namespace SfaApi.Controllers
         // GET /api/location/live   (alias for /latest — web map uses this)
         // ─────────────────────────────────────────────────────────────────────
         [HttpGet("live")]
-        public Task<IActionResult> GetLiveLocations() => GetLatestLocations();
+        public Task<IActionResult> GetLiveLocations() => GetLatestLocations(null);
 
         // ─────────────────────────────────────────────────────────────────────
         // GET /api/location/user/{id}?date=2026-02-22

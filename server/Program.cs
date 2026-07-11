@@ -12,6 +12,9 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 builder.Services.AddDbContext<AppDbContext>(options =>
 	options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// SQL runner service (Dapper) for fast stored-proc queries
+builder.Services.AddScoped<SfaApi.Services.SqlRunner>();
+
 builder.Services.AddHttpClient();
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
@@ -52,3 +55,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Public type used by WebApplicationFactory in integration tests
+public partial class Program { }

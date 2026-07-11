@@ -4,6 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
 using SfaApi.Models;
 using System.Text;
+using System.Linq;
+using SfaApi.Services;
+using SfaApi.Models.Dto;
 
 namespace SfaApi.Controllers
 {
@@ -12,10 +15,12 @@ namespace SfaApi.Controllers
 	public class CustomersController : ControllerBase
 	{
 		private readonly AppDbContext _db;
+		private readonly SqlRunner _sqlRunner;
 
-		public CustomersController(AppDbContext db)
+		public CustomersController(AppDbContext db, SqlRunner sqlRunner)
 		{
 			_db = db;
+			_sqlRunner = sqlRunner;
 		}
 
 		private string GetSource()
@@ -112,6 +117,26 @@ namespace SfaApi.Controllers
 				c.CreatedAt,
 				c.UpdatedAt
 			}));
+		}
+
+		// ── GET /api/customers/paged ───────────────────────────────────────
+		[HttpGet("paged")]
+		public async Task<IActionResult> GetPaged(
+			[FromQuery] int? assignedUserId,
+			[FromQuery] string? territory,
+			[FromQuery] string? approvalStatus,
+			[FromQuery] string? search,
+			[FromQuery] int skip = 0,
+			[FromQuery] int take = 50)
+		{
+			var callerId = GetCallerId();
+			var items = (await _sqlRunner.QueryAsync<CustomerListDto>(
+				"usp_customers_get",
+				new { callerId = callerId, assignedUserId = assignedUserId, territory = territory, approvalStatus = approvalStatus, search = search, skip = skip, take = take }
+			)).ToList();
+
+			var total = items.FirstOrDefault()?.TotalCount ?? 0;
+			return Ok(new { items, total });
 		}
 
 		// ── GET /api/customers/{id} ─────────────────────────────────────────
