@@ -1,8 +1,0 @@
-{
-  "versionCode": 57,
-  "versionName": "1.57",
-  "url": "/api/update/apk",
-  "notes": "Latest APK release",
-  "mandatory": false,
-  "sha256": ""
-}
