@@ -55,41 +55,74 @@ namespace SfaApi.Controllers
 			[FromQuery] string? status,
 			[FromQuery] int? managerId)
 		{
-			var q = _db.Orders
-				.Include(o => o.Customer)
-				.Include(o => o.Items)
-				.Where(o => !o.IsArchived)
-				.AsQueryable();
+            // Use stored procedure to avoid heavy Includes + C# subtree filtering.
+            // IMPORTANT: Use ADO.NET (SqlCommand) so EF Core doesn't attempt to compose over `EXEC ...`.
+            // NOTE: This code requires stored procedure usp_orders_list_filtered to be present in SQL Server.
 
-			// Hierarchy filter — shows all orders created by anyone in the manager's subtree
-			if (managerId.HasValue)
-			{
-				var subtree = await UsersController.GetSubtreeIds(_db, managerId.Value);
-				q = q.Where(o => subtree.Contains(o.CreatedByUserId));
-			}
-			else if (createdByUserId.HasValue)
-				q = q.Where(o => o.CreatedByUserId == createdByUserId.Value);
+            var result = new List<object>();
+            var conn = _db.Database.GetDbConnection();
+            await conn.OpenAsync();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "usp_orders_list_filtered";
+            cmd.CommandType = System.Data.CommandType.StoredProcedure;
 
-            var orders = await q.OrderByDescending(o => o.OrderDate).ToListAsync();
-
-            return Ok(orders.Select(o => new
+            void AddParam(string name, object? val)
             {
-                o.Id,
-                o.OrderNumber,
-                o.CustomerId,
-                customerName = o.Customer?.Name,
-                o.CreatedByUserId,
-                o.Status,
-                o.SubTotal,
-                o.DiscountPercent,
-                o.DiscountAmount,
-                o.TotalAmount,
-                o.Remarks,
-                o.OrderDate,
-                o.CreatedAt,
-                itemCount = o.Items?.Count ?? 0
-            }));
+                var p = cmd.CreateParameter();
+                p.ParameterName = name;
+                p.Value = val ?? DBNull.Value;
+                cmd.Parameters.Add(p);
+            }
+
+            AddParam("@CustomerId", customerId);
+            AddParam("@CreatedByUserId", createdByUserId);
+            AddParam("@Status", status);
+            AddParam("@ManagerId", managerId);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var id = reader.GetInt32(reader.GetOrdinal("Id"));
+                string? customerNameVal = reader.IsDBNull(reader.GetOrdinal("CustomerName")) ? null : reader.GetString(reader.GetOrdinal("CustomerName"));
+                int itemCountVal = 0;
+                var oc = "ItemCount";
+                if (HasColumn(reader, oc))
+                    itemCountVal = reader.IsDBNull(reader.GetOrdinal(oc)) ? 0 : reader.GetInt32(reader.GetOrdinal(oc));
+
+                result.Add(new
+                {
+                    id,
+                    orderNumber = reader.IsDBNull(reader.GetOrdinal("OrderNumber")) ? null : reader.GetString(reader.GetOrdinal("OrderNumber")),
+                    customerId = reader.GetInt32(reader.GetOrdinal("CustomerId")),
+                    customerName = customerNameVal,
+                    createdByUserId = reader.GetInt32(reader.GetOrdinal("CreatedByUserId")),
+                    status = reader.IsDBNull(reader.GetOrdinal("Status")) ? null : reader.GetString(reader.GetOrdinal("Status")),
+                    subTotal = reader.IsDBNull(reader.GetOrdinal("SubTotal")) ? 0m : reader.GetDecimal(reader.GetOrdinal("SubTotal")),
+                    discountPercent = reader.IsDBNull(reader.GetOrdinal("DiscountPercent")) ? 0m : reader.GetDecimal(reader.GetOrdinal("DiscountPercent")),
+                    discountAmount = reader.IsDBNull(reader.GetOrdinal("DiscountAmount")) ? 0m : reader.GetDecimal(reader.GetOrdinal("DiscountAmount")),
+                    totalAmount = reader.IsDBNull(reader.GetOrdinal("TotalAmount")) ? 0m : reader.GetDecimal(reader.GetOrdinal("TotalAmount")),
+                    remarks = reader.IsDBNull(reader.GetOrdinal("Remarks")) ? null : reader.GetString(reader.GetOrdinal("Remarks")),
+                    orderDate = reader.IsDBNull(reader.GetOrdinal("OrderDate")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("OrderDate")),
+                    createdAt = reader.IsDBNull(reader.GetOrdinal("CreatedAt")) ? (DateTime?)null : reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                    itemCount = itemCountVal
+                });
+            }
+
+            return Ok(result);
         }
+
+        private static bool HasColumn(System.Data.Common.DbDataReader reader, string columnName)
+        {
+            try
+            {
+                return reader.GetOrdinal(columnName) >= 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
 
         // ── GET /api/orders/{id} ─────────────────────────────────────────────
         [HttpGet("{id}")]

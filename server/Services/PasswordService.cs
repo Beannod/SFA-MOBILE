@@ -24,8 +24,9 @@ namespace SfaApi.Services
                 return false;
 
             // Backward compatibility for local/dev seed data that may still store plaintext passwords.
+            // Accept case-insensitive match so seeds like "Admin" work with login "admin".
             if (!hash.StartsWith("$2"))
-                return plainPassword == hash;
+                return plainPassword.Equals(hash, StringComparison.OrdinalIgnoreCase);
 
             try
             {

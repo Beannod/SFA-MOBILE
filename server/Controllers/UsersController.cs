@@ -78,22 +78,23 @@ namespace SfaApi.Controllers
 			if (user == null) return NotFound();
 			return Ok(ToDto(user));
 		}
+
 		// ── GET /api/users/{id}/permissions — returns both web and mobile sections ──
 		[HttpGet("{id}/permissions")]
 		public async Task<IActionResult> GetPermissions(int id)
 		{
-			var webRow    = await _db.UserWebPermissions.FindAsync(id);
+			var webRow = await _db.UserWebPermissions.FindAsync(id);
 			var mobileRow = await _db.UserMobilePermissions.FindAsync(id);
-			var defs      = await _db.PermissionDefs.AsNoTracking().OrderBy(d => d.SortOrder).ToListAsync();
+			var defs = await _db.PermissionDefs.AsNoTracking().OrderBy(d => d.SortOrder).ToListAsync();
 
-			var webKeys    = webRow?.ToKeyList()    ?? new List<string>();
+			var webKeys = webRow?.ToKeyList() ?? new List<string>();
 			var mobileKeys = mobileRow?.ToKeyList() ?? new List<string>();
 
 			var result = defs.Select(d => new
 			{
 				d.Id, d.PermKey, d.Label, d.Category,
 				d.IsInMobile, d.IsInWeb, d.SortOrder,
-				grantedWeb    = d.IsInWeb    && webKeys.Contains(d.PermKey),
+				grantedWeb = d.IsInWeb && webKeys.Contains(d.PermKey),
 				grantedMobile = d.IsInMobile && mobileKeys.Contains(d.PermKey)
 			});
 			return Ok(result);
@@ -143,13 +144,13 @@ namespace SfaApi.Controllers
 			var scope = web ? "web" : "mobile";
 			_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
 			{
-				EntityType = "User", EntityId = id, EntityName = user.FullName,
-				Action = "PermissionsUpdated",
-				ChangedByUserId = GetCallerId(),
-				ChangedByName = await ResolveUserName(GetCallerId()),
-				Source = GetSource(),
-				Details = $"{scope} permissions set ({keys.Count}): {string.Join(", ", keys)}",
-				Timestamp = now
+					EntityType = "User", EntityId = id, EntityName = user.FullName,
+					Action = "PermissionsUpdated",
+					ChangedByUserId = GetCallerId(),
+					ChangedByName = await ResolveUserName(GetCallerId()),
+					Source = GetSource(),
+					Details = $"{scope} permissions set ({keys.Count}): {string.Join(", ", keys)}",
+					Timestamp = now
 			});
 			await _db.SaveChangesAsync();
 
@@ -157,38 +158,39 @@ namespace SfaApi.Controllers
 		}
 
 		// ── GET /api/users/{id}/subtree ── all user IDs under this manager (including self) ──
-	[HttpGet("{id}/subtree")]
-	public async Task<IActionResult> GetSubtree(int id)
-	{
-		var ids = await GetSubtreeIds(_db, id);
-		var users = await _db.Users
-			.Where(u => ids.Contains(u.Id))
-			.OrderBy(u => u.DesignationLevel).ThenBy(u => u.FullName)
-			.Select(u => new { u.Id, u.FullName, u.Username, u.Designation, u.DesignationLevel, u.ReportsToId })
-			.ToListAsync();
-		return Ok(new { rootId = id, totalMembers = ids.Count, members = users });
-	}
-
-	/// <summary>Recursively collects all user IDs under rootId (including rootId itself).</summary>
-	public static async Task<HashSet<int>> GetSubtreeIds(AppDbContext db, int rootId)
-	{
-		var allLinks = await db.Users
-			.Select(u => new { u.Id, u.ReportsToId })
-			.ToListAsync();
-
-		var result = new HashSet<int>();
-		var queue  = new Queue<int>();
-		queue.Enqueue(rootId);
-
-		while (queue.Count > 0)
+		[HttpGet("{id}/subtree")]
+		public async Task<IActionResult> GetSubtree(int id)
 		{
-			var current = queue.Dequeue();
-			if (!result.Add(current)) continue; // already visited
-			foreach (var u in allLinks.Where(u => u.ReportsToId == current))
-				queue.Enqueue(u.Id);
+			var ids = await GetSubtreeIds(_db, id);
+			var users = await _db.Users
+				.Where(u => ids.Contains(u.Id))
+				.OrderBy(u => u.DesignationLevel).ThenBy(u => u.FullName)
+				.Select(u => new { u.Id, u.FullName, u.Username, u.Designation, u.DesignationLevel, u.ReportsToId })
+				.ToListAsync();
+			return Ok(new { rootId = id, totalMembers = ids.Count, members = users });
 		}
-		return result;
-	}
+
+		/// <summary>Recursively collects all user IDs under rootId (including rootId itself).</summary>
+		public static async Task<HashSet<int>> GetSubtreeIds(AppDbContext db, int rootId)
+		{
+			var allLinks = await db.Users
+				.Select(u => new { u.Id, u.ReportsToId })
+				.ToListAsync();
+
+			var result = new HashSet<int>();
+			var queue = new Queue<int>();
+			queue.Enqueue(rootId);
+
+			while (queue.Count > 0)
+			{
+				var current = queue.Dequeue();
+				if (!result.Add(current)) continue; // already visited
+				foreach (var u in allLinks.Where(u => u.ReportsToId == current))
+					queue.Enqueue(u.Id);
+			}
+			return result;
+		}
+
 		// ── GET /api/users/{id}/team — direct reports ──
 		[HttpGet("{id}/team")]
 		public async Task<IActionResult> GetTeam(int id)
@@ -208,29 +210,52 @@ namespace SfaApi.Controllers
 		[HttpGet("hierarchy")]
 		public async Task<IActionResult> GetHierarchy()
 		{
-			var all = await _db.Users
-				.Include(u => u.ReportsTo)
-				.OrderBy(u => u.DesignationLevel)
-				.ThenBy(u => u.FullName)
-				.ToListAsync();
+			// Use ADO.NET so we don't try to materialize SP output into the `User` entity.
+			// usp_users_hierarchy returns a flat rowset compatible with OrgNode.
+			var nodes = new List<OrgNode>();
+
+			var conn = _db.Database.GetDbConnection();
+			await conn.OpenAsync();
+			await using var cmd = conn.CreateCommand();
+			cmd.CommandText = "usp_users_hierarchy";
+			cmd.CommandType = System.Data.CommandType.StoredProcedure;
+
+			await using var reader = await cmd.ExecuteReaderAsync();
+			while (await reader.ReadAsync())
+			{
+				var id = reader.GetInt32(reader.GetOrdinal("Id"));
+				string? fullName = reader.IsDBNull(reader.GetOrdinal("FullName")) ? null : reader.GetString(reader.GetOrdinal("FullName"));
+				string? username = reader.IsDBNull(reader.GetOrdinal("Username")) ? null : reader.GetString(reader.GetOrdinal("Username"));
+				string? designation = reader.IsDBNull(reader.GetOrdinal("Designation")) ? null : reader.GetString(reader.GetOrdinal("Designation"));
+				var designationLevel = reader.IsDBNull(reader.GetOrdinal("DesignationLevel")) ? 0 : reader.GetInt32(reader.GetOrdinal("DesignationLevel"));
+				string? role = reader.IsDBNull(reader.GetOrdinal("Role")) ? null : reader.GetString(reader.GetOrdinal("Role"));
+				string? territory = reader.IsDBNull(reader.GetOrdinal("Territory")) ? null : reader.GetString(reader.GetOrdinal("Territory"));
+				string? employeeCode = reader.IsDBNull(reader.GetOrdinal("EmployeeCode")) ? null : reader.GetString(reader.GetOrdinal("EmployeeCode"));
+				var isActive = !reader.IsDBNull(reader.GetOrdinal("IsActive")) && reader.GetBoolean(reader.GetOrdinal("IsActive"));
+
+				int? reportsToId = reader.IsDBNull(reader.GetOrdinal("ReportsToId")) ? null : reader.GetInt32(reader.GetOrdinal("ReportsToId"));
+				string? reportsToName = reader.IsDBNull(reader.GetOrdinal("ReportsToName")) ? null : reader.GetString(reader.GetOrdinal("ReportsToName"));
+
+				nodes.Add(new OrgNode
+				{
+					Id = id,
+					FullName = fullName,
+					Username = username,
+					Designation = designation,
+					DesignationLevel = designationLevel,
+					Role = role,
+					Territory = territory,
+					EmployeeCode = employeeCode,
+					IsActive = isActive,
+					ReportsToId = reportsToId,
+					ReportsToName = reportsToName
+				});
+			}
 
 			// Build tree: roots = users with no manager
-			var lookup = all.ToDictionary(u => u.Id, u => new OrgNode
-			{
-				Id = u.Id,
-				FullName = u.FullName,
-				Username = u.Username,
-				Designation = u.Designation,
-				DesignationLevel = u.DesignationLevel,
-				Role = u.Role,
-				Territory = u.Territory,
-				EmployeeCode = u.EmployeeCode,
-				IsActive = u.IsActive,
-				ReportsToId = u.ReportsToId,
-				ReportsToName = u.ReportsTo?.FullName
-			});
-
+			var lookup = nodes.ToDictionary(n => n.Id);
 			var roots = new List<OrgNode>();
+
 			foreach (var node in lookup.Values)
 			{
 				if (node.ReportsToId.HasValue && lookup.TryGetValue(node.ReportsToId.Value, out var parent))
@@ -238,9 +263,12 @@ namespace SfaApi.Controllers
 				else
 					roots.Add(node);
 			}
+
 			roots = roots.OrderBy(n => n.DesignationLevel).ThenBy(n => n.FullName).ToList();
 			return Ok(roots);
 		}
+
+
 
 		// ── POST /api/users ──
 		[HttpPost]
@@ -267,14 +295,14 @@ namespace SfaApi.Controllers
 
 			_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
 			{
-				EntityType = "User", EntityId = user.Id,
-				EntityName = user.FullName,
-				Action     = "Created",
-				ChangedByUserId = GetCallerId(),
-				ChangedByName   = await ResolveUserName(GetCallerId()),
-				Source     = GetSource(),
-				Details    = $"Role={user.Role}, Designation={user.Designation}, Territory={user.Territory}",
-				Timestamp  = NepalTime.Now
+					EntityType = "User", EntityId = user.Id,
+					EntityName = user.FullName,
+					Action = "Created",
+					ChangedByUserId = GetCallerId(),
+					ChangedByName = await ResolveUserName(GetCallerId()),
+					Source = GetSource(),
+					Details = $"Role={user.Role}, Designation={user.Designation}, Territory={user.Territory}",
+					Timestamp = NepalTime.Now
 			});
 			await _db.SaveChangesAsync();
 
@@ -288,18 +316,18 @@ namespace SfaApi.Controllers
 			var user = await _db.Users.FindAsync(id);
 			if (user == null) return NotFound();
 
-			if (dto.FullName    != null) user.FullName    = dto.FullName;
-			if (dto.Email       != null) user.Email       = dto.Email;
-			if (dto.Phone       != null) user.Phone       = dto.Phone;
-			if (dto.Role        != null) user.Role        = dto.Role;
-			if (dto.Department  != null) user.Department  = dto.Department;
-			if (dto.Branch      != null) user.Branch      = dto.Branch;
-			if (dto.Territory   != null) user.Territory   = dto.Territory;
-			if (dto.City        != null) user.City        = dto.City;
-			if (dto.State       != null) user.State       = dto.State;
-			if (dto.EmployeeCode!= null) user.EmployeeCode= dto.EmployeeCode;
-			if (dto.IsActive    != null) user.IsActive    = dto.IsActive.Value;
-			
+			if (dto.FullName != null) user.FullName = dto.FullName;
+			if (dto.Email != null) user.Email = dto.Email;
+			if (dto.Phone != null) user.Phone = dto.Phone;
+			if (dto.Role != null) user.Role = dto.Role;
+			if (dto.Department != null) user.Department = dto.Department;
+			if (dto.Branch != null) user.Branch = dto.Branch;
+			if (dto.Territory != null) user.Territory = dto.Territory;
+			if (dto.City != null) user.City = dto.City;
+			if (dto.State != null) user.State = dto.State;
+			if (dto.EmployeeCode != null) user.EmployeeCode = dto.EmployeeCode;
+			if (dto.IsActive != null) user.IsActive = dto.IsActive.Value;
+
 			// Hash password if provided
 			if (!string.IsNullOrWhiteSpace(dto.Password))
 				user.Password = PasswordService.HashPassword(dto.Password);
@@ -329,19 +357,19 @@ namespace SfaApi.Controllers
 				user.ReportsToId = null;
 			}
 
-		user.UpdatedAt = NepalTime.Now;
+			user.UpdatedAt = NepalTime.Now;
 			await _db.SaveChangesAsync();
 
 			_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
 			{
-				EntityType = "User", EntityId = id,
-				EntityName = user.FullName,
-				Action     = "Updated",
-				ChangedByUserId = GetCallerId(),
-				ChangedByName   = await ResolveUserName(GetCallerId()),
-				Source     = GetSource(),
-				Details    = BuildUserChangeSummary(dto),
-				Timestamp  = NepalTime.Now
+					EntityType = "User", EntityId = id,
+					EntityName = user.FullName,
+					Action = "Updated",
+					ChangedByUserId = GetCallerId(),
+					ChangedByName = await ResolveUserName(GetCallerId()),
+					Source = GetSource(),
+					Details = BuildUserChangeSummary(dto),
+					Timestamp = NepalTime.Now
 			});
 			await _db.SaveChangesAsync();
 
@@ -356,38 +384,38 @@ namespace SfaApi.Controllers
 			var user = await _db.Users.FindAsync(id);
 			if (user == null) return NotFound();
 
-            var directReports = await _db.Users
-                .Where(u => u.ReportsToId == id)
-                .ToListAsync();
+			var directReports = await _db.Users
+				.Where(u => u.ReportsToId == id)
+				.ToListAsync();
 
-            directReports.ForEach(r => r.ReportsToId = null);
+			directReports.ForEach(r => r.ReportsToId = null);
 
-            _db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
-            {
-                EntityType = "User", EntityId = id,
-                EntityName = user.FullName,
-                Action     = "Deleted",
-                ChangedByUserId = GetCallerId(),
-                ChangedByName   = await ResolveUserName(GetCallerId()),
-                Source     = GetSource(),
-                Details    = directReports.Count > 0 ? $"Cleared manager from {directReports.Count} direct report(s)." : null,
-                Timestamp  = NepalTime.Now
-            });
-            _db.Users.Remove(user);
-            await _db.SaveChangesAsync();
-            return NoContent();
-        }
+			_db.ActivityLogs.Add(new SfaApi.Models.ActivityLog
+			{
+					EntityType = "User", EntityId = id,
+					EntityName = user.FullName,
+					Action = "Deleted",
+					ChangedByUserId = GetCallerId(),
+					ChangedByName = await ResolveUserName(GetCallerId()),
+					Source = GetSource(),
+					Details = directReports.Count > 0 ? $"Cleared manager from {directReports.Count} direct report(s)." : null,
+					Timestamp = NepalTime.Now
+			});
+			_db.Users.Remove(user);
+			await _db.SaveChangesAsync();
+			return NoContent();
+		}
 
-        // ── Change summary helper ──
+		// ── Change summary helper ──
 		private static string BuildUserChangeSummary(UserUpdateDto dto)
 		{
 			var parts = new List<string>();
-			if (dto.FullName    != null) parts.Add($"FullName={dto.FullName}");
-			if (dto.Role        != null) parts.Add($"Role={dto.Role}");
+			if (dto.FullName != null) parts.Add($"FullName={dto.FullName}");
+			if (dto.Role != null) parts.Add($"Role={dto.Role}");
 			if (dto.Designation != null) parts.Add($"Designation={dto.Designation}");
-			if (dto.IsActive    != null) parts.Add($"IsActive={dto.IsActive}");
-			if (dto.Territory   != null) parts.Add($"Territory={dto.Territory}");
-			if (dto.City        != null) parts.Add($"City={dto.City}");
+			if (dto.IsActive != null) parts.Add($"IsActive={dto.IsActive}");
+			if (dto.Territory != null) parts.Add($"Territory={dto.Territory}");
+			if (dto.City != null) parts.Add($"City={dto.City}");
 			if (dto.ReportsToId != null) parts.Add($"ReportsToId={dto.ReportsToId}");
 			return parts.Count > 0 ? string.Join("; ", parts) : "(profile updated)";
 		}
@@ -437,20 +465,21 @@ namespace SfaApi.Controllers
 
 	public class UserUpdateDto
 	{
-		public string? FullName       { get; set; }
-		public string? Email          { get; set; }
-		public string? Phone          { get; set; }
-		public string? Password       { get; set; }
-		public string? Role           { get; set; }
-		public string? Designation    { get; set; }
-		public string? Department     { get; set; }
-		public string? Branch         { get; set; }
-		public string? Territory      { get; set; }
-		public string? City           { get; set; }
-		public string? State          { get; set; }
-		public string? EmployeeCode   { get; set; }
-		public bool?   IsActive       { get; set; }
-		public int?    ReportsToId    { get; set; }
-		public bool?   ClearReportsTo { get; set; }
+		public string? FullName { get; set; }
+		public string? Email { get; set; }
+		public string? Phone { get; set; }
+		public string? Password { get; set; }
+		public string? Role { get; set; }
+		public string? Designation { get; set; }
+		public string? Department { get; set; }
+		public string? Branch { get; set; }
+		public string? Territory { get; set; }
+		public string? City { get; set; }
+		public string? State { get; set; }
+		public string? EmployeeCode { get; set; }
+		public bool? IsActive { get; set; }
+		public int? ReportsToId { get; set; }
+		public bool? ClearReportsTo { get; set; }
 	}
 }
+
