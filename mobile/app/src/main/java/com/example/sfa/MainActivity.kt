@@ -1212,6 +1212,14 @@ fun LoginScreen(onLoginSuccess: (LoggedInUser) -> Unit) {
                         }
                     }
 
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "App version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                        style = MaterialTheme.typography.caption,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.64f),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
                     errorMessage.value?.let { msg ->
                         Spacer(Modifier.height(12.dp))
                         Text(text = msg, color = MaterialTheme.colors.error,
