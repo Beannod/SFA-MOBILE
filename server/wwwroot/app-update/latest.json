@@ -1,8 +1,8 @@
 {
-  "versionCode": 1,
-  "versionName": "1.0.0",
-  "url": "/downloads/sfa-mobile-1.0.0.apk",
-  "notes": "Initial release",
+  "versionCode": 57,
+  "versionName": "1.57",
+  "url": "/api/update/apk",
+  "notes": "Latest APK release",
   "mandatory": false,
   "sha256": ""
 }

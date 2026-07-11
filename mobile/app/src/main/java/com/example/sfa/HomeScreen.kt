@@ -598,7 +598,7 @@ private fun orderStatusIcon(status: String): ImageVector = when (status) {
     else         -> Icons.Default.ShoppingCart
 }
 
-private fun formatCurrency(amount: Double): String {
+fun formatCurrency(amount: Double): String {
     if (amount == 0.0) return "Rs 0"
     val fmt = NumberFormat.getNumberInstance(Locale.getDefault()).apply {
         maximumFractionDigits = 0

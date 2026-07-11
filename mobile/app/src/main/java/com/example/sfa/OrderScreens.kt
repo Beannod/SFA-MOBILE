@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -560,6 +561,18 @@ fun statusColor(status: String): Color {
     }
 }
 
+fun statusIcon(status: String): ImageVector {
+    return when (status) {
+        "Pending" -> Icons.Default.AccessTime
+        "Approved" -> Icons.Default.CheckCircle
+        "Rejected" -> Icons.Default.Cancel
+        "Dispatched" -> Icons.Default.LocalShipping
+        "Delivered" -> Icons.Default.DoneAll
+        "Cancelled" -> Icons.Default.Block
+        else -> Icons.Default.ShoppingCart
+    }
+}
+
 @Composable
 fun OrderCard(
     order: Order,
@@ -586,10 +599,15 @@ fun OrderCard(
                 .padding(14.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Order number
-                Text(order.orderNumber, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.weight(1f))
-                // Status badge
                 val sc = statusColor(order.status)
+                Surface(
+                    color = sc.copy(alpha = 0.14f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(end = 6.dp)
+                ) {
+                    Icon(statusIcon(order.status), contentDescription = null, tint = sc, modifier = Modifier.padding(8.dp).size(18.dp))
+                }
+                Text(order.orderNumber, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.weight(1f))
                 Surface(color = sc.copy(alpha = 0.15f), shape = RoundedCornerShape(12.dp)) {
                     Text(
                         text = order.status,
@@ -614,14 +632,14 @@ fun OrderCard(
                 ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(order.customerName, style = MaterialTheme.typography.body2)
-                    Text("${order.itemCount} items", style = MaterialTheme.typography.caption, color = Color.Gray)
+                    Text("${order.itemCount} items · ${order.orderDate.take(10)}", style = MaterialTheme.typography.caption, color = Color.Gray)
                     if (order.createdByUserId > 0) {
-                        Text("By user ${order.createdByUserId}", style = MaterialTheme.typography.caption, color = Color.Gray)
+                        Text("Created by user ${order.createdByUserId}", style = MaterialTheme.typography.caption, color = Color.Gray)
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("Rs. %.0f".format(order.totalAmount), fontWeight = FontWeight.Bold, color = Color(0xFF1976D2), fontSize = 16.sp)
-                    Text(order.orderDate.take(10), style = MaterialTheme.typography.caption, color = Color.Gray)
+                    Text(formatCurrency(order.totalAmount), fontWeight = FontWeight.Bold, color = Color(0xFF1976D2), fontSize = 16.sp)
+                    Text(order.status, style = MaterialTheme.typography.caption, color = Color.Gray)
                 }
                 }
             }

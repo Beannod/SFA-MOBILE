@@ -372,11 +372,11 @@ fun CustomerCard(customer: Customer, onClick: () -> Unit) {
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("Rs. %.0f".format(customer.outstandingBalance), color = if (customer.outstandingBalance > 0) Color.Red else Color.Gray)
+                    Text(formatCurrency(customer.outstandingBalance), color = if (customer.outstandingBalance > 0) Color(0xFFD32F2F) else Color(0xFF388E3C), fontWeight = FontWeight.Bold)
                     Text(customer.customerType, style = MaterialTheme.typography.caption, color = Color.Gray)
                 }
             }
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (customer.approvalStatus.isNotBlank()) {
                     Surface(
@@ -395,14 +395,27 @@ fun CustomerCard(customer: Customer, onClick: () -> Unit) {
                                 "Rejected" -> Color(0xFFD32F2F)
                                 else -> Color(0xFFF57C00)
                             },
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
                         )
                     }
                 }
-                if (customer.phone.isNotBlank()) {
-                    Text(customer.phone, style = MaterialTheme.typography.caption, color = Color.Gray)
+                if (customer.assignedUserName.isNotBlank()) {
+                    Surface(
+                        color = MaterialTheme.colors.primary.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            "Assigned to ${customer.assignedUserName}",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            color = MaterialTheme.colors.primary,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
+            }
+            if (customer.phone.isNotBlank()) {
+                Text(customer.phone, style = MaterialTheme.typography.caption, color = Color.Gray)
             }
         }
     }

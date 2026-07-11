@@ -188,6 +188,8 @@ fun ProductListScreen(
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.58f),
                         style = MaterialTheme.typography.caption
                     )
+                    Spacer(Modifier.height(8.dp))
+                    Text("$productCount items", color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f), style = MaterialTheme.typography.caption)
                 }
                 Surface(
                     color = MaterialTheme.colors.primary.copy(alpha = 0.1f),
