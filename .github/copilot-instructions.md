@@ -3,7 +3,7 @@
 ## Project Overview
 
 Sales Force Automation system for tile/marble distributors.
-- **Backend:** ASP.NET Core 7 API — `server/`
+- **Backend:** ASP.NET Core 7 API — `backend/server/`
 - **Mobile:** Android Jetpack Compose — `mobile/`
 - **Docs:** `docs/` (software-documentation.md, user-guide.md, feature-plan.md, mobile-app-flow.md)
 
@@ -28,7 +28,7 @@ Specifically:
 
 ## Architecture Conventions
 
-- All timestamps use `NepalTime.Now` from `server/Services/NepalTime.cs` (NPT, UTC+5:45). Never use `DateTime.Now` or `DateTime.UtcNow` directly in controllers.
+- All timestamps use `NepalTime.Now` from `backend/server/Services/NepalTime.cs` (NPT, UTC+5:45). Never use `DateTime.Now` or `DateTime.UtcNow` directly in controllers.
 - DB table names use `_sfa` suffix (e.g. `user_sfa`, `order_sfa`).
 - Customer `ApprovalStatus` defaults to `"Pending"` on creation — orders require an Approved customer.
 - Password hashing: BCrypt via BCrypt.Net-Next. Plain-text fallback for legacy passwords only.
@@ -51,8 +51,8 @@ Specifically:
 
 This section is a concise reference for code-assist tasks. Keep short, update when structure or key files change.
 
-- Root: solution `sfa-mobile.sln` ties Android `mobile/` and server `server/` projects.
-- Server: `server/` — ASP.NET Core 7 Web API. Key folders:
+- Root: solution `sfa-mobile.sln` ties Android `mobile/` and server `backend/server/` projects.
+- Server: `backend/server/` — ASP.NET Core 7 Web API. Key folders:
 	- `Controllers/` — API endpoints (Orders, Users, Customers, Products, etc.).
 	- `Data/` — `AppDbContext.cs`, EF models, and `Sql/` for stored procedures (e.g., `usp_orders_list_filtered.sql`).
 	- `Migrations/` — EF migrations.
@@ -208,8 +208,8 @@ This section is a concise reference for code-assist tasks. Keep short, update wh
 - Build & run server:
 
 ```powershell
-dotnet build server/SfaApi.csproj -c Debug
-dotnet run --project server/SfaApi.csproj
+dotnet build backend/server/SfaApi.csproj -c Debug
+dotnet run --project backend/server/SfaApi.csproj
 ```
 
 - Run mobile debug build (Windows):
@@ -241,7 +241,7 @@ If you want, I can now expand any single page into a method-level index (functio
 
 - Prefer query params for filters; server-side filtering/paging is canonical.
 - Controllers return compact DTOs for lists (`OrderListDto`) to minimize payloads.
-- Stored procedures live in `server/Data/Sql` and are used for heavy queries; controllers include EF fallback when needed.
+- Stored procedures live in `database/sql` and are used for heavy queries; controllers include EF fallback when needed.
 
 ## How to Update This File
 

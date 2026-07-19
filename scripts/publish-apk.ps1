@@ -1,4 +1,4 @@
-﻿Param(
+Param(
     [Parameter(Mandatory=$true)][string]$ApkPath,
     [Parameter(Mandatory=$true)][string]$VersionCode,
     [Parameter(Mandatory=$true)][string]$VersionName,
@@ -8,7 +8,7 @@
 )
 
 $repoRoot   = Resolve-Path .
-$versionFile = Join-Path $repoRoot 'server\wwwroot\apk\version.json'
+$versionFile = Join-Path $repoRoot 'frontend\web-ui\apk\version.json'
 
 function Save-VersionJson {
     param([int]$Code, [string]$Name)
@@ -37,7 +37,7 @@ if ($UploadToRelease) {
 }
 
 # Default behavior: copy APK into repo downloads and update version.json
-$destDir = Join-Path $repoRoot 'server\wwwroot\downloads'
+$destDir = Join-Path $repoRoot 'frontend\web-ui\downloads'
 if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
 
 $filename = "sfa-mobile-$VersionName.apk"

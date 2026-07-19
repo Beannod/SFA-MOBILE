@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\server\SfaApi.csproj" />
+    <ProjectReference Include="..\..\backend\server\SfaApi.csproj" />
   </ItemGroup>
 
 </Project>

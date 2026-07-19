@@ -8,8 +8,10 @@ A **Sales Force Automation** system built for tile/marble distributors. Consists
 
 ```
 sfa-mobile/
-├── server/          # ASP.NET Core Web API (.NET 6/7+)
+├── backend/server/  # ASP.NET Core Web API (.NET 6/7+)
+├── frontend/web-ui/ # Web admin static UI assets
 ├── mobile/          # Android app (Jetpack Compose / Kotlin)
+├── database/sql/    # Stored procedure SQL scripts
 ├── docs/            # Feature plan, flow diagrams
 ├── scripts/         # Helper PowerShell scripts
 └── postman/         # Postman collection for API testing
@@ -170,7 +172,7 @@ sfa-mobile/
 Copy the example settings and edit the connection string:
 
 ```powershell
-copy server\appsettings.example.json server\appsettings.json
+copy backend\server\appsettings.example.json backend\server\appsettings.json
 ```
 
 Default connection string in `appsettings.json`:
@@ -183,7 +185,7 @@ Change `DESKTOP-LB9B6I4\\SQLEXPRESS` to match your SQL Server instance name.
 ### 2. Apply database migrations
 
 ```powershell
-cd server
+cd backend/server
 dotnet tool install --global dotnet-ef   # skip if already installed
 dotnet ef database update
 ```
@@ -191,7 +193,7 @@ dotnet ef database update
 ### 3. Run the API
 
 ```powershell
-dotnet run --project server/SfaApi.csproj
+dotnet run --project backend/server/SfaApi.csproj
 ```
 
 Listening on:
@@ -298,7 +300,7 @@ Server (API)
 
 1. Configure DB connection
 
-   - Edit `server/appsettings.json` if needed. By default this repo uses:
+   - Edit `backend/server/appsettings.json` if needed. By default this repo uses:
 
      `Server=DESKTOP-LB9B6I4\\SQLEXPRESS;Database=SfaDb;Trusted_Connection=True;TrustServerCertificate=True;`
 
@@ -306,10 +308,10 @@ Server (API)
 
 2. Create / update database (EF Core)
 
-   From the `server` folder:
+   From the `backend/server` folder:
 
    ```powershell
-   cd d:\Software\sfa-mobile\server
+   cd d:\Software\sfa-mobile\backend\server
    dotnet tool install --global dotnet-ef
    dotnet ef migrations add InitialCreate
    dotnet ef database update
@@ -354,7 +356,7 @@ Mobile (Android Compose app)
 
    This repository contains two main parts:
 
-   - `server/` — ASP.NET Core API (connects to SQL Server)
+   - `backend/server/` — ASP.NET Core API (connects to SQL Server)
    - `mobile/` — Android (Compose) app
 
    Prerequisites
@@ -366,7 +368,7 @@ Mobile (Android Compose app)
 
    1. Configure DB connection
 
-      - Edit `server/appsettings.json` if needed. Example connection string used in this repo:
+      - Edit `backend/server/appsettings.json` if needed. Example connection string used in this repo:
 
         Server=DESKTOP-LB9B6I4\\SQLEXPRESS;Database=SfaDb;Trusted_Connection=True;TrustServerCertificate=True;
 
@@ -374,10 +376,10 @@ Mobile (Android Compose app)
 
    2. Create / update database (EF Core)
 
-      From the `server` folder:
+      From the `backend/server` folder:
 
       ```powershell
-      cd D:\Software\sfa-mobile\server
+      cd D:\Software\sfa-mobile\backend\server
       dotnet tool install --global dotnet-ef
       dotnet ef database update
       ```

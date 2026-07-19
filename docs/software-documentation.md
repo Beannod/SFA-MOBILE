@@ -589,7 +589,7 @@ A reference dataset of Nepal's administrative places used for address autocomple
 
 ## 13. Web Admin Panel
 
-The web panel is served directly by the API from `server/wwwroot/`. No separate web server is needed.
+The web panel is served directly by the API from `frontend/web-ui/`. No separate web server is needed.
 
 ### Pages
 
@@ -775,10 +775,10 @@ The full Postman collection is at: `postman/sfa-mobile.postman_collection.json`
 **1. Configure the database connection**
 
 ```powershell
-copy server\appsettings.example.json server\appsettings.json
+copy backend\server\appsettings.example.json backend\server\appsettings.json
 ```
 
-Edit `server\appsettings.json`:
+Edit `backend\server\appsettings.json`:
 ```json
 "ConnectionStrings": {
   "DefaultConnection": "Server=<INSTANCE>;Database=ReportApp;Trusted_Connection=True;TrustServerCertificate=True;"
@@ -790,7 +790,7 @@ Replace `<INSTANCE>` with your SQL Server instance name (e.g. `DESKTOP-LB9B6I4\S
 **2. Apply database migrations**
 
 ```powershell
-cd server
+cd backend/server
 dotnet tool install --global dotnet-ef    # skip if already installed
 dotnet ef database update
 ```
@@ -798,7 +798,7 @@ dotnet ef database update
 **3. Run the server**
 
 ```powershell
-dotnet run --project server/SfaApi.csproj
+dotnet run --project backend/server/SfaApi.csproj
 ```
 
 Server starts on `http://0.0.0.0:5000`. In production the `PORT` environment variable overrides port 5000.
@@ -881,7 +881,7 @@ Server=<RDS-ENDPOINT>,1433;Database=ReportApp;User Id=sfa_user;******;Encrypt=Tr
 - Run EF migrations against the RDS instance before the first deploy:
 
 ```bash
-cd server
+cd backend/server
 export ConnectionStrings__DefaultConnection="Server=<RDS-ENDPOINT>,1433;..."
 dotnet ef database update
 ```
@@ -890,7 +890,7 @@ dotnet ef database update
 
 | Field | Value |
 |---|---|
-| Root Directory | `server` |
+| Root Directory | `backend/server` |
 | Build Command | `dotnet restore && dotnet publish -c Release -o out` |
 | Start Command | `dotnet out/SfaApi.dll` |
 | Health Check Path | `/api/health` |
@@ -959,7 +959,7 @@ All scripts are in `scripts/`.
 - Ensure the server binds to `0.0.0.0` (not just `127.0.0.1`).
 
 **Wrong timestamps / timezone issues**
-- All timestamps are stored in **Nepal Standard Time (NPT, UTC+5:45)** via the `NepalTime` utility in `server/Services/NepalTime.cs`.
+- All timestamps are stored in **Nepal Standard Time (NPT, UTC+5:45)** via the `NepalTime` utility in `backend/server/Services/NepalTime.cs`.
 
 ---
 

@@ -7,7 +7,7 @@ plugins {
 
 // Allow overriding the API base URL via project property `SFA_API_BASE_URL`.
 // Usage: add `SFA_API_BASE_URL=https://dev.example` to `mobile/gradle.properties` or `~/.gradle/gradle.properties`.
-def SFA_API_BASE_URL = project.hasProperty('SFA_API_BASE_URL') ? project.SFA_API_BASE_URL : 'http://10.0.2.2:5000'
+def SFA_API_BASE_URL = project.hasProperty('SFA_API_BASE_URL') ? project.SFA_API_BASE_URL : 'http://192.168.1.84:5000'
 
 android {
     namespace "com.example.sfa"

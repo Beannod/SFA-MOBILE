@@ -69,10 +69,10 @@ Replace `<RDS-ENDPOINT>` with the endpoint shown in the RDS console (e.g. `sfa-d
 
 ### 2.4 Run EF Migrations
 
-Run this **once** from the `server/` directory to create all tables:
+Run this **once** from the `backend/server/` directory to create all tables:
 
 ```bash
-cd server
+cd backend/server
 dotnet tool install --global dotnet-ef   # skip if already installed
 
 # Use Encrypt=True with the AWS RDS certificate for a secure connection
@@ -136,7 +136,7 @@ In **Render Dashboard → Service → Environment**, add:
 Click **Manual Deploy → Deploy latest commit** or push a commit to `main`.
 
 Render will:
-1. Run `dotnet restore && dotnet publish -c Release -o out` in the `server/` directory.
+1. Run `dotnet restore && dotnet publish -c Release -o out` in the `backend/server/` directory.
 2. Start `dotnet out/SfaApi.dll`, which listens on the `PORT` Render assigns.
 3. Run a health check against `/api/health`.
 
@@ -209,7 +209,7 @@ Rebuild and redistribute the APK.
 
 ### Web Admin Panel
 
-The web panel is served statically from the API itself (`server/wwwroot/`). If it references a hardcoded server URL (e.g. in `app.html` or `auth.js`), update it to the production domain.
+The web panel is served statically from the API itself (`frontend/web-ui/`). If it references a hardcoded server URL (e.g. in `app.html` or `auth.js`), update it to the production domain.
 
 ---
 

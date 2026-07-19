@@ -8,7 +8,7 @@ _Last updated: May 2026 — reflects Phase 1 offline-first + Retrofit networking
 
 - **Android** — Jetpack Compose, single-Activity (`MainActivity`), min SDK 24, target SDK 34
 - **Language:** Kotlin 1.9.22, Compose compiler 1.5.8
-- **Backend:** ASP.NET Core 7 REST API (`server/`) — same repo
+- **Backend:** ASP.NET Core 7 REST API (`backend/server/`) — same repo
 
 ---
 
@@ -252,11 +252,11 @@ object RetrofitClient {
 
 ## In-App Update
 
-- `GET /api/update/version` — server returns `{ versionCode, versionName }` from `server/wwwroot/apk/version.json`
+- `GET /api/update/version` — server returns `{ versionCode, versionName }` from `frontend/web-ui/apk/version.json`
 - App compares `BuildConfig.VERSION_CODE`; if server is higher, shows update dialog
 - `GET /api/update/apk` — streams the APK for download + install
 - Current version: **1.37 (code 38)**
-- Deploy: `scripts/deploy-apk.ps1` — builds debug APK, copies to `server/wwwroot/apk/`, updates `version.json`
+- Deploy: `scripts/deploy-apk.ps1` — builds debug APK, copies to `frontend/web-ui/apk/`, updates `version.json`
 
 ---
 

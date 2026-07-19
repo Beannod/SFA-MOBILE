@@ -178,7 +178,7 @@ Base URL: `http://localhost:5000`
 ### Step 1 — Start the API
 
 ```powershell
-cd d:\Software\sfa-mobile\server
+cd d:\Software\sfa-mobile\backend\server
 dotnet run
 ```
 
@@ -209,7 +209,7 @@ Then launch the app from the emulator.
 cd d:\Software\sfa-mobile
 .\scripts\deploy-apk.ps1
 ```
-The pre-built APK is also available at `server/wwwroot/apk/`.
+The pre-built APK is also available at `frontend/web-ui/apk/`.
 
 ---
 
@@ -419,7 +419,7 @@ Rajesh Sharma (Sales Head)
 
 ### 9.6 SQL Seed Script
 
-Run this from the `server` folder after `dotnet ef database update`. Save as `scripts/seed-demo.sql` and execute via SSMS or `sqlcmd`.
+Run this from the `backend/server` folder after `dotnet ef database update`. Save as `scripts/seed-demo.sql` and execute via SSMS or `sqlcmd`.
 
 ```sql
 -- ═══════════════════════════════════════════════════════════════

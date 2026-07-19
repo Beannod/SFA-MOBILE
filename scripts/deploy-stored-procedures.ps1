@@ -26,8 +26,8 @@ function Invoke-SqlScript([string]$Path) {
     }
 }
 
-Invoke-SqlScript (Join-Path $root 'server\Data\Sql\usp_users_hierarchy.sql')
-Invoke-SqlScript (Join-Path $root 'server\Data\Sql\usp_orders_list_filtered.sql')
+Invoke-SqlScript (Join-Path $root 'database\sql\usp_users_hierarchy.sql')
+Invoke-SqlScript (Join-Path $root 'database\sql\usp_orders_list_filtered.sql')
 
 $connection = [System.Data.SqlClient.SqlConnection]::new($connectionString)
 try {

@@ -4,7 +4,7 @@
 		{
 			"label": "Run .NET server",
 			"type": "shell",
-			"command": "dotnet run --project server/SfaApi.csproj",
+			"command": "dotnet run --project backend/server/SfaApi.csproj",
 			"isBackground": true,
 			"problemMatcher": [],
 			"group": "build"

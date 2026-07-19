@@ -1,5 +1,5 @@
 # deploy-apk.ps1
-# Increments versionCode, builds the debug APK, copies it to server/wwwroot/apk/,
+# Increments versionCode, builds the debug APK, copies it to frontend/web-ui/apk/,
 # and updates version.json — so the running server will serve the new build.
 #
 # Usage (from repo root):
@@ -15,8 +15,8 @@ $ErrorActionPreference = "Stop"
 $repoRoot    = Split-Path -Parent $PSScriptRoot
 $buildGradle = "$repoRoot\mobile\app\build.gradle"
 $apkSrc      = "$repoRoot\mobile\app\build\outputs\apk\debug\app-debug.apk"
-$apkDest     = "$repoRoot\server\wwwroot\apk\app-debug.apk"
-$versionFile = "$repoRoot\server\wwwroot\apk\version.json"
+$apkDest     = "$repoRoot\frontend\web-ui\apk\app-debug.apk"
+$versionFile = "$repoRoot\frontend\web-ui\apk\version.json"
 
 # ── 1. Read current versionCode / versionName ──────────────────────────────────
 $gradleContent = Get-Content $buildGradle -Raw

@@ -25,7 +25,7 @@ goto MENU
 
 :START
 cd /d "D:\Software\sfa-mobile"
-start "SFA API" cmd /k "dotnet run --project server/SfaApi.csproj"
+start "SFA API" cmd /k "dotnet run --project backend/server/SfaApi.csproj"
 echo Server start command sent.
 timeout /t 2 >nul
 goto MENU
@@ -33,7 +33,7 @@ goto MENU
 :RESTART
 taskkill /F /IM dotnet.exe >nul 2>&1
 cd /d "D:\Software\sfa-mobile"
-start "SFA API" cmd /k "dotnet run --project server/SfaApi.csproj"
+start "SFA API" cmd /k "dotnet run --project backend/server/SfaApi.csproj"
 echo Server restarted.
 timeout /t 2 >nul
 goto MENU
