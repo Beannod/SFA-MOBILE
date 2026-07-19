@@ -2,9 +2,9 @@ services:
   - type: web
     name: sfa-api
     runtime: docker
-    # Run build from repository root so we can copy frontend/web-ui into backend/wwwroot first
-    rootDir: .
-    buildCommand: bash -lc "cp -R frontend/web-ui/* backend/server/wwwroot/ || true; dotnet restore backend/server/SfaApi.csproj && dotnet publish backend/server/SfaApi.csproj -c Release -o out"
+    # Build from backend/server; copy frontend assets from repo root into wwwroot
+    rootDir: backend/server
+    buildCommand: bash -lc "cp -R ../frontend/web-ui/* wwwroot/ || true; dotnet restore && dotnet publish -c Release -o out"
     startCommand: dotnet out/SfaApi.dll
     plan: free                      # change to "starter" or higher for production
     healthCheckPath: /api/health
