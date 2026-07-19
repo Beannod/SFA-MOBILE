@@ -1,6 +1,8 @@
 var API_BASE_URL =
   (window.__ENV__ && window.__ENV__.API_BASE_URL) ||
-  'https://sfa-mobile-api.onrender.com';
+  // Default to the same origin (works for local run where API serves the web UI)
+  (window.location && window.location.origin) ||
+  '';
 
 (function() {
   var SESSION_KEY = 'sfa_admin_user';
