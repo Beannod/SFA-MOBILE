@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Run tests
+        run: |
+          dotnet test tests/SfaApi.IntegrationTests/SfaApi.IntegrationTests.csproj --no-build -c Release
+
+      - name: Check frontend static folder
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: List frontend files
+        run: |
+          echo "Frontend files in frontend/web-ui:"
+          ls -la frontend/web-ui || true
