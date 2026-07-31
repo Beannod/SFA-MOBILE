@@ -65,10 +65,11 @@ Project connection
 
 Build settings (choose depending on your frontend)
 
-- Option A — Static files only (no build tooling)
+- Option A — Static files only (no build tooling) — **REQUIRED for this repo**
   - Build command: (leave blank)
-  - Build output directory: `frontend/web-ui` or `frontend/web-ui` -> set to `.` if you set the root to that folder
+  - Build output directory: `frontend/web-ui`
   - Root directory (in Pages project): `frontend/web-ui`
+  - **Important:** Cloudflare Pages automatically detects the `functions/` directory and runs it as a Pages Function (see below). Do not delete `frontend/web-ui/functions/`.
 
 - Option B — Node-based build (React/Vite/etc.)
   - Root directory: `frontend/web-ui`
@@ -76,8 +77,27 @@ Build settings (choose depending on your frontend)
   - Build command: `npm run build` (or `npm run build --if-present`)
   - Build output directory: `build` or `dist` depending on your tool — set accordingly
 
+### API proxy (Pages Function) — makes login & every API call work
+
+The repo ships with a Pages Function at `frontend/web-ui/functions/api/[[path]].js`. It forwards every `/api/*` request to the Render backend, so the browser only ever talks to your Cloudflare Pages origin (no CORS issues, no hard-coded API URL needed in the frontend).
+
+- Backend target: `https://sfa-api.onrender.com` (default — change if your Render URL differs)
+- Override via environment variable (recommended):
+
 Environment variables (Cloudflare Pages → Settings → Environment Variables)
-- `API_BASE_URL` = `https://api.yourdomain.com` (used at build time; remember values baked into frontend are public)
+- `API_BASE_URL` = `https://sfa-api.onrender.com`
+
+This value is read at **runtime** by the Pages Function (it is an environment variable, not baked into the static files), so it is safe and not exposed to users.
+
+### SPA fallback
+
+The repo ships with `frontend/web-ui/_redirects`:
+
+```
+/* /app.html 200
+```
+
+This serves `app.html` for any unmatched path, so opening `https://<project>.pages.dev/app.html#login` (or any deep link) loads the admin panel instead of a 404.
 
 Custom domain and DNS
 - Add custom domain in Cloudflare Pages: `www.yourdomain.com` (Pages will guide you to create records).
@@ -89,7 +109,7 @@ Preview builds and PRs
 - Provide Preview Environment variables separately in Pages (e.g., `API_BASE_URL` pointing to a staging API if available).
 
 Security note
-- Any environment variable used at build time in Pages is included in the built files — do NOT put secrets there. Only put non-secret endpoints or keys.
+- Do NOT put secrets in Pages environment variables. `API_BASE_URL` is a non-secret public endpoint; use the dashboard's encrypted env vars for anything sensitive.
 
 ---
 
@@ -97,13 +117,16 @@ Security note
 
 - `www.yourdomain.com` -> Cloudflare Pages (CNAME to pages.dev-managed domain)
 - `api.yourdomain.com` -> CNAME to `sfa-api.onrender.com` (Render service domain) or configure as an A/CNAME depending on Render instructions. Use Cloudflare DNS for both records to take advantage of TLS and DNS management.
+- When using the Pages Function proxy, a separate `api.` DNS record is optional — you can keep it for direct API access / mobile app use.
 
 ## Quick checklist
 
 - [ ] Create Render service (use Option A or B above)
 - [ ] Add Render environment variables
 - [ ] Create Cloudflare Pages project pointing to `frontend/web-ui`
-- [ ] Add `API_BASE_URL` in Pages envs
+- [ ] Add `API_BASE_URL` in Pages envs (optional — defaults to `https://sfa-api.onrender.com`)
+- [ ] Confirm `frontend/web-ui/functions/` is committed (API proxy)
+- [ ] Confirm `frontend/web-ui/_redirects` is committed (SPA fallback)
 - [ ] Add custom domain in Pages and update DNS
 - [ ] Ensure RDS allows connections from Render (VPC or allowlist)
 

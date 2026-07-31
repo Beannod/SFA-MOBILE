@@ -4,6 +4,15 @@ var API_BASE_URL =
   (window.location && window.location.origin) ||
   '';
 
+// Resolve the API base URL for page modules. On Cloudflare Pages all /api/*
+// calls are proxied to the Render backend by the Pages Function, so the base
+// stays the current origin. Locally the API serves the web UI too, so the
+// origin also works. An explicit window.__ENV__.API_BASE_URL (if ever set)
+// always wins.
+window.getApiBase = function() {
+  return API_BASE_URL || '';
+};
+
 (function() {
   var SESSION_KEY = 'sfa_admin_user';
   var PENDING_ROUTE_KEY = 'sfa_admin_pending_route';

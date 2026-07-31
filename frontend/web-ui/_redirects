@@ -1,0 +1,9 @@
+# Cloudflare Pages redirects
+# ------------------------------------------------------------------
+# Order matters: Cloudflare evaluates Pages Functions before _redirects,
+# so /api/* is handled by functions/api/[[path]].js and never reaches here.
+#
+# SPA fallback — serve the app shell (app.html) for any unmatched path so
+# deep links and refreshes load the admin panel instead of returning 404.
+/* /app.html 200
+

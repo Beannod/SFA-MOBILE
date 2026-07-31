@@ -1,26 +1,23 @@
 # TODO
 
-## Completed: Stored Procedure Optimization
+## Cloudflare Pages Fix — Login Page Not Showing
 
-- [x] Optimized `/api/orders` and `/api/users/hierarchy` with SQL Server stored procedures and ADO.NET readers.
-- [x] Added cycle-safe manager-subtree filtering and deployment/index-review helpers.
-- [x] Deployed procedures locally and verified endpoint timings: hierarchy 35.8 ms, manager-filtered orders 27.5 ms.
-- [x] Corrected the smoke-test seed credential and passed the full API check: 52 passed, 0 failed.
-- [x] Reviewed existing supporting indexes; `order_item_sfa.OrderId` and `user_sfa.ReportsToId` are already indexed. The SSMS plan-review script is retained for future dataset growth.
+### Root Cause
+- Frontend deployed on Cloudflare Pages calls `/api/*` on the Cloudflare origin, but the API lives on Render (`https://sfa-api.onrender.com`).
+- `getApiBase()` is referenced across page modules but **never defined**, so those modules fall back to relative URLs against the Cloudflare origin.
+- No SPA fallback (`_redirects`) so deep paths / missing files may return 404 instead of the app shell.
 
-## Response UI Improvements
+### Steps
+- [x] 1. Create Cloudflare Pages Function `frontend/web-ui/functions/api/[[path]].js` to proxy `/api/*` to the Render backend (no CORS needed — same-origin from the browser).
+- [x] 2. Create `frontend/web-ui/_redirects` with SPA fallback (`/* /app.html 200`).
+- [x] 3. Define `getApiBase()` in `frontend/web-ui/auth.js` so all page modules resolve the correct API base.
+- [x] 4. Mirror `auth.js` change to `server/wwwroot/auth.js`.
+- [x] 5. Update `deploy/render-cloudflare-setup.md` with the Cloudflare Pages configuration (output dir, env var `API_BASE_URL`, Functions note).
+- [ ] 6. Commit, push, and redeploy Cloudflare Pages (user action).
 
-- [x] Replace the orders text loader with a table skeleton.
-- [x] Add refresh feedback, a last-updated time, and a retry action after a failed load.
-- [ ] Add server-side pagination for large order lists.
-- [ ] Move search/status/date filters into API query parameters.
-- [ ] Keep the previous list visible while a refresh is in progress.
-- [ ] Add matching skeleton and retry states to the org chart and products list.
-- [ ] Add toast notifications for successful and failed actions.
+### Cloudflare Pages Settings Reminder
+- Root directory / build output directory: `frontend/web-ui`
+- Build command: *(leave blank — static site)*
+- Environment variable: `API_BASE_URL` = `https://sfa-api.onrender.com` *(optional, defaults to this in the Function)*
+- Ensure `frontend/web-ui/functions/` and `frontend/web-ui/_redirects` are committed
 
-## Mobile UI Improvements
-
-- [ ] Add customer list card metadata: code, assigned user, territory, approval status, and outstanding balance.
-- [ ] Add customer detail metadata: customer code, assigned user, approval status, contact, and financial summary.
-- [ ] Improve order cards to show customer name, order date, item count, total amount, and status clearly.
-- [ ] Verify the mobile customer/order screens match the web customer/order field set.
