@@ -40,11 +40,13 @@ window.getApiBase = function() {
   }
 
   function isAppShellPage() {
-    return /\/app\.html$/.test(getPathName());
+    // Match both /app.html (standard) and /app (Cloudflare Pages clean URL)
+    return /\/app(?:\.html)?$/.test(getPathName());
   }
 
   function isOrgChartPage() {
-    return /\/orgchart\.html$/.test(getPathName());
+    // Match both /orgchart.html (standard) and /orgchart (Cloudflare Pages clean URL)
+    return /\/orgchart(?:\.html)?$/.test(getPathName());
   }
 
 

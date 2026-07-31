@@ -11,3 +11,10 @@
 - [ ] Create `server/wwwroot/env.js` — static fallback for API serving
 - [ ] Verify both deployment modes (Cloudflare Pages + ASP.NET backend)
 
+## Additional Fix: Auth.js Clean URL Matching
+
+- [x] Fixed `frontend/web-ui/auth.js` `isAppShellPage()` regex to match `/app` (Cloudflare clean URL) in addition to `/app.html`
+- [x] Fixed `frontend/web-ui/auth.js` `isOrgChartPage()` regex to match `/orgchart` (Cloudflare clean URL) in addition to `/orgchart.html`
+- [x] Fixed `frontend/web-ui/index.html` redirect to use absolute path `/app.html` for reliable resolution
+- [x] Applied same auth.js and index.html fixes to `server/wwwroot/` copies
+
