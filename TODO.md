@@ -13,7 +13,7 @@
 - [x] 3. Define `getApiBase()` in `frontend/web-ui/auth.js` so all page modules resolve the correct API base.
 - [x] 4. Mirror `auth.js` change to `server/wwwroot/auth.js`.
 - [x] 5. Update `deploy/render-cloudflare-setup.md` with the Cloudflare Pages configuration (output dir, env var `API_BASE_URL`, Functions note).
-- [ ] 6. Commit, push, and redeploy Cloudflare Pages (user action).
+- [x] 6. Commit, push, and redeploy Cloudflare Pages (user action).
 
 ### Cloudflare Pages Settings Reminder
 - Root directory / build output directory: `frontend/web-ui`
