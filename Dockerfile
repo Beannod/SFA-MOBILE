@@ -34,6 +34,6 @@ FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish ./
 
-EXPOSE 5000
-ENV ASPNETCORE_URLS=http://+:5000
+ENV ASPNETCORE_URLS=http://0.0.0.0:${PORT:-10000}
+EXPOSE 10000
 ENTRYPOINT ["dotnet", "SfaApi.dll"]

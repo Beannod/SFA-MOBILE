@@ -2,7 +2,7 @@ services:
   - type: web
     name: sfa-api
     runtime: docker
-    # Build from repository root so Render's Docker build finds the Dockerfile at repo root
+    # Uses the root-level Dockerfile (repo root) which builds backend/server/SfaApi.csproj
     rootDir: .
     startCommand: dotnet out/SfaApi.dll
     plan: free                      # change to "starter" or higher for production
