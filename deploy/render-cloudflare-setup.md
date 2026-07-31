@@ -107,6 +107,12 @@ Security note
 - [ ] Add custom domain in Pages and update DNS
 - [ ] Ensure RDS allows connections from Render (VPC or allowlist)
 
+## CI smoke tests
+
+- The GitHub Action `.github/workflows/deploy.yml` supports running a post-deploy smoke test if you set the repository secret `DEPLOY_HEALTH_URL` to your API health endpoint (for example `https://api.yourdomain.com/api/health`). The workflow will wait for the deploy trigger to be sent and then run `scripts/smoke-test.ps1` which polls the endpoint until healthy or times out.
+
+Add the secret in GitHub: `Settings -> Secrets -> Actions -> New repository secret` with name `DEPLOY_HEALTH_URL` and value `https://api.yourdomain.com/api/health`.
+
 If you want, I can now scaffold a GitHub Actions workflow to call Render's deploy API and/or trigger Cloudflare Pages builds from CI. Tell me which you'd prefer (Render API deploy, Cloudflare API deploy, or both) and I'll scaffold the workflow and list the required secrets.
 
 ---
