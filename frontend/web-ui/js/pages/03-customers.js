@@ -266,9 +266,7 @@
         window.custApproveCustomer = async function(id, status) {
             if (!confirm((status==='Approved'?'Approve':'Reject')+' this customer?')) return;
             try {
-                var hdrs = {'Content-Type':'application/json'};
-                if (custCurrentUser && custCurrentUser.id) hdrs['X-User-Id'] = custCurrentUser.id;
-                var res = await fetch(getCustApi()+'/'+id+'/approve', {method:'PUT', headers:hdrs, body:JSON.stringify({approvalStatus:status})});
+                var res = await fetch(getCustApi()+'/'+id+'/approve', {method:'PUT', headers:getAuthHeaders(), body:JSON.stringify({approvalStatus:status})});
                 if (!res.ok) throw new Error('Update failed');
                 showMsg('cust-pageMsg','Customer '+status.toLowerCase()+'.','success');
                 custLoadCustomers(custActiveManagerId||null);
@@ -447,7 +445,7 @@
                     };
                     var res = await fetch(CUST_API+'/'+id, {
                         method:'PUT',
-                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': custCurrentUser.id}),
+                        headers:getAuthHeaders(),
                         body:JSON.stringify(body)
                     });
                     if (res.ok) succeeded++; else failed++;
@@ -470,7 +468,7 @@
                 try {
                     var res = await fetch(CUST_API+'/'+id, {
                         method:'DELETE',
-                        headers:{'X-User-Id': custCurrentUser.id}
+                        headers:getAuthHeaders()
                     });
                     if (res.ok) succeeded++; else failed++;
                 } catch(err) { failed++; }
@@ -495,7 +493,7 @@
                 try {
                     var res = await fetch(CUST_API+'/'+id+'/approve', {
                         method:'PUT',
-                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': custCurrentUser.id}),
+                        headers:getAuthHeaders(),
                         body:JSON.stringify({approvalStatus:'Approved'})
                     });
                     if (res.ok) succeeded++; else failed++;
@@ -522,7 +520,7 @@
                 try {
                     var res = await fetch(CUST_API+'/'+id+'/approve', {
                         method:'PUT',
-                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': custCurrentUser.id}),
+                        headers:getAuthHeaders(),
                         body:JSON.stringify({approvalStatus:'Rejected'})
                     });
                     if (res.ok) succeeded++; else failed++;

@@ -1,20 +1,9 @@
-# TODO — Fix Cloudflare Pages not showing login page
-
-## Root Cause
-- `frontend/web-ui/app.html` had a hardcoded `window.__ENV__ = { API_BASE_URL: window.location.origin }` block that overrode the Cloudflare Pages Function runtime config (`functions/env.js`).
-- No static `env.js` fallback existed for when the app is served directly by the ASP.NET backend (`server/wwwroot`).
+# TODO — Configuration Page Premium View
 
 ## Steps
-- [x] Update `frontend/web-ui/app.html` — load `/env.js` before `auth.js`, remove hardcoded `__ENV__` block
-- [ ] Create `frontend/web-ui/env.js` — static fallback for direct API serving
-- [ ] Update `server/wwwroot/app.html` — mirror the same changes
-- [ ] Create `server/wwwroot/env.js` — static fallback for API serving
-- [ ] Verify both deployment modes (Cloudflare Pages + ASP.NET backend)
-
-## Additional Fix: Auth.js Clean URL Matching
-
-- [x] Fixed `frontend/web-ui/auth.js` `isAppShellPage()` regex to match `/app` (Cloudflare clean URL) in addition to `/app.html`
-- [x] Fixed `frontend/web-ui/auth.js` `isOrgChartPage()` regex to match `/orgchart` (Cloudflare clean URL) in addition to `/orgchart.html`
-- [x] Fixed `frontend/web-ui/index.html` redirect to use absolute path `/app.html` for reliable resolution
-- [x] Applied same auth.js and index.html fixes to `server/wwwroot/` copies
+- [x] 1. Add `.cfg-main` rule to `frontend/web-ui/css/app.css` (near `.cfg-layout` block)
+- [x] 2. Sync premium config structure into `server/wwwroot/app.html` (cfg-hero + cfg-layout/cfg-main wrapper)
+- [x] 3. Add premium config CSS to `server/wwwroot/css/app.css` (mirror frontend)
+- [x] 4. Bump cache-busting query strings in both app.html files
+- [ ] 5. Verify Configuration page renders premium hero + two-column layout
 

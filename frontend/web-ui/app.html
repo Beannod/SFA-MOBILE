@@ -10,7 +10,7 @@
     <script src="/dev-overrides.js"></script>
     <script src="auth.js?v=20260801-1" defer></script>
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-    <link rel="stylesheet" href="css/app.css?v=20260512-1" />
+    <link rel="stylesheet" href="css/app.css?v=20260801-4" />
 </head>
 <body>
 
@@ -111,7 +111,20 @@
 
         <!-- ══ SECTION: CONFIGURATION ══ -->
         <div id="section-config" class="spa-section">
+            <div class="cfg-hero">
+                <div>
+                    <div class="cfg-eyebrow">Workspace Configuration</div>
+                    <h1>Configure your sales organization and catalog.</h1>
+                    <p>Manage branding, designation hierarchy, sales team, geo database, customer types, and product config from one premium console.</p>
+                </div>
+                <div class="dash-hero-actions">
+                    <span class="cfg-hero-pill">&#x2699;&#xFE0F; Admin Console</span>
+                    <button class="btn btn-sm" onclick="location.reload()">&#x1F504; Refresh</button>
+                </div>
+            </div>
+            <div class="cfg-layout">
             <div class="cfg-subnav-wrap" id="cfg-subnavWrap">
+                <div class="cfg-subnav-title">Configuration</div>
                 <button class="cfg-subnav-btn active" data-target="cfg-configCard" onclick="cfgJumpToCard('cfg-configCard', this)">Branding</button>
                 <button class="cfg-subnav-btn" data-target="cfg-designationCard" data-admin-only="true" onclick="cfgJumpToCard('cfg-designationCard', this)">Designations</button>
                 <button class="cfg-subnav-btn" data-target="cfg-salesTeamCard" onclick="cfgJumpToCard('cfg-salesTeamCard', this)">Sales Team</button>
@@ -120,6 +133,7 @@
                 <button class="cfg-subnav-btn" data-target="cfg-productCfgCard" data-admin-only="true" onclick="cfgJumpToCard('cfg-productCfgCard', this)">Product Config</button>
             </div>
 
+            <div class="cfg-main">
             <!-- App Config Card (Admin only) -->
             <div class="card" id="cfg-configCard">
                 <div class="card-header">
@@ -333,6 +347,9 @@
                 </div>
                 <div id="cfg-pcfgMsg" style="margin-top:8px;font-size:0.836em;color:var(--gray-500)"></div>
             </div>
+            </div><!-- /cfg-main -->
+
+            </div><!-- /cfg-layout -->
 
         <!-- ══ CONFIG CARD POPUP ══ -->
         <div id="cfg-cardPopup" class="modal-overlay" onclick="if(event.target===this)cfgCloseCardPopup()">
@@ -1444,9 +1461,9 @@
     <!-- App scripts: main loader plus page-specific modules loaded on demand for faster first paint. -->
     <script src="js/pages/01-core-config.js?v=20260801-3"></script>
     <script src="js/pages/02-nepal-places.js?v=20260801-3" defer></script>
-    <script src="js/pages/03-customers.js?v=20260801-3" defer></script>
+    <script src="js/pages/03-customers.js?v=20260801-4" defer></script>
     <script src="js/pages/04-shared-address-org.js?v=20260801-3" defer></script>
-    <script src="js/pages/05-orders.js?v=20260801-3" defer></script>
+    <script src="js/pages/05-orders.js?v=20260801-4" defer></script>
     <script src="js/pages/06-products.js?v=20260801-3" defer></script>
     <script src="js/pages/07-stock.js?v=20260801-3" defer></script>
     <script src="js/pages/08-attendance.js?v=20260801-3" defer></script>
