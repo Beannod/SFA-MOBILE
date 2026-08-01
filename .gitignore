@@ -34,6 +34,10 @@ __pycache__/
 .idea/
 *.iml
 
+# Local dev overrides (never commit)
+.dev/
+frontend/web-ui/dev-overrides.js
+
 # OS
 .DS_Store
 Thumbs.db
