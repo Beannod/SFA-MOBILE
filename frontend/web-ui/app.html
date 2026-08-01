@@ -6,17 +6,8 @@
 <title>SFA Admin Panel</title>
     <!-- Runtime config served by Cloudflare Pages Function (reads API_BASE_URL env var) -->
     <script src="/env.js"></script>
-    <!-- Load dev overrides only in local development (localhost) -->
-    <script>
-      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-        var devScript = document.createElement('script');
-        devScript.src = '/dev-overrides.js';
-        devScript.onerror = function() {
-          console.warn('[dev-overrides] file not found (expected in production)');
-        };
-        document.head.appendChild(devScript);
-      }
-    </script>
+    <!-- Load dev overrides for local development - MUST load before any deferred scripts -->
+    <script src="/dev-overrides.js"></script>
     <script src="auth.js?v=20260801-1" defer></script>
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
     <link rel="stylesheet" href="css/app.css?v=20260512-1" />
@@ -1451,20 +1442,20 @@
         </div>
     </div>
     <!-- App scripts: main loader plus page-specific modules loaded on demand for faster first paint. -->
-    <script src="js/pages/01-core-config.js?v=20260511-2"></script>
-    <script src="js/pages/02-nepal-places.js?v=20260511-2" defer></script>
-    <script src="js/pages/03-customers.js?v=20260511-2" defer></script>
-    <script src="js/pages/04-shared-address-org.js?v=20260511-2" defer></script>
-    <script src="js/pages/05-orders.js?v=20260511-2" defer></script>
-    <script src="js/pages/06-products.js?v=20260511-2" defer></script>
-    <script src="js/pages/07-stock.js?v=20260511-2" defer></script>
-    <script src="js/pages/08-attendance.js?v=20260511-2" defer></script>
-    <script src="js/pages/09-tracking.js?v=20260511-2" defer></script>
-    <script src="js/pages/10-dashboard.js?v=20260511-2" defer></script>
-    <script src="js/pages/11-analytics.js?v=20260511-2" defer></script>
-    <script src="js/pages/12-cross-section.js?v=20260511-2" defer></script>
-    <script src="js/pages/13-geo-apk.js?v=20260511-2" defer></script>
-    <script src="js/pages/14-activity-log.js?v=20260511-2" defer></script>
+    <script src="js/pages/01-core-config.js?v=20260801-3"></script>
+    <script src="js/pages/02-nepal-places.js?v=20260801-3" defer></script>
+    <script src="js/pages/03-customers.js?v=20260801-3" defer></script>
+    <script src="js/pages/04-shared-address-org.js?v=20260801-3" defer></script>
+    <script src="js/pages/05-orders.js?v=20260801-3" defer></script>
+    <script src="js/pages/06-products.js?v=20260801-3" defer></script>
+    <script src="js/pages/07-stock.js?v=20260801-3" defer></script>
+    <script src="js/pages/08-attendance.js?v=20260801-3" defer></script>
+    <script src="js/pages/09-tracking.js?v=20260801-3" defer></script>
+    <script src="js/pages/10-dashboard.js?v=20260801-3" defer></script>
+    <script src="js/pages/11-analytics.js?v=20260801-3" defer></script>
+    <script src="js/pages/12-cross-section.js?v=20260801-3" defer></script>
+    <script src="js/pages/13-geo-apk.js?v=20260801-3" defer></script>
+    <script src="js/pages/14-activity-log.js?v=20260801-3" defer></script>
     <script>
         (function() {
             function getOpenModals() {

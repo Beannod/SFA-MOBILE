@@ -1,5 +1,6 @@
 ﻿    (function() {
-        var STK_BASE = BASE;
+        function stkBase() { return (typeof getApiBase === 'function') ? getApiBase() : (window.API_BASE_URL || window.location.origin || ''); }
+        function stkHeaders() { return typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' }; }
         var stkAllProducts=[], stkAllWarehouses=[], stkAllStock=[], stkSectionLoaded=false;
 
         window.stkSwitchTab = function(tab, btn) {
@@ -15,7 +16,7 @@
 
         async function stkLoadDropdowns() {
             try {
-                var res = await Promise.all([fetch(STK_BASE+'/api/products'), fetch(STK_BASE+'/api/warehouses')]);
+                var res = await Promise.all([fetch(stkBase()+'/api/products', { headers: stkHeaders() }), fetch(stkBase()+'/api/warehouses', { headers: stkHeaders() })]);
                 stkAllProducts = await res[0].json(); stkAllWarehouses = await res[1].json();
                 var ps=document.getElementById('stk-stProduct'); ps.innerHTML='<option value="">-- Select --</option>';
                 stkAllProducts.forEach(function(p){ ps.innerHTML+='<option value="'+p.id+'">'+esc(p.name)+' ('+esc(p.code||'no code')+')</option>'; });
@@ -32,7 +33,7 @@
                 var wh=document.getElementById('stk-filterWh').value;
                 if (wh) params.push('warehouseId='+wh);
                 if (document.getElementById('stk-filterLow').checked) params.push('lowStock=true');
-                var res=await fetch(STK_BASE+'/api/stock'+(params.length?'?'+params.join('&'):''));
+                var res=await fetch(stkBase()+'/api/stock'+(params.length?'?'+params.join('&'):''), { headers: stkHeaders() });
                 stkAllStock=await res.json();
                 var low=stkAllStock.filter(function(s){return s.isLowStock;}).length;
                 document.getElementById('stk-stStatsBar').innerHTML=
@@ -66,7 +67,7 @@
             var body={productId:parseInt(document.getElementById('stk-stProduct').value),warehouseId:parseInt(document.getElementById('stk-stWarehouse').value),quantityAvailable:parseFloat(document.getElementById('stk-stQty').value)||0,unit:document.getElementById('stk-stUnit').value,minStockLevel:parseFloat(document.getElementById('stk-stMin').value)||null,maxStockLevel:parseFloat(document.getElementById('stk-stMax').value)||null};
             msg.innerHTML='';
             try {
-                var res=await fetch(editId?STK_BASE+'/api/stock/'+editId:STK_BASE+'/api/stock',{method:editId?'PUT':'POST',headers:getAuthHeaders(),body:JSON.stringify(body)});
+                var res=await fetch(editId?stkBase()+'/api/stock/'+editId:stkBase()+'/api/stock',{method:editId?'PUT':'POST',headers:stkHeaders(),body:JSON.stringify(body)});
                 if (!res.ok) throw new Error(await res.text()||'Error '+res.status);
                 msg.innerHTML='<div class="message success">Stock '+(editId?'updated':'created')+'!</div>';
                 stkCancelStEdit(); stkLoadStock();
@@ -90,7 +91,7 @@
 
         window.stkDeleteStock = async function(id) {
             if (!confirm('Delete this stock entry?')) return;
-            try { await fetch(STK_BASE+'/api/stock/'+id,{method:'DELETE'}); stkLoadStock(); } catch(e) { alert(e.message); }
+            try { await fetch(stkBase()+'/api/stock/'+id,{method:'DELETE', headers: stkHeaders()}); stkLoadStock(); } catch(e) { alert(e.message); }
         };
 
         window.stkCancelStEdit = function() {
@@ -104,7 +105,7 @@
         window.stkLoadWarehouses = async function() {
             var c=document.getElementById('stk-whTable');
             try {
-                var whs=await (await fetch(STK_BASE+'/api/warehouses')).json();
+                var whs=await (await fetch(stkBase()+'/api/warehouses', { headers: stkHeaders() })).json();
                 if (!whs.length) { c.innerHTML='<div class="empty">No warehouses yet.</div>'; return; }
                 var h='<div class="table-wrap"><table><thead><tr><th>ID</th><th>Code</th><th>Name</th><th>Location</th><th>City</th><th>Contact</th><th>Phone</th><th>Actions</th></tr></thead><tbody>';
                 whs.forEach(function(w){
@@ -126,7 +127,7 @@
             var body={name:val('stk-whName'),code:val('stk-whCode')||null,location:val('stk-whLocation')||null,city:val('stk-whCity')||null,state:val('stk-whState')||null,contactPerson:val('stk-whContact')||null,phone:val('stk-whPhone')||null,isActive:true};
             msg.innerHTML='';
             try {
-                var res=await fetch(editId?STK_BASE+'/api/warehouses/'+editId:STK_BASE+'/api/warehouses',{method:editId?'PUT':'POST',headers:getAuthHeaders(),body:JSON.stringify(body)});
+                var res=await fetch(editId?stkBase()+'/api/warehouses/'+editId:stkBase()+'/api/warehouses',{method:editId?'PUT':'POST',headers:stkHeaders(),body:JSON.stringify(body)});
                 if (!res.ok) throw new Error(await res.text()||'Error');
                 msg.innerHTML='<div class="message success">Warehouse '+(editId?'updated':'created')+'!</div>';
                 stkCancelWhEdit(); stkLoadWarehouses(); stkLoadDropdowns();
@@ -149,7 +150,7 @@
 
         window.stkDeleteWh = async function(id) {
             if (!confirm('Delete warehouse?')) return;
-            try { await fetch(STK_BASE+'/api/warehouses/'+id,{method:'DELETE'}); stkLoadWarehouses(); stkLoadDropdowns(); } catch(e) { alert(e.message); }
+            try { await fetch(stkBase()+'/api/warehouses/'+id,{method:'DELETE', headers: stkHeaders()}); stkLoadWarehouses(); stkLoadDropdowns(); } catch(e) { alert(e.message); }
         };
 
         window.stkCancelWhEdit = function() {
@@ -163,7 +164,7 @@
         window.stkLoadAlerts = async function() {
             var c=document.getElementById('stk-alertsTable');
             try {
-                var alerts=await (await fetch(STK_BASE+'/api/stock/low')).json();
+                var alerts=await (await fetch(stkBase()+'/api/stock/low', { headers: stkHeaders() })).json();
                 if (!alerts.length) { c.innerHTML='<div class="empty" style="color:#22c55e;font-weight:600">✓ No low stock alerts. All items are above minimum levels.</div>'; return; }
                 var h='<div class="table-wrap"><table><thead><tr><th>Product</th><th>Code</th><th>Warehouse</th><th>Available</th><th>Min Level</th><th>Deficit</th></tr></thead><tbody>';
                 alerts.forEach(function(a){ h+='<tr style="background:#fef2f2"><td><strong>'+esc(a.productName)+'</strong></td><td>'+esc(a.productCode||'—')+'</td><td>'+esc(a.warehouseName)+'</td><td style="color:#ef4444;font-weight:700">'+Number(a.quantityAvailable).toLocaleString()+'</td><td>'+Number(a.minStockLevel||0).toLocaleString()+'</td><td style="color:#ef4444;font-weight:700">−'+Number(a.deficit||0).toLocaleString()+'</td></tr>'; });

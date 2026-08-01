@@ -61,7 +61,7 @@
     }
 
     function loadWebAppVersion() {
-        fetch(BASE + '/api/update/version')
+        fetch(window.API_BASE_URL + '/api/update/version')
             .then(function(response) {
                 if (!response.ok) throw new Error('Version info unavailable');
                 return response.json();
@@ -326,9 +326,25 @@
 
         var cfgCachedUsers = [], cfgCachedIsAdmin = false, cfgCachedCurrentUser = null;
         var cfgEditingUserReportsToId = null, cfgSectionLoaded = false;
-        var CFG_API = ((typeof getApiBase === 'function') ? getApiBase() : '') + '/api/users';
         var cfgPopupState = null;
         var CFG_POPUP_CARDS = ['cfg-designationCard', 'cfg-nepalPlacesCard', 'cfg-custTypesCard', 'cfg-productCfgCard'];
+
+        function cfgApiBase() {
+            if (typeof getApiBase === 'function') return getApiBase();
+            return window.API_BASE_URL || window.location.origin || '';
+        }
+
+        function cfgUsersApi() {
+            return cfgApiBase() + '/api/users';
+        }
+
+        function cfgDesignationApi() {
+            return cfgApiBase() + '/api/designation-config';
+        }
+
+        function cfgHeaders() {
+            return typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+        }
 
         // ── Permission feature lists (must match PermissionKeys in server) ──
         var CFG_WEB_FEATURES = ['dashboard','customers','orders','products','reports','attendance','location','stock','approveOrders','dispatchOrders','deliverOrders','cancelOrders'];
@@ -359,7 +375,6 @@
         };
 
         // Designation hierarchy — loaded from DB config for web editing.
-        var CFG_DESIG_API = ((typeof getApiBase === 'function') ? getApiBase() : '') + '/api/designation-config';
         var CFG_DESIG_CONFIGS = [];
         var CFG_DESIG_DEFAULT_LEVEL = {
             'Sales Head': 1,
@@ -645,7 +660,7 @@
 
         window.cfgLoadDesignationConfig = async function() {
             try {
-                var res = await fetch(CFG_DESIG_API);
+                var res = await fetch(cfgDesignationApi(), { headers: cfgHeaders() });
                 if (!res.ok) throw new Error('Failed to load designation config');
                 CFG_DESIG_CONFIGS = await res.json();
                 cfgRenderDesignationSelectOptions();
@@ -661,9 +676,9 @@
             var isActive = document.getElementById('cfg-desig-active').value === 'true';
             if (!cfgValidateDesignationDraft()) return showMsg('cfg-desig-msg', 'Please fix highlighted fields.', 'error');
             try {
-                var res = await fetch(CFG_DESIG_API, {
+                var res = await fetch(cfgDesignationApi(), {
                     method: 'POST',
-                    headers: getAuthHeaders(),
+                    headers: cfgHeaders(),
                     body: JSON.stringify({ name: name, level: level, isActive: isActive })
                 });
                 if (!res.ok) {
@@ -690,9 +705,9 @@
             if (!name) return showMsg('cfg-desig-msg', 'Designation name is required.', 'error');
             if (!level || level <= 0) return showMsg('cfg-desig-msg', 'Level must be greater than 0.', 'error');
             try {
-                var res = await fetch(CFG_DESIG_API + '/' + id, {
+                var res = await fetch(cfgDesignationApi() + '/' + id, {
                     method: 'PUT',
-                    headers: {'Content-Type':'application/json'},
+                    headers: cfgHeaders(),
                     body: JSON.stringify({ name: name, level: level, isActive: isActive })
                 });
                 if (!res.ok) {
@@ -710,7 +725,7 @@
         window.cfgDeleteDesignationConfig = async function(id) {
             if (!confirm('Delete this designation row?')) return;
             try {
-                var res = await fetch(CFG_DESIG_API + '/' + id, { method: 'DELETE' });
+                var res = await fetch(cfgDesignationApi() + '/' + id, { method: 'DELETE', headers: cfgHeaders() });
                 if (!res.ok) {
                     var t = await res.text();
                     throw new Error(t || 'Failed to delete designation');
@@ -730,13 +745,13 @@
                 var cu = getCurrentUser(); cfgCachedCurrentUser = cu;
                 var users;
                 if (cu && cu.role !== 'Admin') {
-                    var sr = await fetch(CFG_API + '/' + cu.id + '/subtree');
+                    var sr = await fetch(cfgUsersApi() + '/' + cu.id + '/subtree', { headers: cfgHeaders() });
                     var info = await sr.json();
                     var ids = new Set((info.members||[]).map(function(m){return m.id;}));
-                    var all = await (await fetch(CFG_API)).json();
+                    var all = await (await fetch(cfgUsersApi(), { headers: cfgHeaders() })).json();
                     users = all.filter(function(u){return ids.has(u.id);});
                 } else {
-                    var res = await fetch(CFG_API);
+                    var res = await fetch(cfgUsersApi(), { headers: cfgHeaders() });
                     if (!res.ok) throw new Error('Failed to fetch users');
                     users = await res.json();
                 }
@@ -828,22 +843,22 @@
                     var canSavePerms = cu3 && (cu3.role === 'Admin' || isDM);
                     var upd = { fullName:body.fullName,email:body.email,phone:body.phone,role:body.role,designation:body.designation,department:body.department,branch:body.branch,territory:body.territory,city:body.city,state:body.state,employeeCode:body.employeeCode,isActive:body.isActive,reportsToId:rtId?parseInt(rtId):null,clearReportsTo:!rtId };
                     if (body.password) upd.password = body.password;
-                    res = await fetch(CFG_API+'/'+editId,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(upd)});
+                    res = await fetch(cfgUsersApi()+'/'+editId,{method:'PUT',headers:cfgHeaders(),body:JSON.stringify(upd)});
                     if (canSavePerms) {
                         // Save web and mobile permissions via dedicated endpoints
-                        await fetch(CFG_API+'/'+editId+'/web-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(cfgGetSelectedWebFeatures())});
-                        await fetch(CFG_API+'/'+editId+'/mobile-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(cfgGetSelectedMobileFeatures())});
+                        await fetch(cfgUsersApi()+'/'+editId+'/web-permissions',{method:'PUT',headers:cfgHeaders(),body:JSON.stringify(cfgGetSelectedWebFeatures())});
+                        await fetch(cfgUsersApi()+'/'+editId+'/mobile-permissions',{method:'PUT',headers:cfgHeaders(),body:JSON.stringify(cfgGetSelectedMobileFeatures())});
                     }
                 } else {
-                    res = await fetch(CFG_API,{method:'POST',headers:getAuthHeaders(),body:JSON.stringify(body)});
+                    res = await fetch(cfgUsersApi(),{method:'POST',headers:cfgHeaders(),body:JSON.stringify(body)});
                 }
                 if (!res.ok) { var t=await res.text(); throw new Error(t||'Error '+res.status); }
                 var user=await res.json();
                 // For new users, also set web + mobile permissions via dedicated endpoints
                 if (!isEdit) {
                     await Promise.all([
-                        fetch(CFG_API+'/'+user.id+'/web-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(cfgGetSelectedWebFeatures())}).catch(function(){}),
-                        fetch(CFG_API+'/'+user.id+'/mobile-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(cfgGetSelectedMobileFeatures())}).catch(function(){})
+                        fetch(cfgUsersApi()+'/'+user.id+'/web-permissions',{method:'PUT',headers:cfgHeaders(),body:JSON.stringify(cfgGetSelectedWebFeatures())}).catch(function(){}),
+                        fetch(cfgUsersApi()+'/'+user.id+'/mobile-permissions',{method:'PUT',headers:cfgHeaders(),body:JSON.stringify(cfgGetSelectedMobileFeatures())}).catch(function(){})
                     ]);
                 }
                 msgDiv.innerHTML='<div class="message success">Sales person "'+esc(user.fullName)+'" '+(isEdit?'updated':'created')+'.</div>';
@@ -885,7 +900,7 @@
         // ── Profile Modal ──
         window.cfgOpenProfileModal = async function(id) {
             try {
-                var res = await fetch(CFG_API+'/'+id);
+                var res = await fetch(cfgUsersApi()+'/'+id, { headers: cfgHeaders() });
                 if (!res.ok) throw new Error('Could not load profile');
                 var u = await res.json();
                 var cu=getCurrentUser();
@@ -1019,16 +1034,16 @@
             document.getElementById('cfg-pmMobileGrid').querySelectorAll('input[type=checkbox]').forEach(function(cb){if(cb.checked)selMob.push(cb.value);});
             btn.disabled=true; btn.textContent='Saving…'; msgEl.innerHTML='';
             try {
-                var r2=await fetch(CFG_API+'/'+id,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(body)});
+                var r2=await fetch(cfgUsersApi()+'/'+id,{method:'PUT',headers:cfgHeaders(),body:JSON.stringify(body)});
                 if (!r2.ok) { var t2=await r2.text(); throw new Error(t2||'Save failed'); }
                 // Web permissions: editable by Admin OR direct manager
                 if (canSaveWebPerms) {
-                    var rw=await fetch(CFG_API+'/'+id+'/web-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(selWeb)});
+                    var rw=await fetch(cfgUsersApi()+'/'+id+'/web-permissions',{method:'PUT',headers:cfgHeaders(),body:JSON.stringify(selWeb)});
                     if (!rw.ok) console.warn('Web permissions save failed:',await rw.text());
                 }
                 // Mobile permissions: editable by Admin OR direct manager
                 if (canSaveMobilePerms) {
-                    var rm=await fetch(CFG_API+'/'+id+'/mobile-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(selMob)});
+                    var rm=await fetch(cfgUsersApi()+'/'+id+'/mobile-permissions',{method:'PUT',headers:cfgHeaders(),body:JSON.stringify(selMob)});
                     if (!rm.ok) console.warn('Mobile permissions save failed:',await rm.text());
                 }
                 msgEl.innerHTML='<div class="pm-msg success">Profile updated successfully!</div>';
@@ -1041,7 +1056,7 @@
             var name=document.getElementById('cfg-pmFullName').value||'this user';
             if (!confirm('Delete '+name+'? This cannot be undone.')) return;
             try {
-                var r=await fetch(CFG_API+'/'+id,{method:'DELETE'});
+                var r=await fetch(cfgUsersApi()+'/'+id,{method:'DELETE', headers: cfgHeaders()});
                 if (!r.ok&&r.status!==204) throw new Error('Delete failed');
                 cfgCloseProfileModal(); cfgLoadUsers();
             } catch(e) { document.getElementById('cfg-pmMsg').innerHTML='<div class="pm-msg error">'+e.message+'</div>'; }
@@ -1179,7 +1194,7 @@
             var curLvl=cfgGetDesignationLevel(currentDesig);
             sel.innerHTML='<option value="">-- No Manager --</option>';
             try {
-                var r=await fetch(CFG_API); if (!r.ok) return;
+                var r=await fetch(cfgUsersApi(), { headers: cfgHeaders() }); if (!r.ok) return;
                 var users=await r.json();
                 users.forEach(function(u) {
                     if (u.id===excludeId) return;
@@ -1203,7 +1218,7 @@
             var selectedValue = sel.value; // Keep current selection
             sel.innerHTML = '<option value="">-- No Manager --</option>';
             try {
-                var r = await fetch(CFG_API);
+                var r = await fetch(cfgUsersApi(), { headers: cfgHeaders() });
                 if (!r.ok) return;
                 var users = await r.json();
                 var candidates = users.filter(function(u) {
@@ -1248,7 +1263,7 @@
             var msgEl = document.getElementById('cfg-hierarchyMsg');
             wrap.innerHTML = '<div class="loading">Loading…</div>'; msgEl.innerHTML = '';
             try {
-                var users = await (await fetch(CFG_API)).json();
+                var users = await (await fetch(cfgUsersApi(), { headers: cfgHeaders() })).json();
                 // Sort by designation level then name
                 users.sort(function(a,b){ return (a.designationLevel||99)-(b.designationLevel||99)||(a.fullName||'').localeCompare(b.fullName||''); });
                 var html = '<table><thead><tr>'
@@ -1287,7 +1302,7 @@
             var rtv = sel.value;
             var body = rtv ? { reportsToId: parseInt(rtv) } : { clearReportsTo: true };
             try {
-                var r = await fetch(CFG_API+'/'+userId, { method:'PUT', headers:getAuthHeaders(), body:JSON.stringify(body) });
+                var r = await fetch(cfgUsersApi()+'/'+userId, { method:'PUT', headers:cfgHeaders(), body:JSON.stringify(body) });
                 if (!r.ok) { var t=await r.text(); throw new Error(t||'Save failed'); }
                 var updated = await r.json();
                 msgEl.innerHTML = '<div class="message success" style="margin-bottom:8px">✔ Manager updated for <b>'+esc(updated.fullName||updated.username)+'</b>.</div>';
@@ -1487,7 +1502,7 @@
             return ((typeof getApiBase === 'function') ? getApiBase() : '') + '/api/product-config';
         }
         window.cfgLoadProductConfigFromDb = function(cb) {
-            fetch(cfgProductConfigApiBase())
+            fetch(cfgProductConfigApiBase(), { headers: cfgHeaders() })
                 .then(function(r) { return r.ok ? r.json() : null; })
                 .then(function(data) {
                     if (data) cfgSetCache(data);
@@ -1500,7 +1515,7 @@
         function cfgSaveProductConfigToDb(cfg, cb) {
             fetch(cfgProductConfigApiBase(), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: cfgHeaders(),
                 body: JSON.stringify(cfg)
             })
             .then(function(r) { return r.ok ? r.json() : null; })
@@ -1530,7 +1545,7 @@
             if (!cfgValidateProductCfgValue(key)) return;
             fetch(cfgProductConfigApiBase() + '/' + encodeURIComponent(key), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: cfgHeaders(),
                 body: JSON.stringify({ value: v })
             })
             .then(function(r) { return r.ok ? r.json() : null; })
@@ -1552,7 +1567,8 @@
                 return;
             }
             fetch(cfgProductConfigApiBase() + '/' + encodeURIComponent(key) + '/' + encodeURIComponent(value), {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: cfgHeaders()
             })
             .then(function(r) { return r.ok ? r.json() : null; })
             .then(function(data) {

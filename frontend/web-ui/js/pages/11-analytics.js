@@ -160,7 +160,10 @@
         try {
             var fd = new FormData();
             fd.append('file', fileInput.files[0]);
-            var res = await fetch(window.location.origin + '/api/products/' + editId + '/upload-image', { method:'POST', body:fd });
+            var base = (typeof getApiBase === 'function') ? getApiBase() : (window.API_BASE_URL || window.location.origin || '');
+            var headers = typeof getAuthHeaders === 'function' ? Object.assign({}, getAuthHeaders()) : {};
+            delete headers['Content-Type'];
+            var res = await fetch(base + '/api/products/' + editId + '/upload-image', { method:'POST', headers:headers, body:fd });
             if (!res.ok) throw new Error(await res.text() || 'Upload failed');
             var data = await res.json();
             document.getElementById('prod-imageUrl').value = data.imageUrl;

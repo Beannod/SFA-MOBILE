@@ -120,6 +120,35 @@ app.MapGet("/", context =>
 });
 
 // app.UseHttpsRedirection(); // Disabled so mobile app can use HTTP
+
+// Custom middleware to add CORS headers to all responses (including error responses)
+app.Use(async (context, next) =>
+{
+	var origin = context.Request.Headers["Origin"].ToString();
+	if (!string.IsNullOrEmpty(origin))
+	{
+		// Check if origin is allowed
+		var allowedOrigins = new[] { "http://localhost:3000", "http://127.0.0.1:3000", "https://localhost:3000" };
+		if (allowedOrigins.Contains(origin) || origin.Contains("pages.dev"))
+		{
+			context.Response.Headers.Add("Access-Control-Allow-Origin", origin);
+			context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+			context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization");
+			context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
+		}
+	}
+
+	// Handle CORS preflight requests
+	if (context.Request.Method == "OPTIONS")
+	{
+		context.Response.StatusCode = 200;
+		await context.Response.CompleteAsync();
+		return;
+	}
+
+	await next();
+});
+
 app.UseCors("AllowFrontend"); // Enable CORS before routing
 app.UseAuthentication(); // Add JWT authentication (must be before UseAuthorization)
 app.UseAuthorization();

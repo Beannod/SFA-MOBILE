@@ -1,6 +1,7 @@
 param([string]$Base = "http://localhost:5000")
 
 $pass = 0; $fail = 0; $results = @()
+$script:AuthHeaders = @{}
 
 function Test($label, $code, $expected, $notes="") {
     $ok = $code -in $expected
@@ -13,22 +14,22 @@ function Test($label, $code, $expected, $notes="") {
 }
 
 function Get($url) {
-    try { $r=Invoke-WebRequest "$Base$url" -UseBasicParsing; @{code=[int]$r.StatusCode;body=$r.Content} }
+    try { $r=Invoke-WebRequest "$Base$url" -Headers $script:AuthHeaders -UseBasicParsing; @{code=[int]$r.StatusCode;body=$r.Content} }
     catch { @{code=[int]$_.Exception.Response.StatusCode.value__;body=""} }
 }
 
 function Post($url,$body) {
-    try { $r=Invoke-WebRequest "$Base$url" -Method POST -Body $body -ContentType "application/json" -UseBasicParsing; @{code=[int]$r.StatusCode;body=$r.Content} }
+    try { $r=Invoke-WebRequest "$Base$url" -Method POST -Headers $script:AuthHeaders -Body $body -ContentType "application/json" -UseBasicParsing; @{code=[int]$r.StatusCode;body=$r.Content} }
     catch { @{code=[int]$_.Exception.Response.StatusCode.value__;body=""} }
 }
 
 function Put($url,$body) {
-    try { $r=Invoke-WebRequest "$Base$url" -Method PUT -Body $body -ContentType "application/json" -UseBasicParsing; @{code=[int]$r.StatusCode;body=$r.Content} }
+    try { $r=Invoke-WebRequest "$Base$url" -Method PUT -Headers $script:AuthHeaders -Body $body -ContentType "application/json" -UseBasicParsing; @{code=[int]$r.StatusCode;body=$r.Content} }
     catch { @{code=[int]$_.Exception.Response.StatusCode.value__;body=""} }
 }
 
 function Delete($url) {
-    try { $r=Invoke-WebRequest "$Base$url" -Method DELETE -UseBasicParsing; @{code=[int]$r.StatusCode;body=$r.Content} }
+    try { $r=Invoke-WebRequest "$Base$url" -Method DELETE -Headers $script:AuthHeaders -UseBasicParsing; @{code=[int]$r.StatusCode;body=$r.Content} }
     catch { @{code=[int]$_.Exception.Response.StatusCode.value__;body=""} }
 }
 
@@ -43,6 +44,9 @@ $loginOk = Post "/api/auth/login" '{"username":"admin","password":"user"}'
 Test "POST /api/auth/login (valid)" $loginOk.code @(200)
 if($loginOk.code -eq 200){
     $u=$loginOk.body|ConvertFrom-Json
+    if($u.token){
+        $script:AuthHeaders = @{ Authorization = "Bearer $($u.token)" }
+    }
     Write-Host "    -> role=$($u.role) features=$($u.allowedFeatures -join ',')  webPerms=$($u.webPermissions -join ',')"
 }
 
@@ -218,7 +222,7 @@ Test "GET /api/notifications?userId=1" $notifs.code @(200) "count=$(($notifs.bod
 $notifsUnread = Get "/api/notifications?userId=1&unread=true"
 Test "GET /api/notifications?userId=1&unread=true" $notifsUnread.code @(200)
 
-$markAll = Invoke-WebRequest "$Base/api/notifications/read-all?userId=1" -Method PATCH -UseBasicParsing -ErrorAction SilentlyContinue
+$markAll = Invoke-WebRequest "$Base/api/notifications/read-all?userId=1" -Method PATCH -Headers $script:AuthHeaders -UseBasicParsing -ErrorAction SilentlyContinue
 Test "PATCH /api/notifications/read-all?userId=1" ([int]$markAll.StatusCode) @(200,204)
 
 # ── ACTIVITY LOGS ─────────────────────────────────────────────────────────────

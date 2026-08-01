@@ -12,7 +12,7 @@
                 var self = this;
                 _acTimer = setTimeout(async function() {
                     try {
-                        var r = await fetch(BASE + '/api/nepalplaces?q='+encodeURIComponent(q)+'&limit=8');
+                        var r = await fetch(window.API_BASE_URL + '/api/nepalplaces?q='+encodeURIComponent(q)+'&limit=8', {headers: typeof getAuthHeaders === 'function' ? getAuthHeaders() : {}});
                         var items = await r.json();
                         if (!items.length) { ul.style.display='none'; return; }
                         ul.innerHTML = items.map(function(p) {

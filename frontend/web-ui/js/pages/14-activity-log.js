@@ -1,6 +1,10 @@
 ﻿    (function() {
-        var ACT_API = BASE + '/api/activity-logs';
-        var ACT_USERS_API = BASE + '/api/users';
+        var ACT_API = window.API_BASE_URL + '/api/activity-logs';
+        var ACT_USERS_API = window.API_BASE_URL + '/api/users';
+                function actHeaders() {
+                    return typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+                }
+
         var actPageSize = 30;
         var actCurrentPage = 1;
         var actSectionLoaded = false;
@@ -133,7 +137,7 @@
             if (to)     params.set('to', to + 'T23:59:59');
 
             try {
-                var res = await fetch(ACT_API + '?' + params.toString());
+                var res = await fetch(ACT_API + '?' + params.toString(), { headers: actHeaders() });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 var data = await res.json();
                 actRenderFeed(data.items);
@@ -155,7 +159,7 @@
         async function actLoadUsers() {
             if (actAllUsers.length > 0) return;
             try {
-                var res = await fetch(ACT_USERS_API);
+                var res = await fetch(ACT_USERS_API, { headers: actHeaders() });
                 if (!res.ok) return;
                 var users = await res.json();
                 actAllUsers = users;

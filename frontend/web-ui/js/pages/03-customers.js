@@ -1,6 +1,8 @@
 ﻿    (function() {
-        var CUST_API = BASE + '/api/customers';
-        var CUST_USERS_API = BASE + '/api/users';
+        // Don't cache API URLs - use window.API_BASE_URL dynamically
+        function getCustApi() { return (window.API_BASE_URL || window.location.origin) + '/api/customers'; }
+        function getCustUsersApi() { return (window.API_BASE_URL || window.location.origin) + '/api/users'; }
+        
         var custAllCustomers = [], custAllUsers = [], custActiveManagerId = null;
         var custSelectedIds = [];
         var custCurrentUser = null, custSectionLoaded = false;
@@ -65,21 +67,31 @@
             var container = document.getElementById('cust-custTable');
             container.innerHTML = '<div class="loading">Loading...</div>';
             try {
+                // Use window.API_BASE_URL dynamically instead of cached CUST_API variable
+                var custApiUrl = (window.API_BASE_URL || window.location.origin) + '/api/customers';
                 var url;
-                if (managerId) { url = CUST_API + '?managerId=' + managerId; }
+                if (managerId) { url = custApiUrl + '?managerId=' + managerId; }
                 else if (custCurrentUser && (custCurrentUser.role||'').toLowerCase() !== 'admin') {
                     var lvl = custCurrentUser.designationLevel || 99;
-                    url = lvl >= 6 ? CUST_API + '?assignedUserId=' + custCurrentUser.id : CUST_API + '?managerId=' + custCurrentUser.id;
-                } else { url = CUST_API; }
-                var res = await fetch(url);
-                if (!res.ok) throw new Error('Failed to fetch customers');
+                    url = lvl >= 6 ? custApiUrl + '?assignedUserId=' + custCurrentUser.id : custApiUrl + '?managerId=' + custCurrentUser.id;
+                } else { url = custApiUrl; }
+                
+                console.log('[custLoadCustomers] URL:', url, 'API_BASE_URL:', window.API_BASE_URL, 'Headers:', typeof getAuthHeaders);
+                
+                var res = await fetch(url, {headers: getAuthHeaders()});
+                console.log('[custLoadCustomers] Response status:', res.status, 'ok:', res.ok);
+                if (!res.ok) throw new Error('Failed to fetch customers. Status: ' + res.status);
                 custAllCustomers = await res.json();
+                console.log('[custLoadCustomers] Loaded customers:', custAllCustomers.length);
                 custSelectedIds = custSelectedIds.filter(function(id) {
                     return custAllCustomers.some(function(c) { return c.id === id; });
                 });
                 custUpdateStats();
                 custRenderTable();
-            } catch(err) { container.innerHTML = '<div class="message error">Error: ' + err.message + '</div>'; }
+            } catch(err) { 
+                console.error('[custLoadCustomers] Error:', err.message);
+                container.innerHTML = '<div class="message error">Error: ' + err.message + '</div>'; 
+            }
         };
 
         function custUpdateStats() {
@@ -205,7 +217,7 @@
             if (!body.name) { msgDiv.innerHTML='<div class="message error">Shop / Firm Name is required.</div>'; return; }
             btn.disabled=true; btn.textContent='Saving...'; msgDiv.innerHTML='';
             try {
-                var res = await fetch(editId ? CUST_API+'/'+editId : CUST_API, {method:editId?'PUT':'POST', headers:getAuthHeaders(), body:JSON.stringify(body)});
+                var res = await fetch(editId ? getCustApi()+'/'+editId : getCustApi(), {method:editId?'PUT':'POST', headers:getAuthHeaders(), body:JSON.stringify(body)});
                 if (!res.ok) throw new Error(await res.text()||'Error '+res.status);
                 var result = await res.json();
                 msgDiv.innerHTML='<div class="message success">Customer "'+esc(result.name||body.name)+'" '+(editId?'updated':'created')+'.</div>';
@@ -256,7 +268,7 @@
             try {
                 var hdrs = {'Content-Type':'application/json'};
                 if (custCurrentUser && custCurrentUser.id) hdrs['X-User-Id'] = custCurrentUser.id;
-                var res = await fetch(CUST_API+'/'+id+'/approve', {method:'PUT', headers:hdrs, body:JSON.stringify({approvalStatus:status})});
+                var res = await fetch(getCustApi()+'/'+id+'/approve', {method:'PUT', headers:hdrs, body:JSON.stringify({approvalStatus:status})});
                 if (!res.ok) throw new Error('Update failed');
                 showMsg('cust-pageMsg','Customer '+status.toLowerCase()+'.','success');
                 custLoadCustomers(custActiveManagerId||null);
@@ -266,7 +278,7 @@
         window.custDeleteCustomer = async function(id) {
             if (!confirm('Delete this customer? This cannot be undone.')) return;
             try {
-                var res = await fetch(CUST_API+'/'+id, {method:'DELETE'});
+                var res = await fetch(getCustApi()+'/'+id, {method:'DELETE', headers:getAuthHeaders()});
                 if (!res.ok && res.status!==204) throw new Error('Delete failed');
                 showMsg('cust-pageMsg','Customer deleted.','success');
                 custLoadCustomers(custActiveManagerId||null);
@@ -276,7 +288,7 @@
         // ── Import/Export functions ──────────────────────────
         window.custDownloadTemplate = function() {
             var link = document.createElement('a');
-            link.href = CUST_API + '/template';
+            link.href = getCustApi() + '/template';
             link.download = 'customers-template.csv';
             link.click();
         };
@@ -307,7 +319,7 @@
             btn.textContent = 'Importing...';
 
             try {
-                var res = await fetch(CUST_API + '/import', {method:'POST', body:formData});
+                var res = await fetch(getCustApi() + '/import', {method:'POST', headers:getAuthHeaders(), body:formData});
                 if (!res.ok) throw new Error(await res.text()||'Import failed');
                 var result = await res.json();
 
@@ -529,7 +541,7 @@
             custActiveManagerId = mid;
             var name = sel.options[sel.selectedIndex].textContent;
             try {
-                var info = await (await fetch(CUST_USERS_API+'/'+mid+'/subtree')).json();
+                var info = await (await fetch(CUST_USERS_API+'/'+mid+'/subtree', {headers:getAuthHeaders()})).json();
                 document.getElementById('cust-teamBannerName').textContent = name;
                 document.getElementById('cust-teamBannerCount').textContent = info.totalMembers+' team member'+(info.totalMembers!==1?'s':'');
                 document.getElementById('cust-teamBanner').style.display = 'flex';
@@ -552,17 +564,29 @@
             custCurrentUser = getCurrentUser();
             if (!custSectionLoaded) {
                 custSectionLoaded = true;
+                custEnsureLoaded();  // Load users and customers when section is shown
             }
         });
         window.custEnsureLoaded = function() {
             custCurrentUser = getCurrentUser();
-            fetch(CUST_USERS_API).then(function(r){return r.json();}).then(function(users) {
+            var usersApiUrl = getCustUsersApi();
+            
+            console.log('[custEnsureLoaded] Starting... Users API:', usersApiUrl, 'API_BASE_URL:', window.API_BASE_URL);
+            
+            fetch(usersApiUrl, {headers:getAuthHeaders()}).then(function(r){
+                console.log('[custEnsureLoaded] Users fetch status:', r.status);
+                return r.json();
+            }).then(function(users) {
+                console.log('[custEnsureLoaded] Users loaded:', users.length);
                 custAllUsers = users;
                 var manSel = document.getElementById('cust-managerFilter');
                 manSel.innerHTML = '<option value="">-- All Customers --</option>';
                 var toShow = users;
                 if (custCurrentUser && custCurrentUser.role !== 'Admin') {
-                    fetch(CUST_USERS_API+'/'+custCurrentUser.id+'/subtree').then(function(sr){return sr.json();}).then(function(si) {
+                    fetch(getCustUsersApi()+'/'+custCurrentUser.id+'/subtree', {headers:getAuthHeaders()}).then(function(sr){
+                        console.log('[custEnsureLoaded] Subtree fetch status:', sr.status);
+                        return sr.json();
+                    }).then(function(si) {
                         var ids = new Set((si.members||[]).map(function(m){return m.id;}));
                         toShow = users.filter(function(u){return ids.has(u.id);});
                         toShow.slice().sort(function(a,b){return (a.designationLevel||99)-(b.designationLevel||99)||(a.fullName||'').localeCompare(b.fullName||'');}).forEach(function(u){manSel.innerHTML+='<option value="'+u.id+'">'+esc(u.fullName||u.username)+(u.designation?' · '+u.designation:'')+'</option>';});
@@ -570,7 +594,11 @@
                 } else {
                     users.slice().sort(function(a,b){return (a.designationLevel||99)-(b.designationLevel||99)||(a.fullName||'').localeCompare(b.fullName||'');}).forEach(function(u){manSel.innerHTML+='<option value="'+u.id+'">'+esc(u.fullName||u.username)+(u.designation?' · '+u.designation:'')+'</option>';});
                 }
+            }).catch(function(err) {
+                console.error('[custEnsureLoaded] Error loading users:', err);
             });
+            
+            console.log('[custEnsureLoaded] Calling custLoadCustomers...');
             custLoadCustomers();
         };
 

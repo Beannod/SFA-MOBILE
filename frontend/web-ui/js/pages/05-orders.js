@@ -1,12 +1,16 @@
 ﻿    (function() {
-        var ORD_API = BASE + '/api/orders';
-        var ORD_CUST_API = BASE + '/api/customers';
-        var ORD_USERS_API = BASE + '/api/users';
-        var ORD_PROD_API = BASE + '/api/products?discontinued=false';
+        var ORD_API = window.API_BASE_URL + '/api/orders';
+        var ORD_CUST_API = window.API_BASE_URL + '/api/customers';
+        var ORD_USERS_API = window.API_BASE_URL + '/api/users';
+        var ORD_PROD_API = window.API_BASE_URL + '/api/products?discontinued=false';
         var ordAllOrders = [], ordAllCustomers = [], ordAllUsers = [], ordAllProducts = [];
         var ordLineItemCount = 0, ordActiveManagerId = null;
         var ordCurrentUser = null, ordSectionLoaded = false;
         var ordCurrentPage = 1, ordPageSize = 200, ordTotalOrders = 0;
+
+        function ordHeaders() {
+            return typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+        }
 
         // Cross-section helpers
         window.ordersFilterByCustomer = function(custId, custName) {
@@ -23,7 +27,11 @@
         async function ordEnsureDropdownData() {
             if (ordAllCustomers.length && ordAllUsers.length) return;
             try {
-                var rs = await Promise.all([fetch(ORD_CUST_API), fetch(ORD_USERS_API), fetch(BASE+'/api/products')]);
+                var rs = await Promise.all([
+                    fetch(ORD_CUST_API, { headers: ordHeaders() }),
+                    fetch(ORD_USERS_API, { headers: ordHeaders() }),
+                    fetch(ORD_PROD_API, { headers: ordHeaders() })
+                ]);
                 var data = await Promise.all(rs.map(function(r){ return r.json(); }));
                 if (data[0] && data[0].length) ordAllCustomers = data[0];
                 if (data[1] && data[1].length) ordAllUsers = data[1];
@@ -104,7 +112,7 @@
                 if (fromDate) qs += 'fromDate=' + encodeURIComponent(fromDate) + '&toDate=' + encodeURIComponent(toDate) + '&';
                 qs += 'page=' + ordCurrentPage + '&pageSize=' + ordPageSize;
                 url = ORD_API + '?' + qs;
-                var res = await fetch(url);
+                var res = await fetch(url, { headers: ordHeaders() });
                 if (!res.ok) throw new Error('Server error ' + res.status);
                 var parsed = await res.json();
                 if (Array.isArray(parsed)) {
@@ -237,10 +245,10 @@
             var success = 0, failed = 0;
             for (var id of selected) {
                 try {
-                    var res = await fetch('/api/orders/'+id+'/updateStatus', {
+                    var res = await fetch(ORD_API + '/' + id + '/status', {
                         method:'PUT',
-                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': ordCurrentUser.id}),
-                        body:JSON.stringify({status:newStatus})
+                        headers: ordHeaders(),
+                        body:JSON.stringify({status:newStatus, changedByUserId: ordCurrentUser ? ordCurrentUser.id : null})
                     });
                     if (res.ok) success++; else failed++;
                 } catch(e) { failed++; }
@@ -259,9 +267,9 @@
             var success = 0, failed = 0;
             for (var id of selected) {
                 try {
-                    var res = await fetch('/api/orders/'+id, {
+                    var res = await fetch(ORD_API + '/' + id, {
                         method:'DELETE',
-                        headers:{'X-User-Id': ordCurrentUser.id}
+                        headers: ordHeaders()
                     });
                     if (res.ok) success++; else failed++;
                 } catch(e) { failed++; }
@@ -279,10 +287,10 @@
             var success = 0, failed = 0;
             for (var id of selected) {
                 try {
-                    var res = await fetch('/api/orders/'+id+'/updateStatus', {
+                    var res = await fetch(ORD_API + '/' + id + '/status', {
                         method:'PUT',
-                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': ordCurrentUser.id}),
-                        body:JSON.stringify({status:'Approved'})
+                        headers: ordHeaders(),
+                        body:JSON.stringify({status:'Approved', changedByUserId: ordCurrentUser ? ordCurrentUser.id : null})
                     });
                     if (res.ok) success++; else failed++;
                 } catch(e) { failed++; }
@@ -300,10 +308,10 @@
             var success = 0, failed = 0;
             for (var id of selected) {
                 try {
-                    var res = await fetch('/api/orders/'+id+'/updateStatus', {
+                    var res = await fetch(ORD_API + '/' + id + '/status', {
                         method:'PUT',
-                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': ordCurrentUser.id}),
-                        body:JSON.stringify({status:'Rejected'})
+                        headers: ordHeaders(),
+                        body:JSON.stringify({status:'Rejected', changedByUserId: ordCurrentUser ? ordCurrentUser.id : null})
                     });
                     if (res.ok) success++; else failed++;
                 } catch(e) { failed++; }
@@ -467,7 +475,7 @@
 
         window.ordEditOrder = async function(id) {
             try {
-                var o = await (await fetch(ORD_API+'/'+id)).json();
+                var o = await (await fetch(ORD_API+'/'+id, { headers: ordHeaders() })).json();
                 if (o.status!=='Pending') { alert('Only Pending orders can be edited.'); return; }
                 await ordEnsureDropdownData();
                 var editRole = (ordCurrentUser && ordCurrentUser.role || '').toLowerCase();
@@ -515,7 +523,7 @@
             content.innerHTML='<div class="loading" style="padding:32px 0;text-align:center">Loading…</div>';
             openModal(modal);
             try {
-                var o = await (await fetch(ORD_API+'/'+id)).json();
+                var o = await (await fetch(ORD_API+'/'+id, { headers: ordHeaders() })).json();
                 document.getElementById('ord-detailTitle').textContent='Order '+(o.orderNumber||'#'+o.id);
                 var html = '<div style="padding:18px 22px 6px">';
                 // Info grid
@@ -578,7 +586,7 @@
                 content.innerHTML = html;
                 // Load activity logs for this order
                 try {
-                    var logs = await (await fetch('/api/activity-logs/entity/Order/'+o.id)).json();
+                    var logs = await (await fetch(window.API_BASE_URL + '/api/activity-logs/entity/Order/' + o.id, { headers: ordHeaders() })).json();
                     var lw = document.getElementById('ord-detailLogs');
                     if (!logs.length) { lw.innerHTML='<div style="color:var(--gray-400);font-size:.85em;padding:8px 0">No activity logs.</div>'; }
                     else {
@@ -601,7 +609,7 @@
             content.innerHTML = '<div class="loading" style="padding:18px 0;text-align:center">Loading…</div>';
             openModal(modal);
             try {
-                var logs = await (await fetch('/api/activity-logs/entity/'+entityType+'/'+entityId)).json();
+                var logs = await (await fetch(window.API_BASE_URL + '/api/activity-logs/entity/' + entityType + '/' + entityId, { headers: ordHeaders() })).json();
                 if (!logs.length) { content.innerHTML='<div style="color:var(--gray-400);font-size:.88em;padding:12px 0">No activity logs found.</div>'; return; }
                 var h='';
                 logs.forEach(function(l){
@@ -740,7 +748,7 @@
             ordActiveManagerId = mid;
             var name = sel.options[sel.selectedIndex].textContent;
             try {
-                var info = await (await fetch(ORD_USERS_API+'/'+mid+'/subtree')).json();
+                var info = await (await fetch(ORD_USERS_API+'/'+mid+'/subtree', { headers: ordHeaders() })).json();
                 document.getElementById('ord-teamBannerName').textContent = name;
                 document.getElementById('ord-teamBannerCount').textContent = info.totalMembers+' team member'+(info.totalMembers!==1?'s':'');
                 document.getElementById('ord-teamBanner').style.display = 'flex';
@@ -779,7 +787,11 @@
             ordCurrentUser = getCurrentUser();
             if (!ordSectionLoaded) {
                 ordSectionLoaded = true;
-                Promise.all([fetch(ORD_CUST_API), fetch(ORD_USERS_API), fetch(BASE+'/api/products')]).then(function(rs) {
+                Promise.all([
+                    fetch(ORD_CUST_API, { headers: ordHeaders() }),
+                    fetch(ORD_USERS_API, { headers: ordHeaders() }),
+                    fetch(ORD_PROD_API, { headers: ordHeaders() })
+                ]).then(function(rs) {
                     return Promise.all(rs.map(function(r){return r.json();}));
                 }).then(function(data) {
                     ordAllCustomers = data[0]; ordAllUsers = data[1]; ordAllProducts = data[2];
@@ -790,7 +802,7 @@
                     manSel.innerHTML = '<option value="">-- All Orders --</option>';
                     var sorted = ordAllUsers.slice().sort(function(a,b){return (a.designationLevel||99)-(b.designationLevel||99)||(a.fullName||'').localeCompare(b.fullName||'');});
                     if (ordCurrentUser && (ordCurrentUser.role||'').toLowerCase()!=='admin') {
-                        fetch(ORD_USERS_API+'/'+ordCurrentUser.id+'/subtree').then(function(sr){return sr.json();}).then(function(si) {
+                        fetch(ORD_USERS_API+'/'+ordCurrentUser.id+'/subtree', { headers: ordHeaders() }).then(function(sr){return sr.json();}).then(function(si) {
                             var ids=new Set((si.members||[]).map(function(m){return m.id;}));
                             sorted.filter(function(u){return ids.has(u.id);}).forEach(function(u){manSel.innerHTML+='<option value="'+u.id+'">'+esc(u.fullName||u.username)+(u.designation?' · '+u.designation:'')+'</option>';});
                         }).catch(function(){});

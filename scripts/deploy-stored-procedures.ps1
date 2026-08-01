@@ -27,19 +27,20 @@ function Invoke-SqlScript([string]$Path) {
 }
 
 Invoke-SqlScript (Join-Path $root 'database\sql\usp_users_hierarchy.sql')
+Invoke-SqlScript (Join-Path $root 'database\sql\usp_users_subtree.sql')
 Invoke-SqlScript (Join-Path $root 'database\sql\usp_orders_list_filtered.sql')
 
 $connection = [System.Data.SqlClient.SqlConnection]::new($connectionString)
 try {
     $connection.Open()
     $command = $connection.CreateCommand()
-    $command.CommandText = "SELECT name FROM sys.procedures WHERE name IN ('usp_orders_list_filtered', 'usp_users_hierarchy') ORDER BY name;"
+    $command.CommandText = "SELECT name FROM sys.procedures WHERE name IN ('usp_orders_list_filtered', 'usp_users_hierarchy', 'usp_users_subtree') ORDER BY name;"
     $reader = $command.ExecuteReader()
     $procedures = @()
     while ($reader.Read()) { $procedures += $reader.GetString(0) }
     $reader.Close()
 
-    if ($procedures.Count -ne 2) { throw 'Stored procedure verification failed.' }
+    if ($procedures.Count -ne 3) { throw 'Stored procedure verification failed.' }
     Write-Host "Deployed and verified: $($procedures -join ', ')" -ForegroundColor Green
 }
 finally {
