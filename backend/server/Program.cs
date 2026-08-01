@@ -133,7 +133,10 @@ app.Use(async (context, next) =>
 		{
 			context.Response.Headers.Add("Access-Control-Allow-Origin", origin);
 			context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-			context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization");
+			var requestedHeaders = context.Request.Headers["Access-Control-Request-Headers"].ToString();
+			context.Response.Headers.Add("Access-Control-Allow-Headers", string.IsNullOrWhiteSpace(requestedHeaders)
+				? "Content-Type, Authorization, X-Source, X-User-Id"
+				: requestedHeaders);
 			context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
 		}
 	}

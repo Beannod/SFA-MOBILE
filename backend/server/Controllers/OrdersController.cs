@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using SfaApi.Data;
 using SfaApi.Models;
 using System.Text;
@@ -35,6 +36,9 @@ namespace SfaApi.Controllers
 
         private int? GetCallerId()
         {
+            var claimValue = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (int.TryParse(claimValue, out var claimId)) return claimId;
+
             var h = Request.Headers["X-User-Id"].FirstOrDefault();
             return int.TryParse(h, out var id) ? id : null;
         }

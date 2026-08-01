@@ -3,6 +3,9 @@
         var ORD_CUST_API = BASE + '/api/customers';
         var ORD_USERS_API = BASE + '/api/users';
         var ORD_PROD_API = BASE + '/api/products?discontinued=false';
+        function ordHeaders() {
+            return typeof getAuthHeaders === 'function' ? getAuthHeaders() : {'Content-Type':'application/json'};
+        }
         var ordAllOrders = [], ordAllCustomers = [], ordAllUsers = [], ordAllProducts = [];
         var ordLineItemCount = 0, ordActiveManagerId = null;
         var ordCurrentUser = null, ordSectionLoaded = false;
@@ -239,7 +242,7 @@
                 try {
                     var res = await fetch('/api/orders/'+id+'/updateStatus', {
                         method:'PUT',
-                        headers:{'Content-Type':'application/json', 'X-User-Id': ordCurrentUser.id},
+                        headers:ordHeaders(),
                         body:JSON.stringify({status:newStatus})
                     });
                     if (res.ok) success++; else failed++;
@@ -261,7 +264,7 @@
                 try {
                     var res = await fetch('/api/orders/'+id, {
                         method:'DELETE',
-                        headers:{'X-User-Id': ordCurrentUser.id}
+                        headers:ordHeaders()
                     });
                     if (res.ok) success++; else failed++;
                 } catch(e) { failed++; }
@@ -281,7 +284,7 @@
                 try {
                     var res = await fetch('/api/orders/'+id+'/updateStatus', {
                         method:'PUT',
-                        headers:{'Content-Type':'application/json', 'X-User-Id': ordCurrentUser.id},
+                        headers:ordHeaders(),
                         body:JSON.stringify({status:'Approved'})
                     });
                     if (res.ok) success++; else failed++;
@@ -302,7 +305,7 @@
                 try {
                     var res = await fetch('/api/orders/'+id+'/updateStatus', {
                         method:'PUT',
-                        headers:{'Content-Type':'application/json', 'X-User-Id': ordCurrentUser.id},
+                        headers:ordHeaders(),
                         body:JSON.stringify({status:'Rejected'})
                     });
                     if (res.ok) success++; else failed++;
