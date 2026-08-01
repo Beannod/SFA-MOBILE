@@ -128,7 +128,7 @@
             };
             var url = id ? npBase()+'/api/nepalplaces/'+id : npBase()+'/api/nepalplaces';
             var method = id ? 'PUT' : 'POST';
-            fetch(url, { method:method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })
+            fetch(url, { method:method, headers:getAuthHeaders(), body:JSON.stringify(body) })
                 .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
                 .then(function(saved) {
                     npCloseModal();

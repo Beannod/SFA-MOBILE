@@ -7,6 +7,15 @@
         try { return JSON.parse(localStorage.getItem('sfa_admin_user')); } catch(e) { return null; }
     }
 
+    function getAuthHeaders() {
+        var token = localStorage.getItem('sfa_jwt_token');
+        var headers = { 'Content-Type': 'application/json' };
+        if (token) {
+            headers['Authorization'] = 'Bearer ' + token;
+        }
+        return headers;
+    }
+
     function getAppName() {
         try {
             var cfg = JSON.parse(localStorage.getItem('sfa_config') || '{}');
@@ -654,7 +663,7 @@
             try {
                 var res = await fetch(CFG_DESIG_API, {
                     method: 'POST',
-                    headers: {'Content-Type':'application/json'},
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ name: name, level: level, isActive: isActive })
                 });
                 if (!res.ok) {
@@ -819,22 +828,22 @@
                     var canSavePerms = cu3 && (cu3.role === 'Admin' || isDM);
                     var upd = { fullName:body.fullName,email:body.email,phone:body.phone,role:body.role,designation:body.designation,department:body.department,branch:body.branch,territory:body.territory,city:body.city,state:body.state,employeeCode:body.employeeCode,isActive:body.isActive,reportsToId:rtId?parseInt(rtId):null,clearReportsTo:!rtId };
                     if (body.password) upd.password = body.password;
-                    res = await fetch(CFG_API+'/'+editId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(upd)});
+                    res = await fetch(CFG_API+'/'+editId,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(upd)});
                     if (canSavePerms) {
                         // Save web and mobile permissions via dedicated endpoints
-                        await fetch(CFG_API+'/'+editId+'/web-permissions',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfgGetSelectedWebFeatures())});
-                        await fetch(CFG_API+'/'+editId+'/mobile-permissions',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfgGetSelectedMobileFeatures())});
+                        await fetch(CFG_API+'/'+editId+'/web-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(cfgGetSelectedWebFeatures())});
+                        await fetch(CFG_API+'/'+editId+'/mobile-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(cfgGetSelectedMobileFeatures())});
                     }
                 } else {
-                    res = await fetch(CFG_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+                    res = await fetch(CFG_API,{method:'POST',headers:getAuthHeaders(),body:JSON.stringify(body)});
                 }
                 if (!res.ok) { var t=await res.text(); throw new Error(t||'Error '+res.status); }
                 var user=await res.json();
                 // For new users, also set web + mobile permissions via dedicated endpoints
                 if (!isEdit) {
                     await Promise.all([
-                        fetch(CFG_API+'/'+user.id+'/web-permissions',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfgGetSelectedWebFeatures())}).catch(function(){}),
-                        fetch(CFG_API+'/'+user.id+'/mobile-permissions',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfgGetSelectedMobileFeatures())}).catch(function(){})
+                        fetch(CFG_API+'/'+user.id+'/web-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(cfgGetSelectedWebFeatures())}).catch(function(){}),
+                        fetch(CFG_API+'/'+user.id+'/mobile-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(cfgGetSelectedMobileFeatures())}).catch(function(){})
                     ]);
                 }
                 msgDiv.innerHTML='<div class="message success">Sales person "'+esc(user.fullName)+'" '+(isEdit?'updated':'created')+'.</div>';
@@ -1010,16 +1019,16 @@
             document.getElementById('cfg-pmMobileGrid').querySelectorAll('input[type=checkbox]').forEach(function(cb){if(cb.checked)selMob.push(cb.value);});
             btn.disabled=true; btn.textContent='Saving…'; msgEl.innerHTML='';
             try {
-                var r2=await fetch(CFG_API+'/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+                var r2=await fetch(CFG_API+'/'+id,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(body)});
                 if (!r2.ok) { var t2=await r2.text(); throw new Error(t2||'Save failed'); }
                 // Web permissions: editable by Admin OR direct manager
                 if (canSaveWebPerms) {
-                    var rw=await fetch(CFG_API+'/'+id+'/web-permissions',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(selWeb)});
+                    var rw=await fetch(CFG_API+'/'+id+'/web-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(selWeb)});
                     if (!rw.ok) console.warn('Web permissions save failed:',await rw.text());
                 }
                 // Mobile permissions: editable by Admin OR direct manager
                 if (canSaveMobilePerms) {
-                    var rm=await fetch(CFG_API+'/'+id+'/mobile-permissions',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(selMob)});
+                    var rm=await fetch(CFG_API+'/'+id+'/mobile-permissions',{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(selMob)});
                     if (!rm.ok) console.warn('Mobile permissions save failed:',await rm.text());
                 }
                 msgEl.innerHTML='<div class="pm-msg success">Profile updated successfully!</div>';
@@ -1278,7 +1287,7 @@
             var rtv = sel.value;
             var body = rtv ? { reportsToId: parseInt(rtv) } : { clearReportsTo: true };
             try {
-                var r = await fetch(CFG_API+'/'+userId, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+                var r = await fetch(CFG_API+'/'+userId, { method:'PUT', headers:getAuthHeaders(), body:JSON.stringify(body) });
                 if (!r.ok) { var t=await r.text(); throw new Error(t||'Save failed'); }
                 var updated = await r.json();
                 msgEl.innerHTML = '<div class="message success" style="margin-bottom:8px">✔ Manager updated for <b>'+esc(updated.fullName||updated.username)+'</b>.</div>';

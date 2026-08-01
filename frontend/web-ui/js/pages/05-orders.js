@@ -239,7 +239,7 @@
                 try {
                     var res = await fetch('/api/orders/'+id+'/updateStatus', {
                         method:'PUT',
-                        headers:{'Content-Type':'application/json', 'X-User-Id': ordCurrentUser.id},
+                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': ordCurrentUser.id}),
                         body:JSON.stringify({status:newStatus})
                     });
                     if (res.ok) success++; else failed++;
@@ -281,7 +281,7 @@
                 try {
                     var res = await fetch('/api/orders/'+id+'/updateStatus', {
                         method:'PUT',
-                        headers:{'Content-Type':'application/json', 'X-User-Id': ordCurrentUser.id},
+                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': ordCurrentUser.id}),
                         body:JSON.stringify({status:'Approved'})
                     });
                     if (res.ok) success++; else failed++;
@@ -302,7 +302,7 @@
                 try {
                     var res = await fetch('/api/orders/'+id+'/updateStatus', {
                         method:'PUT',
-                        headers:{'Content-Type':'application/json', 'X-User-Id': ordCurrentUser.id},
+                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': ordCurrentUser.id}),
                         body:JSON.stringify({status:'Rejected'})
                     });
                     if (res.ok) success++; else failed++;
@@ -456,7 +456,7 @@
             }
             btn.disabled=true; btn.textContent='Saving...'; msgDiv.innerHTML='';
             try {
-                var res = await fetch(editId?ORD_API+'/'+editId:ORD_API, {method:editId?'PUT':'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+                var res = await fetch(editId?ORD_API+'/'+editId:ORD_API, {method:editId?'PUT':'POST', headers:getAuthHeaders(), body:JSON.stringify(body)});
                 if (!res.ok) throw new Error(await res.text()||'Error '+res.status);
                 var result = await res.json();
                 showMsg('ord-pageMsg','Order '+esc(result.orderNumber||'')+' '+(editId?'updated':'created')+'!','success');
@@ -619,7 +619,7 @@
         window.ordChangeStatus = async function(id, newStatus) {
             if (!confirm(newStatus+' this order?')) return;
             try {
-                var res = await fetch(ORD_API+'/'+id+'/status', {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:newStatus,changedByUserId:ordCurrentUser?ordCurrentUser.id:null})});
+                var res = await fetch(ORD_API+'/'+id+'/status', {method:'PUT', headers:getAuthHeaders(), body:JSON.stringify({status:newStatus,changedByUserId:ordCurrentUser?ordCurrentUser.id:null})});
                 if (!res.ok) throw new Error(await res.text()||'Status update failed');
                 showMsg('ord-pageMsg','Order status changed to '+newStatus+'.','success');
                 ordLoadOrders(ordActiveManagerId||null, ordCurrentPage);

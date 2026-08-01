@@ -75,7 +75,7 @@
             var body={userId:parseInt(uid),latitude:0,longitude:0,address:document.getElementById('att-ciAddress').value.trim()||null,plannedRoute:document.getElementById('att-ciRoute').value.trim()||null,remarks:document.getElementById('att-ciRemarks').value.trim()||null};
             msg.innerHTML='';
             try {
-                var res=await fetch(ATT_BASE+'/api/attendance/checkin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+                var res=await fetch(ATT_BASE+'/api/attendance/checkin',{method:'POST',headers:getAuthHeaders(),body:JSON.stringify(body)});
                 if (!res.ok) throw new Error(await res.text()||'Error');
                 msg.innerHTML='<div class="message success">Checked in successfully!</div>';
                 document.getElementById('att-ciForm').reset();
@@ -88,7 +88,7 @@
             var actualRoute=prompt('Actual route taken (optional):','');
             var remarks=prompt('Remarks (optional):','');
             try {
-                var res=await fetch(ATT_BASE+'/api/attendance/checkout/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({latitude:0,longitude:0,address:address||null,actualRoute:actualRoute||null,remarks:remarks||null})});
+                var res=await fetch(ATT_BASE+'/api/attendance/checkout/'+id,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify({latitude:0,longitude:0,address:address||null,actualRoute:actualRoute||null,remarks:remarks||null})});
                 if (!res.ok) throw new Error(await res.text()||'Error');
                 attLoadAttendance(); attLoadSummary();
             } catch(err) { alert(err.message); }

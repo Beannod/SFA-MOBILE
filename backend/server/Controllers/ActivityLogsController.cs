@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
 using SfaApi.Models;
 
 namespace SfaApi.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/activity-logs")]
     public class ActivityLogsController : ControllerBase

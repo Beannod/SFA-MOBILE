@@ -15,6 +15,7 @@ window.getApiBase = function() {
 
 (function() {
   var SESSION_KEY = 'sfa_admin_user';
+  var TOKEN_KEY = 'sfa_jwt_token';
   var PENDING_ROUTE_KEY = 'sfa_admin_pending_route';
   var LOGIN_ROUTE = 'login';
   var DEFAULT_ROUTE = 'dashboard';
@@ -108,6 +109,7 @@ window.getApiBase = function() {
 
   function clearSession(clearPendingRoute) {
     try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
     if (clearPendingRoute !== false) {
       try { sessionStorage.removeItem(PENDING_ROUTE_KEY); } catch (e) {}
     }
@@ -257,6 +259,10 @@ window.getApiBase = function() {
 
   function handleSuccessfulLogin(user) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    // Store JWT token if provided in response
+    if (user && user.token) {
+      localStorage.setItem(TOKEN_KEY, user.token);
+    }
     setMessage('success', 'Login successful. Redirecting…');
     unlockAfterAuth();
     var targetRoute = isOrgChartPage() ? ORGCHART_ROUTE : getPendingRoute();

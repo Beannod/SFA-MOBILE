@@ -31,6 +31,35 @@ builder.Services.AddScoped<SfaApi.Services.SqlRunner>();
 
 builder.Services.AddHttpClient();
 
+// Register JWT service for token generation and validation
+builder.Services.AddScoped<SfaApi.Services.JwtService>();
+
+// Configure JWT authentication
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret is not configured");
+var key = System.Text.Encoding.ASCII.GetBytes(jwtSecret);
+
+builder.Services.AddAuthentication(options =>
+{
+	options.DefaultAuthenticateScheme = "JwtBearer";
+	options.DefaultChallengeScheme = "JwtBearer";
+})
+.AddJwtBearer("JwtBearer", options =>
+{
+	options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+	{
+		ValidateIssuerSigningKey = true,
+		IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
+		ValidateIssuer = true,
+		ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "SFA",
+		ValidateAudience = true,
+		ValidAudience = builder.Configuration["Jwt:Audience"] ?? "SFA-Client",
+		ValidateLifetime = true,
+		ClockSkew = TimeSpan.Zero
+	};
+});
+
+builder.Services.AddAuthorization();
+
 // Enable CORS for local development (frontend on different port) and production (Cloudflare)
 builder.Services.AddCors(options =>
 {
@@ -92,8 +121,9 @@ app.MapGet("/", context =>
 
 // app.UseHttpsRedirection(); // Disabled so mobile app can use HTTP
 app.UseCors("AllowFrontend"); // Enable CORS before routing
-app.UseStaticFiles(); // Serve static files from frontend/web-ui
+app.UseAuthentication(); // Add JWT authentication (must be before UseAuthorization)
 app.UseAuthorization();
+app.UseStaticFiles(); // Serve static files from frontend/web-ui
 app.MapControllers();
 
 app.Run();

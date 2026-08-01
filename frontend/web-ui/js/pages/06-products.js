@@ -226,7 +226,7 @@
             if (!(body.ratePerSqm>0)) { msg.innerHTML='<div class="message error">Rate Per SQM must be greater than 0.</div>'; return; }
             btn.disabled=true; btn.textContent='Saving...'; msg.innerHTML='';
             try {
-                var res=await fetch(editId?PROD_API+'/'+editId:PROD_API,{method:editId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+                var res=await fetch(editId?PROD_API+'/'+editId:PROD_API,{method:editId?'PUT':'POST',headers:getAuthHeaders(),body:JSON.stringify(body)});
                 if (!res.ok) throw new Error(await res.text()||'Error '+res.status);
                 var result=await res.json();
                 if (typeof cfgUpsertProductCfgValues === 'function') {
