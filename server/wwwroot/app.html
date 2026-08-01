@@ -3,21 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SFA Admin Panel</title>
+    <title>SFA Admin Panel</title>
     <!-- Runtime config served by Cloudflare Pages Function (reads API_BASE_URL env var) -->
     <script src="/env.js"></script>
-    <!-- Load dev overrides only in local development (localhost) -->
-    <script>
-      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-        var devScript = document.createElement('script');
-        devScript.src = '/dev-overrides.js';
-        devScript.onerror = function() {
-          console.warn('[dev-overrides] file not found (expected in production)');
-        };
-        document.head.appendChild(devScript);
-      }
-    </script>
-    <script src="auth.js?v=20260801-1" defer></script>
+    <script src="auth.js?v=20260512-1" defer></script>
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
     <link rel="stylesheet" href="css/app.css?v=20260512-1" />
 </head>
@@ -1533,7 +1522,7 @@
             syncModalBodyState();
         })();
     </script>
-</body>
+    </body>
 </html>
 
 

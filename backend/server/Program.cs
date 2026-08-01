@@ -30,6 +30,33 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<SfaApi.Services.SqlRunner>();
 
 builder.Services.AddHttpClient();
+
+// Enable CORS for local development (frontend on different port) and production (Cloudflare)
+builder.Services.AddCors(options =>
+{
+	options.AddPolicy("AllowFrontend", policy =>
+	{
+		// Local development: allow localhost:3000 (dev server)
+		// Production: allow requests from Cloudflare Pages origin
+		policy
+			.AllowAnyMethod()
+			.AllowAnyHeader()
+			.WithOrigins(
+				"http://localhost:3000",
+				"http://127.0.0.1:3000",
+				"https://localhost:3000"
+			)
+			.SetIsOriginAllowedToAllowWildcardSubdomains();
+		
+		// For production, the frontend origin is injected via Cloudflare environment
+		// For now, also allow any origin in development mode
+		if (builder.Environment.IsDevelopment())
+		{
+			policy.SetIsOriginAllowed(origin => true);
+		}
+	});
+});
+
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
     {
@@ -64,6 +91,7 @@ app.MapGet("/", context =>
 });
 
 // app.UseHttpsRedirection(); // Disabled so mobile app can use HTTP
+app.UseCors("AllowFrontend"); // Enable CORS before routing
 app.UseStaticFiles(); // Serve static files from frontend/web-ui
 app.UseAuthorization();
 app.MapControllers();

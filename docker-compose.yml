@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "Your_password123"
+      MSSQL_PID: "Express"
+    volumes:
+      - dbdata:/var/opt/mssql
+    ports:
+      - "1433:1433"
+
+  backend:
+    image: mcr.microsoft.com/dotnet/sdk:7.0
+    working_dir: /src
+    env_file:
+      - .env
+    volumes:
+      - ./:/src:cached
+    command: sh -c "cd backend/server && dotnet run --urls http://0.0.0.0:80"
+    depends_on:
+      - db
+    ports:
+      - "5000:80"
+
+  frontend:
+    image: node:18-alpine
+    working_dir: /src/frontend/web-ui
+    env_file:
+      - .env
+    volumes:
+      - ./frontend/web-ui:/src/frontend/web-ui:cached
+    command: sh -c "npx http-server -p 3000 -a 0.0.0.0 ./"
+    ports:
+      - "3000:3000"
+
+volumes:
+  dbdata:

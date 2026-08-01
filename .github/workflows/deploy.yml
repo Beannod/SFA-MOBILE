@@ -1,0 +1,104 @@
+name: Deploy — Render & Cloudflare
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    name: Trigger hosting deploys
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required secrets
+        run: |
+          echo "SECRETS: RENDER_API_KEY=${{ secrets.RENDER_API_KEY != '' }}, RENDER_SERVICE_ID=${{ secrets.RENDER_SERVICE_ID != '' }}, CF_API_TOKEN=${{ secrets.CF_API_TOKEN != '' }}, CF_ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID != '' }}, CF_PROJECT_NAME=${{ secrets.CF_PROJECT_NAME != '' }}"
+
+      - name: Trigger Render deploy
+        id: trigger_render_deploy
+        if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_SERVICE_ID != '' }}
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          echo "Triggering Render deploy for service $RENDER_SERVICE_ID"
+          resp=$(curl -s -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache":true}') || true
+          echo "$resp" | jq || true
+          DEPLOY_ID=$(echo "$resp" | jq -r '.id // empty')
+          if [ -z "$DEPLOY_ID" ]; then
+            echo "No deploy id returned by Render; skipping status polling."
+            exit 0
+          fi
+          echo "Render deploy id: $DEPLOY_ID"
+          echo "render_deploy_id=$DEPLOY_ID" >> $GITHUB_OUTPUT
+
+      - name: Wait for Render deploy to finish
+        if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_SERVICE_ID != '' }}
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          set -e
+          DEPLOY_ID=${{ steps.trigger_render_deploy.outputs.render_deploy_id }}
+          if [ -z "$DEPLOY_ID" ]; then
+            echo "No deploy id available; skipping wait."
+            exit 0
+          fi
+          echo "Polling deploy status for $DEPLOY_ID"
+          attempts=0
+          max_attempts=40
+          sleep_seconds=6
+          while [ $attempts -lt $max_attempts ]; do
+            attempts=$((attempts+1))
+            echo "Attempt $attempts/$max_attempts"
+            status_resp=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1/deploys/${DEPLOY_ID}") || true
+            echo "$status_resp" | jq || true
+            state=$(echo "$status_resp" | jq -r '.state // empty')
+            echo "State: $state"
+            if [ "$state" = "success" ]; then
+              echo "Deploy succeeded."
+              exit 0
+            fi
+            if [ "$state" = "failed" ] || [ "$state" = "cancelled" ]; then
+              echo "Deploy failed or cancelled (state=$state)."
+              exit 1
+            fi
+            sleep $sleep_seconds
+          done
+          echo "Timed out waiting for Render deploy to finish."
+          exit 1
+
+      - name: Trigger Cloudflare Pages deployment
+        if: ${{ secrets.CF_API_TOKEN != '' && secrets.CF_ACCOUNT_ID != '' && secrets.CF_PROJECT_NAME != '' }}
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_PROJECT_NAME: ${{ secrets.CF_PROJECT_NAME }}
+        run: |
+          echo "Triggering Cloudflare Pages deployment for project $CF_PROJECT_NAME"
+          # The Pages Deployments API accepts a simple deployment trigger. Adjust body if your setup requires commit data.
+          curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/${CF_PROJECT_NAME}/deployments" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"deployment_trigger": {"type": "ad-hoc"}}' \
+            | jq || true
+
+      - name: Done
+        run: echo "Deploy triggers sent (if secrets provided). Check Render and Cloudflare dashboards for progress."
+
+  smoke-test:
+    name: Post-deploy smoke test
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: ${{ secrets.DEPLOY_HEALTH_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run smoke test script
+        env:
+          DEPLOY_HEALTH_URL: ${{ secrets.DEPLOY_HEALTH_URL }}
+        run: |
+          pwsh -c "./scripts/smoke-test.ps1"

@@ -40,20 +40,13 @@ window.getApiBase = function() {
   }
 
   function isAppShellPage() {
-    // Match both /app.html (standard) and /app (Cloudflare Pages clean URL).
-    if (/\/app(?:\.html)?$/.test(getPathName())) return true;
-    // Fallback: if this document actually contains the SPA app shell markers,
-    // treat it as the app shell regardless of the URL path (handles Cloudflare
-    // rewrites, trailing slashes, custom domains, etc.).
-    return !!(document && document.getElementById &&
-      (document.getElementById('mainNav') || document.getElementById('appHeaderTitle')));
+    // Match both /app.html (standard) and /app (Cloudflare Pages clean URL)
+    return /\/app(?:\.html)?$/.test(getPathName());
   }
 
   function isOrgChartPage() {
-    // Match both /orgchart.html (standard) and /orgchart (Cloudflare Pages clean URL).
-    if (/\/orgchart(?:\.html)?$/.test(getPathName())) return true;
-    // Fallback: detect the org chart document by its unique marker element.
-    return !!(document && document.getElementById && document.getElementById('chart-wrap'));
+    // Match both /orgchart.html (standard) and /orgchart (Cloudflare Pages clean URL)
+    return /\/orgchart(?:\.html)?$/.test(getPathName());
   }
 
 
@@ -70,9 +63,9 @@ window.getApiBase = function() {
     if (isOrgChartPage()) return false;
     if (!isAppShellPage()) return false;
 
-    // All app shell routes require authentication (including login route)
-    // The login route is shown when user tries to access any protected resource without a session
-    return true;
+    var route = normaliseRoute(routeName);
+    if (route === LOGIN_ROUTE) return false;
+    return !!APP_PROTECTED_ROUTES[route || DEFAULT_ROUTE];
   }
 
   function parseStoredUser() {

@@ -27,9 +27,16 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Local env files
+.env.local
+
 # IDE
 .idea/
 *.iml
+
+# Local dev overrides (never commit)
+.dev/
+frontend/web-ui/dev-overrides.js
 
 # OS
 .DS_Store

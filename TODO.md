@@ -1,26 +1,20 @@
-# TODO
+# TODO — Fix Cloudflare Pages not showing login page
 
-## Completed: Stored Procedure Optimization
+## Root Cause
+- `frontend/web-ui/app.html` had a hardcoded `window.__ENV__ = { API_BASE_URL: window.location.origin }` block that overrode the Cloudflare Pages Function runtime config (`functions/env.js`).
+- No static `env.js` fallback existed for when the app is served directly by the ASP.NET backend (`server/wwwroot`).
 
-- [x] Optimized `/api/orders` and `/api/users/hierarchy` with SQL Server stored procedures and ADO.NET readers.
-- [x] Added cycle-safe manager-subtree filtering and deployment/index-review helpers.
-- [x] Deployed procedures locally and verified endpoint timings: hierarchy 35.8 ms, manager-filtered orders 27.5 ms.
-- [x] Corrected the smoke-test seed credential and passed the full API check: 52 passed, 0 failed.
-- [x] Reviewed existing supporting indexes; `order_item_sfa.OrderId` and `user_sfa.ReportsToId` are already indexed. The SSMS plan-review script is retained for future dataset growth.
+## Steps
+- [x] Update `frontend/web-ui/app.html` — load `/env.js` before `auth.js`, remove hardcoded `__ENV__` block
+- [ ] Create `frontend/web-ui/env.js` — static fallback for direct API serving
+- [ ] Update `server/wwwroot/app.html` — mirror the same changes
+- [ ] Create `server/wwwroot/env.js` — static fallback for API serving
+- [ ] Verify both deployment modes (Cloudflare Pages + ASP.NET backend)
 
-## Response UI Improvements
+## Additional Fix: Auth.js Clean URL Matching
 
-- [x] Replace the orders text loader with a table skeleton.
-- [x] Add refresh feedback, a last-updated time, and a retry action after a failed load.
-- [ ] Add server-side pagination for large order lists.
-- [ ] Move search/status/date filters into API query parameters.
-- [ ] Keep the previous list visible while a refresh is in progress.
-- [ ] Add matching skeleton and retry states to the org chart and products list.
-- [ ] Add toast notifications for successful and failed actions.
+- [x] Fixed `frontend/web-ui/auth.js` `isAppShellPage()` regex to match `/app` (Cloudflare clean URL) in addition to `/app.html`
+- [x] Fixed `frontend/web-ui/auth.js` `isOrgChartPage()` regex to match `/orgchart` (Cloudflare clean URL) in addition to `/orgchart.html`
+- [x] Fixed `frontend/web-ui/index.html` redirect to use absolute path `/app.html` for reliable resolution
+- [x] Applied same auth.js and index.html fixes to `server/wwwroot/` copies
 
-## Mobile UI Improvements
-
-- [ ] Add customer list card metadata: code, assigned user, territory, approval status, and outstanding balance.
-- [ ] Add customer detail metadata: customer code, assigned user, approval status, contact, and financial summary.
-- [ ] Improve order cards to show customer name, order date, item count, total amount, and status clearly.
-- [ ] Verify the mobile customer/order screens match the web customer/order field set.

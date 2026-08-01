@@ -1,3 +1,27 @@
+# Pull Request Template
+
+## Summary
+Provide a short description of the change and why it is needed.
+
+## Related Issue
+- Fixes # (link issue number)
+
+## How to Test Locally
+- Pull the branch
+- Start backend: `dotnet run --project backend/server/SfaApi.csproj`
+- Start frontend: `powershell .\scripts\dev.ps1` (or serve `frontend/web-ui`)
+- Reproduce the change and verify expected behavior
+
+## Checklist
+- [ ] CI passes (GitHub Actions)
+- [ ] I ran tests locally: `dotnet test tests/SfaApi.IntegrationTests/SfaApi.IntegrationTests.csproj`
+- [ ] I updated `docs/` if the change affects behavior or configuration
+- [ ] No secrets or production config are included in the PR
+- [ ] Added/updated tests for new behavior (backend or integration)
+
+## Notes for Reviewers
+- Any migration steps, required env vars, or platform notes
+- Any manual steps to validate in staging or preview
 <!-- Pull Request Template: remind authors to update docs when APIs change -->
 # Pull Request
 

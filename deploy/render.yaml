@@ -3,6 +3,8 @@ services:
     name: sfa-api
     runtime: docker
     # Uses the root-level Dockerfile (repo root) which builds backend/server/SfaApi.csproj
+    rootDir: .
+    startCommand: dotnet out/SfaApi.dll
     plan: free                      # change to "starter" or higher for production
     healthCheckPath: /api/health
 

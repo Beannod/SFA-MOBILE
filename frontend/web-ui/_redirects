@@ -1,0 +1,8 @@
+# Cloudflare Pages redirects
+# ------------------------------------------------------------------
+# API requests are handled by functions/api/[[path]].js (Cloudflare Pages
+# Function proxy), so /api/* never reaches this file.
+#
+# No SPA catch-all is needed because the frontend uses hash-based routing
+# (#dashboard, #customers, etc.) — the URL path before the hash stays as
+# /app.html, and the index.html meta-refresh already guides users there.
