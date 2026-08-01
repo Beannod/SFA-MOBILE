@@ -1,12 +1,13 @@
 ﻿    (function() {
-        var ATT_BASE = BASE;
+        function attBase() { return (typeof getApiBase === 'function') ? getApiBase() : (window.API_BASE_URL || window.location.origin || ''); }
+        function attHeaders() { return typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' }; }
         var attAllRecords=[], attAllUsers=[], attFilterStatus='', attSectionLoaded=false;
 
         window.attSetStatusFilter = function(status) { attFilterStatus=status; attRenderTable(); };
 
         window.attLoadUsers = async function() {
             try {
-                var res=await fetch(ATT_BASE+'/api/users'); attAllUsers=await res.json();
+                var res=await fetch(attBase()+'/api/users', { headers: attHeaders() }); attAllUsers=await res.json();
                 var sel=document.getElementById('att-ciUser'), flt=document.getElementById('att-filterUser');
                 attAllUsers.forEach(function(u){
                     sel.innerHTML+='<option value="'+u.id+'">'+esc(u.fullName)+' ('+esc(u.username)+')</option>';
@@ -17,7 +18,7 @@
 
         window.attLoadSummary = async function() {
             try {
-                var res=await fetch(ATT_BASE+'/api/attendance/count');
+                var res=await fetch(attBase()+'/api/attendance/count', { headers: attHeaders() });
                 var data=await res.json();
                 document.getElementById('att-sumTotal').textContent=data.totalDays||0;
                 document.getElementById('att-sumCheckedIn').textContent=data.checkedInToday||0;
@@ -35,7 +36,7 @@
                 if (uid) params.push('userId='+uid);
                 if (dt) params.push('date='+dt);
                 else if (mo) params.push('month='+mo);
-                var res=await fetch(ATT_BASE+'/api/attendance'+(params.length?'?'+params.join('&'):''));
+                var res=await fetch(attBase()+'/api/attendance'+(params.length?'?'+params.join('&'):''), { headers: attHeaders() });
                 attAllRecords=await res.json();
                 attRenderTable();
             } catch(e) { c.innerHTML='<div class="message error">'+e.message+'</div>'; }
@@ -75,7 +76,7 @@
             var body={userId:parseInt(uid),latitude:0,longitude:0,address:document.getElementById('att-ciAddress').value.trim()||null,plannedRoute:document.getElementById('att-ciRoute').value.trim()||null,remarks:document.getElementById('att-ciRemarks').value.trim()||null};
             msg.innerHTML='';
             try {
-                var res=await fetch(ATT_BASE+'/api/attendance/checkin',{method:'POST',headers:getAuthHeaders(),body:JSON.stringify(body)});
+                var res=await fetch(attBase()+'/api/attendance/checkin',{method:'POST',headers:attHeaders(),body:JSON.stringify(body)});
                 if (!res.ok) throw new Error(await res.text()||'Error');
                 msg.innerHTML='<div class="message success">Checked in successfully!</div>';
                 document.getElementById('att-ciForm').reset();
@@ -88,7 +89,7 @@
             var actualRoute=prompt('Actual route taken (optional):','');
             var remarks=prompt('Remarks (optional):','');
             try {
-                var res=await fetch(ATT_BASE+'/api/attendance/checkout/'+id,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify({latitude:0,longitude:0,address:address||null,actualRoute:actualRoute||null,remarks:remarks||null})});
+                var res=await fetch(attBase()+'/api/attendance/checkout/'+id,{method:'PUT',headers:attHeaders(),body:JSON.stringify({latitude:0,longitude:0,address:address||null,actualRoute:actualRoute||null,remarks:remarks||null})});
                 if (!res.ok) throw new Error(await res.text()||'Error');
                 attLoadAttendance(); attLoadSummary();
             } catch(err) { alert(err.message); }
@@ -96,7 +97,7 @@
 
         window.attDeleteAtt = async function(id) {
             if (!confirm('Delete this record?')) return;
-            try { await fetch(ATT_BASE+'/api/attendance/'+id,{method:'DELETE'}); attLoadAttendance(); attLoadSummary(); } catch(e) { alert(e.message); }
+            try { await fetch(attBase()+'/api/attendance/'+id,{method:'DELETE', headers: attHeaders()}); attLoadAttendance(); attLoadSummary(); } catch(e) { alert(e.message); }
         };
 
         window.attClearFilters = function() {

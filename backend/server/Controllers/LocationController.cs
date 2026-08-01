@@ -16,6 +16,52 @@ namespace SfaApi.Controllers
         private readonly SfaApi.Services.SqlRunner _sqlRunner;
         public LocationController(AppDbContext db, SfaApi.Services.SqlRunner sqlRunner) { _db = db; _sqlRunner = sqlRunner; }
 
+        private async Task<List<SfaApi.Models.Dto.LocationLatestDto>> LoadLatestLocationRowsAsync(string? territory)
+        {
+            try
+            {
+                return (await _sqlRunner.QueryAsync<SfaApi.Models.Dto.LocationLatestDto>(
+                    "usp_location_latest_per_user",
+                    new { territory = territory }
+                )).ToList();
+            }
+            catch
+            {
+                var userIdsQuery = _db.Users.AsNoTracking();
+
+                if (!string.IsNullOrWhiteSpace(territory))
+                {
+                    userIdsQuery = userIdsQuery.Where(u => u.Territory == territory);
+                }
+
+                var userIds = await userIdsQuery.Select(u => u.Id).ToListAsync();
+                if (userIds.Count == 0)
+                {
+                    return new List<SfaApi.Models.Dto.LocationLatestDto>();
+                }
+
+                var logs = await _db.LocationLogs
+                    .AsNoTracking()
+                    .Where(l => userIds.Contains(l.UserId))
+                    .OrderByDescending(l => l.RecordedAt)
+                    .ThenByDescending(l => l.Id)
+                    .ToListAsync();
+
+                return logs
+                    .GroupBy(l => l.UserId)
+                    .Select(g => g.First())
+                    .Select(l => new SfaApi.Models.Dto.LocationLatestDto
+                    {
+                        Id = (int)l.Id,
+                        UserId = l.UserId,
+                        Latitude = l.Latitude,
+                        Longitude = l.Longitude,
+                        RecordedAt = l.RecordedAt
+                    })
+                    .ToList();
+            }
+        }
+
         // ─────────────────────────────────────────────────────────────────────
         // POST /api/location
         // Mobile tracking service posts a single GPS ping here every minute.
@@ -79,8 +125,7 @@ namespace SfaApi.Controllers
         [HttpGet("latest")]
         public async Task<IActionResult> GetLatestLocations([FromQuery] string? territory)
         {
-            // Use stored proc to get latest per user
-            var rows = (await _sqlRunner.QueryAsync<SfaApi.Models.Dto.LocationLatestDto>("usp_location_latest_per_user", new { territory = territory })).ToList();
+            var rows = await LoadLatestLocationRowsAsync(territory);
 
             var userIds = rows.Select(r => r.UserId).Distinct().ToList();
             var users = await _db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToListAsync();

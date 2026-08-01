@@ -3,6 +3,19 @@
         var dashActiveDateFilter = 'month';
         var dashMemberListLoaded = false;
 
+        function dashApiBase() {
+            if (typeof getApiBase === 'function') return getApiBase();
+            return window.API_BASE_URL || window.location.origin || '';
+        }
+
+        function dashHeaders() {
+            return typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+        }
+
+        function dashList(data) {
+            return Array.isArray(data) ? data : (data && data.items) ? data.items : [];
+        }
+
         function destroyChart(id) { if (dashCharts[id]) { dashCharts[id].destroy(); delete dashCharts[id]; } }
         function mkChart(id, cfg) { destroyChart(id); var el=document.getElementById(id); if(!el) return; dashCharts[id]=new Chart(el, cfg); }
         var COLORS = ['#4361ee','#7209b7','#f72585','#4cc9f0','#06d6a0','#ffd166','#ef476f','#118ab2','#073b4c','#84a98c'];
@@ -43,7 +56,7 @@
 
         async function dashLoad() {
             try {
-                var base = window.location.origin;
+                var base = dashApiBase();
                 var u = (typeof getCurrentUser === 'function') ? getCurrentUser() : null;
                 var isAdmin  = u && (u.role||'').toLowerCase() === 'admin';
                 var isManager = u && !isAdmin && (u.designationLevel != null) && Number(u.designationLevel) < 6;
@@ -56,8 +69,9 @@
                     if (isAdmin) {
                         memberSel.style.display = '';
                         try {
-                            var uRes = await fetch(base+'/api/users');
+                            var uRes = await fetch(base+'/api/users', { headers: dashHeaders() });
                             var allUsers = await uRes.json();
+                            allUsers = dashList(allUsers);
                             // Clear existing options except first
                             while (memberSel.options.length > 1) memberSel.remove(1);
                             allUsers.forEach(function(m) {
@@ -70,7 +84,7 @@
                     } else if (isManager && u) {
                         memberSel.style.display = '';
                         try {
-                            var stRes = await fetch(base+'/api/users/'+u.id+'/subtree');
+                            var stRes = await fetch(base+'/api/users/'+u.id+'/subtree', { headers: dashHeaders() });
                             var stData = await stRes.json();
                             while (memberSel.options.length > 1) memberSel.remove(1);
                             (stData.members||[]).forEach(function(m) {
@@ -108,13 +122,13 @@
                 }
 
                 var [ordRes, custRes, prodRes, usersRes] = await Promise.all([
-                    fetch(ordUrl), fetch(custUrl),
-                    fetch(base+'/api/products'), fetch(base+'/api/users')
+                    fetch(ordUrl, { headers: dashHeaders() }), fetch(custUrl, { headers: dashHeaders() }),
+                    fetch(base+'/api/products', { headers: dashHeaders() }), fetch(base+'/api/users', { headers: dashHeaders() })
                 ]);
-                var orders    = await ordRes.json();
-                var customers = await custRes.json();
-                var products  = await prodRes.json();
-                var users     = await usersRes.json();
+                var orders    = dashList(await ordRes.json());
+                var customers = dashList(await custRes.json());
+                var products  = dashList(await prodRes.json());
+                var users     = dashList(await usersRes.json());
                 var userMap   = {};
                 users.forEach(function(uu){ userMap[uu.id]=uu.fullName||uu.username; });
 

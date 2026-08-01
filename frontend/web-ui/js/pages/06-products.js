@@ -1,5 +1,15 @@
 ﻿    (function() {
-        var PROD_API = BASE + '/api/products';
+        var PROD_API = window.API_BASE_URL + '/api/products';
+
+        function prodFormHeaders() {
+            return typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+        }
+
+        function prodUploadHeaders() {
+            var headers = typeof getAuthHeaders === 'function' ? Object.assign({}, getAuthHeaders()) : {};
+            delete headers['Content-Type'];
+            return headers;
+        }
         var prodAllProducts = [], prodSectionLoaded = false, prodCurrentUser = null;
         var prodRenderTimer = null;
         var prodRenderChunkSize = 30;
@@ -95,7 +105,7 @@
             btn.textContent = 'Importing...';
 
             try {
-                var res = await fetch(PROD_API + '/import', { method: 'POST', body: fd });
+                var res = await fetch(PROD_API + '/import', { method: 'POST', headers: prodUploadHeaders(), body: fd });
                 if (!res.ok) throw new Error(await res.text() || 'Import failed');
                 var result = await res.json();
 
@@ -161,7 +171,8 @@
         window.prodLoadProducts = async function() {
             prodShowTableLoading();
             try {
-                var res = await fetch(PROD_API);
+                var res = await fetch(PROD_API, { headers: prodFormHeaders() });
+                if (!res.ok) throw new Error(await res.text() || 'Failed to load products');
                 prodAllProducts = await res.json();
                 if (typeof cfgSyncProductCfgFromProducts === 'function') cfgSyncProductCfgFromProducts(prodAllProducts);
                 prodSyncCategoryFilterOptions();
@@ -203,39 +214,78 @@
             }
             var isAdmin = prodCurrentUser && (prodCurrentUser.role||'').toLowerCase() === 'admin';
             prodRenderTableChunked(filtered, isAdmin);
-                kgPerBox:parseFloat(val('prod-kgPerBox'))||null,
-                ratePerSqm:parseFloat(val('prod-ratePerSqm'))||null,
-                code:val('prod-code')||null, remarks:val('prod-remarks')||null,
-                description:val('prod-description')||null, imageUrl:val('prod-imageUrl')||null,
-                type:prodGetFieldValue('type')||null, thickness:val('prod-thickness')||null,
-                finish:prodGetFieldValue('finish')||null,
-                shade:prodGetFieldValue('shade')||null,
-                piecesPerBox:parseInt(val('prod-piecesPerBox'))||null,
-                price:parseFloat(val('prod-price'))||0, dealerPrice:parseFloat(val('prod-dealerPrice'))||null,
-                unit:prodGetFieldValue('unit')||null,
-                isNewArrival:document.getElementById('prod-isNewArrival').checked,
-                isDiscontinued:document.getElementById('prod-isDiscontinued').checked,
-                isActive:document.getElementById('prod-isActive').value==='true'
+        };
+
+        window.prodSaveProduct = async function(e) {
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+            var msg = document.getElementById('prod-message');
+            var btn = document.getElementById('prod-submitBtn');
+            var editId = document.getElementById('prod-editId').value;
+            var body = {
+                itemNo: val('prod-itemNo'),
+                name: val('prod-name'),
+                category: prodGetFieldValue('category') || null,
+                size: prodGetFieldValue('size') || null,
+                boxCoverage: parseFloat(val('prod-boxCoverage')) || 0,
+                kgPerBox: parseFloat(val('prod-kgPerBox')) || 0,
+                ratePerSqm: parseFloat(val('prod-ratePerSqm')) || 0,
+                quality: prodGetFieldValue('quality') || null,
+                remarks: val('prod-remarks') || null,
+                weight: parseFloat(val('prod-weight')) || null,
+                code: val('prod-code') || null,
+                description: val('prod-description') || null,
+                imageUrl: val('prod-imageUrl') || null,
+                type: prodGetFieldValue('type') || null,
+                thickness: val('prod-thickness') || null,
+                finish: prodGetFieldValue('finish') || null,
+                shade: prodGetFieldValue('shade') || null,
+                piecesPerBox: parseInt(val('prod-piecesPerBox')) || null,
+                unit: prodGetFieldValue('unit') || null,
+                price: parseFloat(val('prod-price')) || 0,
+                dealerPrice: parseFloat(val('prod-dealerPrice')) || null,
+                isNewArrival: document.getElementById('prod-isNewArrival').checked,
+                isDiscontinued: document.getElementById('prod-isDiscontinued').checked,
+                isActive: document.getElementById('prod-isActive').value === 'true'
             };
-            if (!body.itemNo) { msg.innerHTML='<div class="message error">Item No. is required.</div>'; return; }
-            if (!body.name) { msg.innerHTML='<div class="message error">Item Description is required.</div>'; return; }
-            if (!body.category) { msg.innerHTML='<div class="message error">Series is required.</div>'; return; }
-            if (!body.size) { msg.innerHTML='<div class="message error">Size is required.</div>'; return; }
-            if (!(body.boxCoverage>0)) { msg.innerHTML='<div class="message error">Box Sqr. Mtr must be greater than 0.</div>'; return; }
-            if (!(body.kgPerBox>0)) { msg.innerHTML='<div class="message error">KG Per Box must be greater than 0.</div>'; return; }
-            if (!(body.ratePerSqm>0)) { msg.innerHTML='<div class="message error">Rate Per SQM must be greater than 0.</div>'; return; }
-            btn.disabled=true; btn.textContent='Saving...'; msg.innerHTML='';
+
+            if (!body.itemNo) { msg.innerHTML = '<div class="message error">Item No. is required.</div>'; return; }
+            if (!body.name) { msg.innerHTML = '<div class="message error">Item Description is required.</div>'; return; }
+            if (!body.category) { msg.innerHTML = '<div class="message error">Series is required.</div>'; return; }
+            if (!body.size) { msg.innerHTML = '<div class="message error">Size is required.</div>'; return; }
+            if (!(body.boxCoverage > 0)) { msg.innerHTML = '<div class="message error">Box Sqr. Mtr must be greater than 0.</div>'; return; }
+            if (!(body.kgPerBox > 0)) { msg.innerHTML = '<div class="message error">KG Per Box must be greater than 0.</div>'; return; }
+            if (!(body.ratePerSqm > 0)) { msg.innerHTML = '<div class="message error">Rate Per SQM must be greater than 0.</div>'; return; }
+
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            msg.innerHTML = '';
             try {
-                var res=await fetch(editId?PROD_API+'/'+editId:PROD_API,{method:editId?'PUT':'POST',headers:getAuthHeaders(),body:JSON.stringify(body)});
-                if (!res.ok) throw new Error(await res.text()||'Error '+res.status);
-                var result=await res.json();
+                var res = await fetch(editId ? PROD_API + '/' + editId : PROD_API, {
+                    method: editId ? 'PUT' : 'POST',
+                    headers: prodFormHeaders(),
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok) throw new Error(await res.text() || 'Error ' + res.status);
+                var result = await res.json();
                 if (typeof cfgUpsertProductCfgValues === 'function') {
-                    cfgUpsertProductCfgValues({category:body.category,size:body.size,quality:body.quality,type:body.type,finish:body.finish,shade:body.shade,unit:body.unit});
+                    cfgUpsertProductCfgValues({
+                        category: body.category,
+                        size: body.size,
+                        quality: body.quality,
+                        type: body.type,
+                        finish: body.finish,
+                        shade: body.shade,
+                        unit: body.unit
+                    });
                 }
-                msg.innerHTML='<div class="message success">Product "'+esc(result.name||body.name)+'" '+(editId?'updated':'created')+'!</div>';
-                setTimeout(function(){ prodCancelEdit(); prodLoadProducts(); }, 900);
-            } catch(err) { msg.innerHTML='<div class="message error">'+err.message+'</div>'; }
-            finally { btn.disabled=false; btn.textContent=editId?'Update Product':'✚ Create Product'; }
+                msg.innerHTML = '<div class="message success">Product "' + esc(result.name || body.name) + '" ' + (editId ? 'updated' : 'created') + '!</div>';
+                setTimeout(function() { prodCancelEdit(); prodLoadProducts(); }, 900);
+            } catch (err) {
+                msg.innerHTML = '<div class="message error">' + esc(err.message || 'Save failed') + '</div>';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = editId ? 'Update Product' : '✚ Create Product';
+            }
         };
 
         window.prodEditProduct = function(id) {
@@ -280,7 +330,7 @@
         window.prodDeleteProduct = async function(id) {
             if (!confirm('Delete this product?')) return;
             try {
-                var res=await fetch(PROD_API+'/'+id,{method:'DELETE'});
+                var res=await fetch(PROD_API+'/'+id,{method:'DELETE', headers: prodFormHeaders()});
                 if (!res.ok && res.status!==204) throw new Error('Delete failed');
                 document.getElementById('prod-message').innerHTML='<div class="message success">Product deleted.</div>';
                 prodLoadProducts();

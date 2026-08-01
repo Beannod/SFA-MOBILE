@@ -38,7 +38,7 @@
         }
 
         window.npLoadPlaces = function() {
-            fetch(npBase()+'/api/nepalplaces/all?page=1&pageSize=9999')
+            fetch(npBase()+'/api/nepalplaces/all?page=1&pageSize=9999', { headers: getAuthHeaders() })
                 .then(function(r){ return r.ok ? r.json() : {items:[]}; })
                 .then(function(d){
                     _npAll = d.items || [];
@@ -145,7 +145,7 @@
         };
         window.npDelete = function(id) {
             if (!confirm('Delete this place?')) return;
-            fetch(npBase()+'/api/nepalplaces/'+id, { method:'DELETE' })
+            fetch(npBase()+'/api/nepalplaces/'+id, { method:'DELETE', headers:getAuthHeaders() })
                 .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
                 .then(function() {
                     _npAll = _npAll.filter(function(p){ return p.id!==id; });

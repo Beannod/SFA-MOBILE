@@ -1,5 +1,6 @@
 ﻿    (function() {
-        var TRK_BASE = BASE;
+        function trkBase() { return (typeof getApiBase === 'function') ? getApiBase() : (window.API_BASE_URL || window.location.origin || ''); }
+        function trkHeaders() { return typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' }; }
         var trkMap=null, trkHistMap=null;
         var trkMarkers={}, trkSelectedUser=null, trkRefreshTimer=null;
         var trkHistMarkers=[], trkHistLine=null;
@@ -40,7 +41,7 @@
 
         window.trkRefreshData = async function() {
             try {
-                var res=await Promise.all([fetch(TRK_BASE+'/api/location/latest'),fetch(TRK_BASE+'/api/location/count')]);
+                var res=await Promise.all([fetch(trkBase()+'/api/location/latest', { headers: trkHeaders() }),fetch(trkBase()+'/api/location/count', { headers: trkHeaders() })]);
                 var liveData=await res[0].json(), countData=await res[1].json();
                 document.getElementById('trk-statActive').textContent=countData.activeUsers||0;
                 document.getElementById('trk-statToday').textContent=countData.todayCount||0;
@@ -102,8 +103,8 @@
             if (!userId) { alert('Select a user'); return; }
             if (!trkHistMap) trkInitHistMap();
             try {
-                var url=TRK_BASE+'/api/location/user/'+userId+'?date='+(date||new Date().toISOString().split('T')[0]);
-                var trail=await (await fetch(url)).json();
+                var url=trkBase()+'/api/location/user/'+userId+'?date='+(date||new Date().toISOString().split('T')[0]);
+                var trail=await (await fetch(url, { headers: trkHeaders() })).json();
                 trkHistMarkers.forEach(function(m){trkHistMap.removeLayer(m);}); trkHistMarkers=[];
                 if (trkHistLine) { trkHistMap.removeLayer(trkHistLine); trkHistLine=null; }
                 if (!trail.length) { document.getElementById('trk-historyTable').innerHTML='<div class="empty">No location data for this date.</div>'; return; }
@@ -131,7 +132,7 @@
 
         async function trkLoadHistUsers() {
             try {
-                var users=await (await fetch(TRK_BASE+'/api/users')).json();
+                var users=await (await fetch(trkBase()+'/api/users', { headers: trkHeaders() })).json();
                 var sel=document.getElementById('trk-histUser');
                 users.forEach(function(u){ sel.innerHTML+='<option value="'+u.id+'">'+esc(u.fullName)+' ('+esc(u.username)+')</option>'; });
             } catch(e) {}
@@ -431,7 +432,7 @@
         window.rtePopulateUserDropdown = function() {
             var sel = document.getElementById('rte-filterUser');
             if (!sel || sel.dataset.loaded) return;
-            fetch(rteGetBase()+'/api/users')
+            fetch(rteGetBase()+'/api/users', { headers: trkHeaders() })
                 .then(function(r){ return r.json(); })
                 .then(function(users) {
                     sel.dataset.loaded = '1';

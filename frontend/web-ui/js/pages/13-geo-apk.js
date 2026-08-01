@@ -37,8 +37,10 @@
             });
 
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', BASE + '/api/location', true);
+            xhr.open('POST', window.API_BASE_URL + '/api/location', true);
             xhr.setRequestHeader('Content-Type', 'application/json');
+            var token = localStorage.getItem('sfa_jwt_token');
+            if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
             xhr.onload = function() {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     setDot('#4CAF50', '\uD83D\uDCCD Location sent');
@@ -99,7 +101,7 @@
        APK DOWNLOAD PAGE
     ══════════════════════════════════════════════════════════ */
     registerSection('apk', function() {
-        var base = window.location.origin;
+        var base = (typeof getApiBase === 'function') ? getApiBase() : (window.API_BASE_URL || window.location.origin || '');
         var apkUrl = base + '/api/update/apk';
 
         // Set direct link
@@ -138,7 +140,7 @@
         }
 
         // Fetch version info
-        fetch(base + '/api/update/version')
+        fetch(base + '/api/update/version', { headers: (typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' }) })
             .then(function(r) { return r.json(); })
             .then(function(v) {
                 var lbl = document.getElementById('apk-verLabel');

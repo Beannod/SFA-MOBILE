@@ -499,9 +499,12 @@ Accepts an array of ping objects — used when the device was offline and is cat
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/location/latest` | Most recent ping for every active user (live map) |
+| `GET` | `/api/location/latest` | Most recent ping for every active user (live map, optional `?territory=` filter) |
 | `GET` | `/api/location/trail?userId=X&date=YYYY-MM-DD` | Full GPS trail for a user on a given day |
 | `GET` | `/api/location/summary?userId=X&days=7` | Distance/activity summary per user |
+
+Implementation note:
+`GET /api/location/latest` uses the `usp_location_latest_per_user` stored procedure when it is deployed, and falls back to an EF query if that optimization is missing in the target database.
 
 ### Location Fields
 
