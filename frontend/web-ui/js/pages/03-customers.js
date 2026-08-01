@@ -205,7 +205,7 @@
             if (!body.name) { msgDiv.innerHTML='<div class="message error">Shop / Firm Name is required.</div>'; return; }
             btn.disabled=true; btn.textContent='Saving...'; msgDiv.innerHTML='';
             try {
-                var res = await fetch(editId ? CUST_API+'/'+editId : CUST_API, {method:editId?'PUT':'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+                var res = await fetch(editId ? CUST_API+'/'+editId : CUST_API, {method:editId?'PUT':'POST', headers:getAuthHeaders(), body:JSON.stringify(body)});
                 if (!res.ok) throw new Error(await res.text()||'Error '+res.status);
                 var result = await res.json();
                 msgDiv.innerHTML='<div class="message success">Customer "'+esc(result.name||body.name)+'" '+(editId?'updated':'created')+'.</div>';
@@ -435,7 +435,7 @@
                     };
                     var res = await fetch(CUST_API+'/'+id, {
                         method:'PUT',
-                        headers:{'Content-Type':'application/json', 'X-User-Id': custCurrentUser.id},
+                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': custCurrentUser.id}),
                         body:JSON.stringify(body)
                     });
                     if (res.ok) succeeded++; else failed++;
@@ -483,7 +483,7 @@
                 try {
                     var res = await fetch(CUST_API+'/'+id+'/approve', {
                         method:'PUT',
-                        headers:{'Content-Type':'application/json', 'X-User-Id': custCurrentUser.id},
+                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': custCurrentUser.id}),
                         body:JSON.stringify({approvalStatus:'Approved'})
                     });
                     if (res.ok) succeeded++; else failed++;
@@ -510,7 +510,7 @@
                 try {
                     var res = await fetch(CUST_API+'/'+id+'/approve', {
                         method:'PUT',
-                        headers:{'Content-Type':'application/json', 'X-User-Id': custCurrentUser.id},
+                        headers:Object.assign(getAuthHeaders(), {'X-User-Id': custCurrentUser.id}),
                         body:JSON.stringify({approvalStatus:'Rejected'})
                     });
                     if (res.ok) succeeded++; else failed++;

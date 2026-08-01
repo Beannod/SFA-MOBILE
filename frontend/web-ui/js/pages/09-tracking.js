@@ -274,7 +274,7 @@
             var base = rteGetBase();
             fetch(base+'/api/nepalplaces', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ name: name })
             })
             .then(function(r){ return r.ok ? r.json() : null; })
@@ -383,14 +383,14 @@
                         // PATCH update plannedRoute
                         return fetch(rteGetBase()+'/api/attendance/'+todayRec.id+'/planned-route', {
                             method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: getAuthHeaders(),
                             body: JSON.stringify({ plannedRoute: routeText })
                         });
                     } else {
                         // POST checkin with planned route
                         return fetch(rteGetBase()+'/api/attendance/checkin', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: getAuthHeaders(),
                             body: JSON.stringify({
                                 userId: cu.id,
                                 plannedRoute: routeText,

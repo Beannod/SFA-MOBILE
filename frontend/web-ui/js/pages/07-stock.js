@@ -66,7 +66,7 @@
             var body={productId:parseInt(document.getElementById('stk-stProduct').value),warehouseId:parseInt(document.getElementById('stk-stWarehouse').value),quantityAvailable:parseFloat(document.getElementById('stk-stQty').value)||0,unit:document.getElementById('stk-stUnit').value,minStockLevel:parseFloat(document.getElementById('stk-stMin').value)||null,maxStockLevel:parseFloat(document.getElementById('stk-stMax').value)||null};
             msg.innerHTML='';
             try {
-                var res=await fetch(editId?STK_BASE+'/api/stock/'+editId:STK_BASE+'/api/stock',{method:editId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+                var res=await fetch(editId?STK_BASE+'/api/stock/'+editId:STK_BASE+'/api/stock',{method:editId?'PUT':'POST',headers:getAuthHeaders(),body:JSON.stringify(body)});
                 if (!res.ok) throw new Error(await res.text()||'Error '+res.status);
                 msg.innerHTML='<div class="message success">Stock '+(editId?'updated':'created')+'!</div>';
                 stkCancelStEdit(); stkLoadStock();
@@ -126,7 +126,7 @@
             var body={name:val('stk-whName'),code:val('stk-whCode')||null,location:val('stk-whLocation')||null,city:val('stk-whCity')||null,state:val('stk-whState')||null,contactPerson:val('stk-whContact')||null,phone:val('stk-whPhone')||null,isActive:true};
             msg.innerHTML='';
             try {
-                var res=await fetch(editId?STK_BASE+'/api/warehouses/'+editId:STK_BASE+'/api/warehouses',{method:editId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+                var res=await fetch(editId?STK_BASE+'/api/warehouses/'+editId:STK_BASE+'/api/warehouses',{method:editId?'PUT':'POST',headers:getAuthHeaders(),body:JSON.stringify(body)});
                 if (!res.ok) throw new Error(await res.text()||'Error');
                 msg.innerHTML='<div class="message success">Warehouse '+(editId?'updated':'created')+'!</div>';
                 stkCancelWhEdit(); stkLoadWarehouses(); stkLoadDropdowns();

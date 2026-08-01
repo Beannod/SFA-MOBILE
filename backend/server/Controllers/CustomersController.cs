@@ -1,15 +1,16 @@
 ﻿using SfaApi.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using SfaApi.Data;
 using SfaApi.Models;
 using System.Text;
 using System.Linq;
-using SfaApi.Services;
 using SfaApi.Models.Dto;
 
 namespace SfaApi.Controllers
 {
+	[Authorize]
 	[ApiController]
 	[Route("api/[controller]")]
 	public class CustomersController : ControllerBase

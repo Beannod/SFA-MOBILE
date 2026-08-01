@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using System.IO;
 using System.Text.Json;
 
 namespace SfaApi.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class UpdateController : ControllerBase
@@ -19,6 +21,7 @@ namespace SfaApi.Controllers
         /// Returns the latest APK version info.
         /// The app compares versionCode against BuildConfig.VERSION_CODE to decide if an update is needed.
         /// </summary>
+        [AllowAnonymous]
         [HttpGet("version")]
         public IActionResult GetVersion()
         {

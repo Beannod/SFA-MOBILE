@@ -43,6 +43,7 @@ namespace SfaApi.Controllers
 		/// <summary>
 		/// Login: checks username and password.
 		/// POST /api/auth/login  { "username": "...", "password": "..." }
+		/// Returns user object + JWT token on success.
 		/// </summary>
 		[HttpPost("login")]
 		public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -69,26 +70,32 @@ namespace SfaApi.Controllers
 				if (!user.IsActive)
 					return Unauthorized(new { error = "Account is inactive. Contact admin." });
 
-				return Ok(new LoginResponse
-			{
-				Id = user.Id,
-				Username = user.Username,
-				FullName = user.FullName,
-				Email = user.Email,
-				Role = user.Role,
-				Territory = user.Territory,
-				Designation = user.Designation,
-				DesignationLevel = user.DesignationLevel,
-				ReportsToId = user.ReportsToId,
-				// Mobile permissions — fallback to role defaults if not yet set
-				AllowedFeatures = user.MobilePermissions != null
-					? user.MobilePermissions.ToKeyList().OrderBy(k => k).ToArray()
-					: SfaApi.Models.PermissionKeys.MobileDefaultsForRole(user.Role),
-				// Web permissions — fallback to role defaults if not yet set
-				WebPermissions = user.WebPermissions != null
-					? user.WebPermissions.ToKeyList().OrderBy(k => k).ToArray()
-					: SfaApi.Models.PermissionKeys.WebDefaultsForRole(user.Role)
-			});
+				// Generate JWT token
+				var jwtService = HttpContext.RequestServices.GetRequiredService<SfaApi.Services.JwtService>();
+				var token = jwtService.GenerateToken(user.Id, user.Username, user.Role);
+
+				return Ok(new
+				{
+					id = user.Id,
+					username = user.Username,
+					fullName = user.FullName,
+					email = user.Email,
+					role = user.Role,
+					territory = user.Territory,
+					designation = user.Designation,
+					designationLevel = user.DesignationLevel,
+					reportsToId = user.ReportsToId,
+					// Mobile permissions — fallback to role defaults if not yet set
+					allowedFeatures = user.MobilePermissions != null
+						? user.MobilePermissions.ToKeyList().OrderBy(k => k).ToArray()
+						: SfaApi.Models.PermissionKeys.MobileDefaultsForRole(user.Role),
+					// Web permissions — fallback to role defaults if not yet set
+					webPermissions = user.WebPermissions != null
+						? user.WebPermissions.ToKeyList().OrderBy(k => k).ToArray()
+						: SfaApi.Models.PermissionKeys.WebDefaultsForRole(user.Role),
+					// JWT token for subsequent API calls
+					token = token
+				});
 			}
 			catch (Exception ex)
 			{
